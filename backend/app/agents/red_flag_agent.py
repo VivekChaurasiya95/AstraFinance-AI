@@ -3,20 +3,21 @@ from groq import Groq
 from app.config.groq_config import GROQ_API_KEY
 
 
-class ExtractionAgent:
+class RedFlagAgent:
 
     def __init__(self):
         self.client = Groq(api_key=GROQ_API_KEY)
 
-    def extract_financial_data(self, document_text):
+    def analyze_financial_risk(self, financial_data):
 
         prompt = f"""
-Extract the important financial information from the document.
+Analyze the following financial data.
 
 Return ONLY JSON.
 
-Document:
-{document_text}
+Financial Data:
+
+{json.dumps(financial_data, indent=4)}
 """
 
         response = self.client.chat.completions.create(
