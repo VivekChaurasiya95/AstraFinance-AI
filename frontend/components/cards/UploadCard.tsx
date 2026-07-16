@@ -1,0 +1,1 @@
+export function UploadCard() { return <div>UploadCard Stub</div>; }

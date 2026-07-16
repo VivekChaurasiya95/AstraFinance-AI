@@ -56,6 +56,11 @@ datasets/
 reports/
 logs/
 
+# Firebase service account keys (NEVER commit these)
+**/firebase-adminsdk*.json
+**/serviceAccountKey.json
+**/firebase-service-account.json
+
 # Optional local caches
 .cache/
 .turbo/

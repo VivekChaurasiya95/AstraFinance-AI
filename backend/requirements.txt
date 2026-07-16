@@ -10,6 +10,7 @@ uvicorn[standard]
 python-dotenv
 pydantic
 pydantic-settings
+email-validator
 
 # ==========================
 # Database

@@ -1,0 +1,1 @@
+export function CompanyCard() { return <div>CompanyCard Stub</div>; }

@@ -1,0 +1,1 @@
+export function WorkspaceCard() { return <div>WorkspaceCard Stub</div>; }

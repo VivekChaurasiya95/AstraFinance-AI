@@ -1,0 +1,1 @@
+export function ResearchChatBox() { return <div>ResearchChatBox Stub</div>; }

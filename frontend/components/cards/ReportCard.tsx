@@ -1,0 +1,1 @@
+export function ReportCard() { return <div>ReportCard Stub</div>; }

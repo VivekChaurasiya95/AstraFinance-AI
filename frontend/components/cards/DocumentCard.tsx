@@ -1,0 +1,1 @@
+export function DocumentCard() { return <div>DocumentCard Stub</div>; }

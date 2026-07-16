@@ -1,0 +1,16 @@
+# Firebase service account keys (NEVER commit these)
+*firebase-adminsdk*.json
+serviceAccountKey.json
+firebase-service-account.json
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
