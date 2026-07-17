@@ -110,7 +110,7 @@ The risk workflow surfaces anomalies, omissions, and suspicious patterns that de
 
 ### 5. Research Assistant Experience
 
-The research flow combines retrieval, prompt orchestration, and citations so the user can ask questions conversationally without losing traceability.
+The research flow combines retrieval, prompt orchestration, and citations so the user can ask questions conversationally without losing traceability. Users can also directly attach files and images within the chat for dynamic multi-modal context.
 
 ### 6. Report Generation
 
@@ -190,7 +190,7 @@ sequenceDiagram
 The documented product experience spans:
 
 - Landing page and onboarding
-- Login, register, OAuth bridge, and password reset flows
+- Secure Authentication via Firebase (Email/Password, Google OAuth, GitHub OAuth)
 - Dashboard and workspace overview
 - Workspace list and creation
 - Upload and document processing screens
@@ -290,14 +290,8 @@ AstraFinance-AI/
 ├── frontend/
 │   ├── app/
 │   ├── components/
-│   ├── hooks/
 │   ├── lib/
-│   ├── public/
-│   ├── services/
-│   ├── store/
-│   ├── styles/
-│   ├── types/
-│   └── utils/
+│   └── public/
 ├── scripts/
 ├── docs/
 ├── datasets/

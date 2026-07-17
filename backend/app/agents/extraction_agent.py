@@ -1,11 +1,14 @@
-import json
 import os
+import json
 
+from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 
+load_dotenv()
 
-class RedFlagAgent:
+
+class ExtractionAgent:
 
     def __init__(self):
 
@@ -15,49 +18,95 @@ class RedFlagAgent:
             temperature=0
         )
 
-        self.prompt = ChatPromptTemplate.from_messages([
-            (
-                "system",
-                """
-You are a Financial Risk Analysis Agent.
+        self.prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    """
+You are an expert Financial Extraction Agent.
 
-Analyze the extracted financial information.
-
-Detect:
-
-- High liabilities
-- Low profit
-- Revenue decline
-- Missing financial data
-- Any financial risk
+Extract the following information from the financial document.
 
 Return ONLY valid JSON.
 
-{
-    "risk_level":"",
-    "red_flags":[],
-    "recommendations":[]
-}
+{{
+    "company_name": "",
+    "revenue": "",
+    "expenses": "",
+    "net_profit": "",
+    "assets": "",
+    "liabilities": "",
+    "financial_ratios": {{
+        "current_ratio": "",
+        "debt_to_equity_ratio": ""
+    }}
+}}
+
+If any field is missing, return an empty string.
+Do not return markdown.
+Do not return explanations.
+Return JSON only.
 """
-            ),
-            ("human", "{financial_data}")
-        ])
+                ),
+                (
+                    "human",
+                    "{document}"
+                )
+            ]
+        )
 
         self.chain = self.prompt | self.llm
 
-    def analyze(self, extracted_data):
+    def extract(self, document_text):
 
         response = self.chain.invoke(
-            {"financial_data": str(extracted_data)}
+            {
+                "document": document_text
+            }
         )
 
-        try:
-            return json.loads(response.content)
+        output = response.content.strip()
 
-        except:
+        if output.startswith("```json"):
+            output = output.replace("```json", "").replace("```", "").strip()
+
+        try:
+            return json.loads(output)
+
+        except Exception:
 
             return {
-                "risk_level": "Unknown",
-                "red_flags": [],
-                "recommendations": []
+                "company_name": "",
+                "revenue": "",
+                "expenses": "",
+                "net_profit": "",
+                "assets": "",
+                "liabilities": "",
+                "financial_ratios": {
+                    "current_ratio": "",
+                    "debt_to_equity_ratio": ""
+                },
+                "raw_response": output
             }
+
+
+if __name__ == "__main__":
+
+    sample_text = """
+    ABC Pvt Ltd Annual Financial Report 2025
+
+    Revenue : 1200000
+    Expenses : 800000
+    Net Profit : 400000
+    Assets : 3500000
+    Liabilities : 1800000
+
+    Current Ratio : 1.8
+    Debt to Equity Ratio : 1.4
+    """
+
+    agent = ExtractionAgent()
+
+    result = agent.extract(sample_text)
+
+    print(json.dumps(result, indent=4))
