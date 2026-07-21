@@ -1,34 +1,61 @@
 import fitz
 
 
-def parse_pdf(file_path):
-    """
-    Extract text from each page of a PDF.
+class PDFParser:
+   
+    def __init__(self):
+        pass
 
-    Args:
-        file_path (str): Path to the PDF file.
+    def extract_text(self, pdf_path: str):
+     
+        pages_data = []
 
-    Returns:
-        list: List of dictionaries containing page number and text.
-    """
+        try:
+            document = fitz.open(pdf_path)
 
-    pages_data = []
+            for page_number in range(document.page_count):
 
-    try:
-        pdf_document = fitz.open(file_path)
+                page = document.load_page(page_number)
 
-        for page_number in range(len(pdf_document)):
-            page = pdf_document[page_number]
-            text = page.get_text()
+                pages_data.append(
+                    {
+                        "page": page_number + 1,
+                        "text": page.get_text(),
+                    }
+                )
 
-            pages_data.append({
-                "page": page_number + 1,
-                "text": text
-            })
+            document.close()
 
-        pdf_document.close()
+        except Exception as e:
+            print(f"Error reading PDF: {e}")
 
-    except Exception as e:
-        print(f"Error reading PDF: {e}")
+        return pages_data
 
-    return pages_data
+
+def main():
+
+    from pathlib import Path
+
+    pdf_path = (
+        Path(__file__).resolve().parents[2]
+        / "sample_docs"
+        / "sample.pdf"
+    )
+
+    print("=" * 60)
+    print("ASTRAFINANCE PDF PARSER")
+    print("=" * 60)
+
+    parser = PDFParser()
+
+    pages = parser.extract_text(str(pdf_path))
+
+    print(f"\nTotal Pages: {len(pages)}")
+
+    if pages:
+        print("\nFirst Page Preview:\n")
+        print(pages[0]["text"][:1000])
+
+
+if __name__ == "__main__":
+    main()
