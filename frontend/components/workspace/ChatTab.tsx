@@ -32,72 +32,8 @@ import { cn } from "@/lib/utils";
 import { fetcher } from "@/lib/api";
 import type { ChatMsg, Citation, ChatSession } from "./types";
 
-// ── Mock Chat History Data ────────────────────────────────────────────────────
-const MOCK_HISTORY: ChatSession[] = [
-  {
-    id: "1",
-    firstQuestion: "What were the major growth drivers for Infosys in Q1 FY25?",
-    messageCount: 12,
-    timestamp: "10:24 AM",
-    date: "Today",
-  },
-  {
-    id: "2",
-    firstQuestion: "How did Infosys perform compared to last quarter?",
-    messageCount: 8,
-    timestamp: "09:48 AM",
-    date: "Today",
-  },
-  {
-    id: "3",
-    firstQuestion: "Show revenue breakup by segment",
-    messageCount: 6,
-    timestamp: "09:18 AM",
-    date: "Today",
-  },
-  {
-    id: "4",
-    firstQuestion: "What are the key business risks for Infosys?",
-    messageCount: 10,
-    timestamp: "Yesterday, 04:32 PM",
-    date: "Yesterday",
-  },
-  {
-    id: "5",
-    firstQuestion: "Compare Infosys and TCS Profitability",
-    messageCount: 14,
-    timestamp: "Yesterday, 11:07 AM",
-    date: "Yesterday",
-  },
-  {
-    id: "6",
-    firstQuestion: "How is Infosys doing in the cloud business?",
-    messageCount: 7,
-    timestamp: "May 11, 2025",
-    date: "Last 7 days",
-  },
-  {
-    id: "7",
-    firstQuestion: "Summarize the cash flow statement",
-    messageCount: 5,
-    timestamp: "May 10, 2025",
-    date: "Last 7 days",
-  },
-  {
-    id: "8",
-    firstQuestion: "Any red flags in the financials?",
-    messageCount: 6,
-    timestamp: "May 9, 2025",
-    date: "Last 7 days",
-  },
-  {
-    id: "9",
-    firstQuestion: "Give me an overview of this report",
-    messageCount: 4,
-    timestamp: "May 6, 2025",
-    date: "Earlier",
-  },
-];
+// ── Chat History Data ─────────────────────────────────────────────────────────
+const MOCK_HISTORY: ChatSession[] = [];
 
 // ── Placeholder rotating prompts ──────────────────────────────────────────────
 const EXAMPLE_PROMPTS = [

@@ -272,7 +272,11 @@ export function CreateWorkspaceModal({
         }
       }
 
-      router.push(`/workspace/${workspace.id}`);
+      if (pendingFiles.length > 0) {
+        router.push(`/workspace/${workspace.id}/documents`);
+      } else {
+        router.push(`/workspace/${workspace.id}`);
+      }
       onClose();
     } catch (err) {
       setSubmitError(
@@ -300,9 +304,7 @@ export function CreateWorkspaceModal({
 
   const canProceedStep1 =
     name.trim().length >= 2 &&
-    (nameStatus === "available" || nameStatus === "idle") &&
-    nameStatus !== "taken" &&
-    nameStatus !== "checking";
+    (nameStatus === "available" || nameStatus === "idle");
 
   const pendingCount = uploadFiles.filter(
     (file) => file.status === "pending",

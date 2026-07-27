@@ -1,84 +1,151 @@
-import random
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from app.schemas.auth_schema import UserResponse, EmailVerify
-from app.repositories import user_repository
-from app.auth.security import verify_token
+from ...schemas.auth_schema import UserResponse, EmailVerify
+from ...repositories import user_repository
+from ...auth.security import TokenData
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import logging
+from loguru import logger
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
     token = credentials.credentials
-    token_data = verify_token(token)
-    if not token_data or not token_data.uid or not token_data.email:
+
+    # Verify Firebase ID token using the Admin SDK directly
+    try:
+        from firebase_admin import auth
+
+        # Add clock skew allowance to handle "Token used too early" errors 
+        # when the system clock is slightly behind Google's servers.
+        decoded = auth.verify_id_token(token, clock_skew_seconds=60)
+    except Exception as e:
+        logger.error(f"Firebase Token Verification Failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=f"Could not validate credentials: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # Upsert user based on Firebase token data
-    user = user_repository.upsert_firebase_user(
-        firebase_uid=token_data.uid,
-        email=token_data.email,
-        name=token_data.name,
-        picture=token_data.picture
+
+    # Parse provider from Firebase sign-in info
+    provider = "email"
+    firebase_info = decoded.get("firebase", {})
+    sign_in_provider = firebase_info.get("sign_in_provider", "password")
+
+    if sign_in_provider == "google.com":
+        provider = "google"
+    elif sign_in_provider == "github.com":
+        provider = "github"
+    elif sign_in_provider == "password":
+        provider = "email"
+
+    uid = decoded.get("uid")
+    email = decoded.get("email")
+
+    if not uid or not email:
+        logger.error("Firebase Token missing uid or email")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials: missing uid or email",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    logger.info(f"✓ Firebase Token Verified for {email} (provider: {provider})")
+
+    # Upsert user in MongoDB (ASYNC – must be awaited)
+    user = await user_repository.upsert_firebase_user(
+        firebase_uid=uid,
+        email=email,
+        name=decoded.get("name", "") or "",
+        picture=decoded.get("picture", "") or "",
+        provider=provider,
+        email_verified=decoded.get("email_verified", False),
     )
-    
+
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        logger.error("User creation/update failed in MongoDB")
+        raise HTTPException(status_code=500, detail="User sync failed")
     return user
 
-@router.get("/me", response_model=UserResponse)
-def get_user_me(current_user: dict = Depends(get_current_user)) -> Any:
+
+@router.post("/sync", response_model=UserResponse)
+async def sync_user(current_user: dict = Depends(get_current_user)) -> Any:
+    logger.info("✓ User Sync Endpoint Called")
     return UserResponse(
         id=str(current_user["_id"]),
         name=current_user.get("name", ""),
         email=current_user.get("email", ""),
-        profile_picture_url=current_user.get("profile_picture")
+        profile_picture_url=current_user.get("photo_url"),
     )
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_user_me(current_user: dict = Depends(get_current_user)) -> Any:
+    return UserResponse(
+        id=str(current_user["_id"]),
+        name=current_user.get("name", ""),
+        email=current_user.get("email", ""),
+        profile_picture_url=current_user.get("photo_url"),
+    )
+
 
 class ProfileUpdate(BaseModel):
     name: str
 
+
 @router.put("/profile/name", response_model=UserResponse)
-def update_profile_name(update_data: ProfileUpdate, current_user: dict = Depends(get_current_user)) -> Any:
-    user_repository.update_user(str(current_user["_id"]), {"name": update_data.name})
+async def update_profile_name(
+    update_data: ProfileUpdate,
+    current_user: dict = Depends(get_current_user),
+) -> Any:
+    await user_repository.update_user(
+        str(current_user["_id"]), {"name": update_data.name}
+    )
     current_user["name"] = update_data.name
     return UserResponse(
         id=str(current_user["_id"]),
         name=current_user["name"],
         email=current_user["email"],
-        profile_picture_url=current_user.get("profile_picture")
+        profile_picture_url=current_user.get("photo_url"),
     )
-
 
 
 class PhotoUpload(BaseModel):
     photo_base64: str
 
+
 @router.put("/profile/photo", response_model=UserResponse)
-def update_photo(upload: PhotoUpload, current_user: dict = Depends(get_current_user)) -> Any:
-    user_repository.update_user(str(current_user["_id"]), {"profile_picture": upload.photo_base64})
-    current_user["profile_picture"] = upload.photo_base64
+async def update_photo(
+    upload: PhotoUpload,
+    current_user: dict = Depends(get_current_user),
+) -> Any:
+    await user_repository.update_user(
+        str(current_user["_id"]), {"photo_url": upload.photo_base64}
+    )
+    current_user["photo_url"] = upload.photo_base64
     return UserResponse(
         id=str(current_user["_id"]),
         name=current_user["name"],
         email=current_user["email"],
-        profile_picture_url=current_user.get("profile_picture")
+        profile_picture_url=current_user.get("photo_url"),
     )
 
+
 @router.delete("/profile/photo", response_model=UserResponse)
-def delete_photo(current_user: dict = Depends(get_current_user)) -> Any:
-    user_repository.update_user(str(current_user["_id"]), {"profile_picture": None})
-    current_user["profile_picture"] = None
+async def delete_photo(
+    current_user: dict = Depends(get_current_user),
+) -> Any:
+    await user_repository.update_user(
+        str(current_user["_id"]), {"photo_url": None}
+    )
+    current_user["photo_url"] = None
     return UserResponse(
         id=str(current_user["_id"]),
         name=current_user["name"],
         email=current_user["email"],
-        profile_picture_url=None
+        profile_picture_url=None,
     )

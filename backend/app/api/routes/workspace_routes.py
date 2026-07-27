@@ -1,180 +1,87 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks, Form
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks, Form, Depends
+from typing import List, Optional, Dict, Any
 import uuid
 from pydantic import BaseModel
 import time
 import asyncio
+import os
+from datetime import datetime, timezone
+import aiofiles
+import traceback
+import re
 
-from app.schemas.workspace_schema import WorkspaceCreate, WorkspaceResponse
+from ...schemas.workspace_schema import WorkspaceCreate, WorkspaceResponse
+from ...agents.document_agent import DocumentAgent
+from ...agents.extraction_agent import ExtractionAgent
+from ...agents.red_flag_agent import RedFlagAgent
+from .auth_routes import get_current_user
+from ...database.mongo_client import (
+    workspaces_collection,
+    documents_collection,
+    metrics_collection,
+    red_flags_collection,
+    agent_logs_collection,
+    reports_collection
+)
+from ...agents.report_agent import report_agent
+from fastapi.responses import FileResponse
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 
-# In-memory storage – replace with MongoDB later
-MOCK_WORKSPACES = [
-    {
-        "id": "1",
-        "name": "Infosys Financial Analysis Q1 FY25",
-        "description": "Aggregated transcript data and sentiment analysis for key tech sector earnings calls.",
-        "docs": 3,
-        "chats": 12,
-        "reports": 1,
-        "owner_name": "Vivek Chaurasiya",
-        "owner_initial": "V",
-        "updatedAt": "Updated 2 hours ago",
-        "icon": "FileTextIcon",
-        "iconColor": "text-blue-700",
-        "iconBg": "bg-blue-100",
-    },
-    {
-        "id": "2",
-        "name": "TCS vs Infosys Comparison",
-        "description": "Central bank policy shifts and supply chain vulnerability models.",
-        "docs": 5,
-        "chats": 18,
-        "reports": 2,
-        "owner_name": "Vivek Chaurasiya",
-        "owner_initial": "V",
-        "updatedAt": "Updated yesterday",
-        "icon": "FileTextIcon",
-        "iconColor": "text-emerald-700",
-        "iconBg": "bg-emerald-100",
-    },
-    {
-        "id": "3",
-        "name": "HDFC Bank Annual Report 2024",
-        "description": "Central bank policy shifts and supply chain vulnerability models.",
-        "docs": 2,
-        "chats": 8,
-        "reports": 0,
-        "owner_name": "Vivek Chaurasiya",
-        "owner_initial": "V",
-        "updatedAt": "Updated 3 days ago",
-        "icon": "FileTextIcon",
-        "iconColor": "text-orange-700",
-        "iconBg": "bg-orange-100",
-    },
-    {
-        "id": "4",
-        "name": "Reliance Industries FY24 Analysis",
-        "description": "Central bank policy shifts and supply chain vulnerability models.",
-        "docs": 4,
-        "chats": 15,
-        "reports": 1,
-        "owner_name": "Vivek Chaurasiya",
-        "owner_initial": "V",
-        "updatedAt": "Updated 5 days ago",
-        "icon": "FileTextIcon",
-        "iconColor": "text-red-700",
-        "iconBg": "bg-red-100",
-    },
-    {
-        "id": "5",
-        "name": "IT Sector Quarterly Review",
-        "description": "Central bank policy shifts and supply chain vulnerability models.",
-        "docs": 6,
-        "chats": 22,
-        "reports": 3,
-        "owner_name": "Vivek Chaurasiya",
-        "owner_initial": "V",
-        "updatedAt": "Updated 1 week ago",
-        "icon": "FileTextIcon",
-        "iconColor": "text-blue-700",
-        "iconBg": "bg-blue-100",
-    },
-    {
-        "id": "6",
-        "name": "Adani Group Financial Overview",
-        "description": "Central bank policy shifts and supply chain vulnerability models.",
-        "docs": 3,
-        "chats": 9,
-        "reports": 1,
-        "owner_name": "Vivek Chaurasiya",
-        "owner_initial": "V",
-        "updatedAt": "Updated 1 week ago",
-        "icon": "FileTextIcon",
-        "iconColor": "text-violet-700",
-        "iconBg": "bg-violet-100",
-    },
-]
+document_agent = DocumentAgent()
+extraction_agent = ExtractionAgent()
+red_flag_agent = RedFlagAgent()
 
-# In-memory document store per workspace
-WORKSPACE_DOCUMENTS: dict = {
-    "1": [
-        {"id": "doc_1a", "name": "Infosys_Q1_FY25_Annual_Report.pdf", "size_bytes": 2456789, "status": "ready", "pages": 145, "uploaded_at": "2 hours ago", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-        {"id": "doc_1b", "name": "Q1_Results_Presentation.pdf", "size_bytes": 1234567, "status": "ready", "pages": 42, "uploaded_at": "2 hours ago", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-        {"id": "doc_1c", "name": "Infosys_Investor_Update.pdf", "size_bytes": 987654, "status": "ready", "pages": 28, "uploaded_at": "3 hours ago", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-    ],
-    "2": [
-        {"id": "doc_2a", "name": "TCS_Q1_FY25_Report.pdf", "size_bytes": 3123456, "status": "ready", "pages": 198, "uploaded_at": "Yesterday", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-        {"id": "doc_2b", "name": "Infosys_Q1_FY25_Annual_Report.pdf", "size_bytes": 2456789, "status": "ready", "pages": 145, "uploaded_at": "Yesterday", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-        {"id": "doc_2c", "name": "Sector_Comparison_Analysis.pdf", "size_bytes": 876543, "status": "ready", "pages": 35, "uploaded_at": "2 days ago", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-        {"id": "doc_2d", "name": "IT_Index_Benchmark.pdf", "size_bytes": 654321, "status": "ready", "pages": 22, "uploaded_at": "2 days ago", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-        {"id": "doc_2e", "name": "Market_Share_Data.pdf", "size_bytes": 543210, "status": "ready", "pages": 18, "uploaded_at": "3 days ago", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-    ],
-    "3": [
-        {"id": "doc_3a", "name": "HDFC_Annual_Report_2024.pdf", "size_bytes": 4567890, "status": "ready", "pages": 312, "uploaded_at": "3 days ago", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-        {"id": "doc_3b", "name": "HDFC_Q4_Results.pdf", "size_bytes": 1098765, "status": "ready", "pages": 56, "uploaded_at": "3 days ago", "processing_step": 5, "progress": 100, "extracted_metrics": [], "red_flags": []},
-    ],
-}
-
-# In-memory report store per workspace
-WORKSPACE_REPORTS: dict = {
-    "1": [
-        {
-            "id": "rep_1a",
-            "title": "Infosys Q1 FY25 Financial Analysis",
-            "summary": "Comprehensive analysis of Infosys Q1 FY25 results showing 4.2% revenue growth YoY with strong margin expansion.",
-            "status": "completed",
-            "created_at": "2 hours ago",
-            "pages": 12,
-            "type": "Full Analysis",
-        }
-    ],
-    "2": [
-        {
-            "id": "rep_2a",
-            "title": "TCS vs Infosys — Head-to-Head Comparison",
-            "summary": "Side-by-side comparison of key financial metrics for Q1 FY25.",
-            "status": "completed",
-            "created_at": "Yesterday",
-            "pages": 8,
-            "type": "Comparison Report",
-        },
-        {
-            "id": "rep_2b",
-            "title": "IT Sector Risk Assessment",
-            "summary": "Risk analysis highlighting regulatory, demand, and currency headwinds.",
-            "status": "completed",
-            "created_at": "2 days ago",
-            "pages": 6,
-            "type": "Risk Report",
-        },
-    ],
-}
-
-
-@router.get("", response_model=List[WorkspaceResponse])
-def get_workspaces():
-    return MOCK_WORKSPACES
-
-
-@router.get("/check-name")
-def check_workspace_name(name: str):
-    """Check if a workspace name is available."""
-    exists = any(w["name"].lower() == name.strip().lower() for w in MOCK_WORKSPACES)
-    return {"available": not exists}
-
-
-@router.get("/{workspace_id}", response_model=WorkspaceResponse)
-def get_workspace(workspace_id: str):
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
-    if not ws:
-        raise HTTPException(status_code=404, detail="Workspace not found")
+# ── Helper ────────────────────────────────────────────────────────────────────
+def format_workspace(ws: dict) -> dict:
+    if "_id" in ws:
+        ws["id"] = ws.pop("_id")
+    if "updated_at" in ws and isinstance(ws["updated_at"], datetime):
+        ws["updatedAt"] = ws["updated_at"].isoformat()
+    elif "updatedAt" not in ws:
+        ws["updatedAt"] = datetime.utcnow().isoformat()
     return ws
 
 
-@router.post("", response_model=WorkspaceResponse)
-def create_workspace(workspace: WorkspaceCreate):
+# ── Workspaces ────────────────────────────────────────────────────────────────
+@router.get("", response_model=List[dict])
+async def get_workspaces(current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    cursor = workspaces_collection.find({"owner_id": user_id}).sort("updated_at", -1)
+    workspaces = []
+    async for ws in cursor:
+        workspaces.append(format_workspace(ws))
+    return workspaces
+
+
+@router.get("/check-name")
+async def check_workspace_name(name: str, current_user: dict = Depends(get_current_user)):
+    """Check if a workspace name is available for this user."""
+    user_id = str(current_user["_id"])
+    # Case-insensitive search using regex could be slow but works for now
+    exists = await workspaces_collection.find_one({
+        "owner_id": user_id, 
+        "name": {"$regex": f"^{name.strip()}$", "$options": "i"}
+    })
+    return {"available": not bool(exists)}
+
+
+@router.get("/{workspace_id}")
+async def get_workspace(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    return format_workspace(ws)
+
+
+@router.post("")
+async def create_workspace(workspace: WorkspaceCreate, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    user_name = current_user.get("name", "Unknown User")
+    
+    count = await workspaces_collection.count_documents({"owner_id": user_id})
+    
     colors = [
         ("text-blue-700", "bg-blue-100"),
         ("text-emerald-700", "bg-emerald-100"),
@@ -183,75 +90,198 @@ def create_workspace(workspace: WorkspaceCreate):
         ("text-teal-700", "bg-teal-100"),
         ("text-red-700", "bg-red-100"),
     ]
-    color_pair = colors[len(MOCK_WORKSPACES) % len(colors)]
+    color_pair = colors[count % len(colors)]
 
     new_ws = {
-        "id": str(uuid.uuid4()),
+        "_id": str(uuid.uuid4()),
+        "owner_id": user_id,
         "name": workspace.name,
         "description": workspace.description or "No description provided.",
         "docs": 0,
         "chats": 0,
         "reports": 0,
-        "owner_name": "Vivek Chaurasiya",
-        "owner_initial": "V",
-        "updatedAt": "Just now",
-        "icon": "FileTextIcon",
+        "owner_name": user_name,
+        "owner_initial": user_name[0].upper() if user_name else "U",
+        "icon": "Building2",
         "iconColor": color_pair[0],
         "iconBg": color_pair[1],
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
     }
-    MOCK_WORKSPACES.insert(0, new_ws)
-    WORKSPACE_DOCUMENTS[new_ws["id"]] = []
-    WORKSPACE_REPORTS[new_ws["id"]] = []
-    return new_ws
+    
+    await workspaces_collection.insert_one(new_ws)
+    return format_workspace(new_ws)
 
 
-@router.get("/{workspace_id}/documents")
-def get_workspace_documents(workspace_id: str):
-    """Get list of documents for a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
+@router.put("/{workspace_id}")
+async def rename_workspace(workspace_id: str, workspace: WorkspaceCreate, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    docs = WORKSPACE_DOCUMENTS.get(workspace_id, [])
+        
+    update_data = {"name": workspace.name, "updated_at": datetime.utcnow()}
+    if workspace.description:
+        update_data["description"] = workspace.description
+        
+    await workspaces_collection.update_one(
+        {"_id": workspace_id},
+        {"$set": update_data}
+    )
+    
+    ws.update(update_data)
+    return format_workspace(ws)
+
+
+@router.post("/{workspace_id}/duplicate")
+async def duplicate_workspace(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    new_ws = dict(ws)
+    new_ws["_id"] = str(uuid.uuid4())
+    new_ws["name"] = ws["name"] + " (Copy)"
+    new_ws["created_at"] = datetime.utcnow()
+    new_ws["updated_at"] = datetime.utcnow()
+    new_ws["docs"] = 0
+    new_ws["chats"] = 0
+    new_ws["reports"] = 0
+    
+    await workspaces_collection.insert_one(new_ws)
+    return format_workspace(new_ws)
+
+
+@router.delete("/{workspace_id}")
+async def delete_workspace(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    result = await workspaces_collection.delete_one({"_id": workspace_id, "owner_id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    # Also delete associated documents and data
+    await documents_collection.delete_many({"workspace_id": workspace_id})
+    await metrics_collection.delete_many({"workspace_id": workspace_id})
+    await red_flags_collection.delete_many({"workspace_id": workspace_id})
+    await agent_logs_collection.delete_many({"workspace_id": workspace_id})
+    
+    return {"message": "Workspace deleted successfully"}
+
+
+# ── Documents ─────────────────────────────────────────────────────────────────
+@router.get("/{workspace_id}/documents")
+async def get_workspace_documents(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    """Get list of documents for a workspace."""
+    # Verify ownership
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    docs_cursor = documents_collection.find({"workspace_id": workspace_id}).sort("uploaded_at", -1)
+    docs = []
+    async for doc in docs_cursor:
+        doc["id"] = doc.pop("_id")
+        # Format time if present
+        if "uploaded_at" in doc and isinstance(doc["uploaded_at"], datetime):
+            doc["uploaded_at"] = doc["uploaded_at"].strftime("%b %d, %Y")
+        docs.append(doc)
+        
     return {"documents": docs, "total": len(docs)}
 
-async def simulate_document_processing(workspace_id: str, doc_id: str):
-    """Simulate a 5-step processing pipeline."""
-    steps = [
-        {"name": "Parsing Document", "duration": 2},
-        {"name": "Cleaning Content", "duration": 2},
-        {"name": "Chunking Text", "duration": 2},
-        {"name": "Generating Embeddings", "duration": 3},
-        {"name": "Indexing in Vector Database", "duration": 2},
-    ]
-    
-    docs = WORKSPACE_DOCUMENTS.get(workspace_id, [])
-    doc = next((d for d in docs if d["id"] == doc_id), None)
-    if not doc:
-        return
+
+async def simulate_document_processing(workspace_id: str, doc_id: str, file_path: str, file_name: str):
+    async def add_activity(agent_name, agent_type, status, action, details, metadata=None):
+        now = datetime.now(timezone.utc)
+        duration = "Running"
+        if status in ["Complete", "Failed"]:
+            running_log = await agent_logs_collection.find_one(
+                {
+                    "workspace_id": workspace_id,
+                    "document_id": doc_id,
+                    "agent_name": agent_name,
+                    "action": action,
+                    "status": "Running"
+                },
+                sort=[("timestamp", -1)]
+            )
+            if running_log and "timestamp" in running_log:
+                started_at = running_log["timestamp"]
+                if started_at.tzinfo is None:
+                    started_at = started_at.replace(tzinfo=timezone.utc)
+                elapsed = (now - started_at).total_seconds()
+                duration = f"{elapsed:.1f}s"
+            else:
+                duration = "Completed" if status == "Complete" else "Failed"
+
+        log_doc = {
+            "_id": str(uuid.uuid4()),
+            "workspace_id": workspace_id,
+            "document_id": doc_id,
+            "agent_name": agent_name,
+            "agent_type": agent_type,
+            "status": status,
+            "action": action,
+            "details": details,
+            "duration": duration,
+            "metadata": metadata or {},
+            "timestamp": now
+        }
+        await agent_logs_collection.insert_one(log_doc)
+
+    try:
+        # Step 1: Parsing and Chunking
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 1, "progress": 20, "status": "processing"}})
+        await add_activity("Document Agent", "document", "Running", "Extracting & Chunking", "Parsing PDF and creating semantic chunks.")
         
-    for i, step in enumerate(steps):
-        doc["processing_step"] = i + 1
-        doc["status"] = "processing"
+        await asyncio.sleep(1) # Yield
+        stats: dict = await asyncio.to_thread(document_agent.process_and_index, file_path, workspace_id, doc_id, file_name)  # type: ignore
+        await add_activity("Document Agent", "document", "Complete", "Text Chunked", f"Successfully extracted and indexed {stats.get('chunks')} chunks.", stats)
         
-        # Simulating progress 0-100% for this step
-        for p in range(0, 100, 20):
-            doc["progress"] = p
-            await asyncio.sleep(step["duration"] / 5)
+        # Step 2: Extraction
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 2, "progress": 50}})
+        await add_activity("Extraction Agent", "extraction", "Running", "Extracting Metrics", "Analyzing chunks for financial metrics.")
+        
+        await asyncio.sleep(1)
+        await asyncio.sleep(1)
+        extraction_results: dict = await asyncio.to_thread(extraction_agent.extract, doc_id)  # type: ignore
+        
+        extraction_results["_id"] = str(uuid.uuid4())
+        extraction_results["workspace_id"] = workspace_id
+        extraction_results["document_id"] = doc_id
+        await metrics_collection.insert_one(extraction_results)
             
-        doc["progress"] = 100
+        metrics_found = len(extraction_results.get("key_metrics", []))
+        await add_activity("Extraction Agent", "extraction", "Complete", "Metrics Extracted", f"Found {metrics_found} metrics.", {"metrics_found": metrics_found})
+
+        # Step 3: Red Flags
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 3, "progress": 75}})
+        await add_activity("Red Flag Agent", "risk", "Running", "Analyzing Risks", "Scanning chunks for financial risks.")
         
-    doc["status"] = "ready"
-    doc["processing_step"] = 5
-    doc["extracted_metrics"] = [
-        {"label": "Revenue (FY24)", "value": "₹ 1,62,990 Cr", "trend": "up", "change": "+ 3.3%"},
-        {"label": "Net Profit (FY24)", "value": "₹ 26,311 Cr", "trend": "up", "change": "+ 6.2%"},
-        {"label": "EBITDA", "value": "₹ 40,987 Cr", "trend": "up", "change": "+ 4.8%"},
-        {"label": "ROE", "value": "30.8%", "trend": "up", "change": "+ 1.6%"},
-    ]
-    doc["red_flags"] = [
-        {"title": "Decline in Operating Margin", "severity": "High"},
-        {"title": "Increase in Employee Costs", "severity": "Medium"},
-    ]
+        await asyncio.sleep(1)
+        risk_data: dict = await asyncio.to_thread(red_flag_agent.analyze, doc_id)  # type: ignore
+        red_flags = risk_data.get("red_flags", [])
+        
+        for rf in red_flags:
+            rf["_id"] = str(uuid.uuid4())
+            rf["workspace_id"] = workspace_id
+            rf["document_id"] = doc_id
+            await red_flags_collection.insert_one(rf)
+            
+        await add_activity("Red Flag Agent", "risk", "Complete", "Risk Analysis Complete", f"Identified {len(red_flags)} risks.", {"risks_found": len(red_flags)})
+
+        # Cleanup
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 4, "progress": 100, "status": "ready"}})
+        
+    except Exception as e:
+        traceback.print_exc()
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "progress": 100}})
+        await add_activity("System", "document", "Failed", "Pipeline Failed", str(e))
 
 
 @router.post("/{workspace_id}/documents")
@@ -259,25 +289,33 @@ async def upload_document(
     workspace_id: str,
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user)
 ):
     """Upload one or more PDF documents to a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
     uploaded = []
+    os.makedirs("uploads", exist_ok=True)
+    
     for file in files:
-        if not file.filename.lower().endswith(".pdf"):
+        filename = file.filename or "unnamed.pdf"
+        if not filename.lower().endswith(".pdf"):
             raise HTTPException(
                 status_code=400,
-                detail=f"Only PDF files are supported. Got: {file.filename}"
+                detail=f"Only PDF files are supported. Got: {filename}"
             )
 
-        contents = await file.read()
         doc_id = str(uuid.uuid4())
+        file_path = f"uploads/{doc_id}_{filename}"
         
-        # Determine a mock pdf type based on filename
-        lower_name = file.filename.lower()
+        async with aiofiles.open(file_path, 'wb') as out_file:
+            content = await file.read()
+            await out_file.write(content)
+
+        lower_name = filename.lower()
         pdf_type = "Annual Report" if "annual" in lower_name else "Financial Statement"
         if "notice" in lower_name:
             pdf_type = "Notice"
@@ -285,85 +323,130 @@ async def upload_document(
             pdf_type = "Quarterly Results"
             
         new_doc = {
-            "id": doc_id,
-            "name": file.filename,
-            "size_bytes": len(contents),
+            "_id": doc_id,
+            "workspace_id": workspace_id,
+            "name": filename,
+            "size_bytes": len(content),
             "status": "processing",
             "processing_step": 1,
             "progress": 0,
             "pdf_type": pdf_type,
-            "pages": max(1, len(contents) // 3000),
-            "uploaded_at": "Just now",
-            "extracted_metrics": [],
-            "red_flags": []
+            "pages": max(1, len(content) // 3000),
+            "uploaded_at": datetime.now(timezone.utc)
         }
-        uploaded.append(new_doc)
-        if workspace_id not in WORKSPACE_DOCUMENTS:
-            WORKSPACE_DOCUMENTS[workspace_id] = []
-        WORKSPACE_DOCUMENTS[workspace_id].append(new_doc)
+        await documents_collection.insert_one(new_doc)
+        
+        # Replace _id with id for frontend
+        ret_doc = new_doc.copy()
+        ret_doc["id"] = ret_doc.pop("_id")
+        uploaded.append(ret_doc)
         
         # Queue processing task
-        background_tasks.add_task(simulate_document_processing, workspace_id, doc_id)
+        background_tasks.add_task(simulate_document_processing, workspace_id, doc_id, file_path, filename)
         
-        ws["docs"] = len(WORKSPACE_DOCUMENTS[workspace_id])
-        ws["updatedAt"] = "Just now"
+        # Update workspace docs count
+        await workspaces_collection.update_one(
+            {"_id": workspace_id}, 
+            {"$inc": {"docs": 1}, "$set": {"updated_at": datetime.now(timezone.utc)}}
+        )
 
     return {"uploaded": uploaded, "workspace_id": workspace_id}
 
 
 @router.delete("/{workspace_id}/documents/{document_id}")
-def delete_document(workspace_id: str, document_id: str):
+async def delete_document(workspace_id: str, document_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a specific document from a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    docs = WORKSPACE_DOCUMENTS.get(workspace_id, [])
-    initial_len = len(docs)
-    WORKSPACE_DOCUMENTS[workspace_id] = [d for d in docs if d["id"] != document_id]
-    if len(WORKSPACE_DOCUMENTS[workspace_id]) == initial_len:
+
+    res = await documents_collection.delete_one({"_id": document_id, "workspace_id": workspace_id})
+    if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Document not found")
-    ws["docs"] = len(WORKSPACE_DOCUMENTS[workspace_id])
-    ws["updatedAt"] = "Just now"
+        
+    await workspaces_collection.update_one(
+        {"_id": workspace_id},
+        {"$inc": {"docs": -1}, "$set": {"updated_at": datetime.now(timezone.utc)}}
+    )
     return {"message": "Document deleted successfully"}
-
-
-@router.put("/{workspace_id}", response_model=WorkspaceResponse)
-def rename_workspace(workspace_id: str, workspace: WorkspaceCreate):
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
-    if not ws:
-        raise HTTPException(status_code=404, detail="Workspace not found")
-    ws["name"] = workspace.name
-    if workspace.description:
-        ws["description"] = workspace.description
-    ws["updatedAt"] = "Just now"
-    return ws
-
-
-@router.delete("/{workspace_id}")
-def delete_workspace(workspace_id: str):
-    global MOCK_WORKSPACES
-    initial_len = len(MOCK_WORKSPACES)
-    MOCK_WORKSPACES = [w for w in MOCK_WORKSPACES if w["id"] != workspace_id]
-    if len(MOCK_WORKSPACES) == initial_len:
-        raise HTTPException(status_code=404, detail="Workspace not found")
-    WORKSPACE_DOCUMENTS.pop(workspace_id, None)
-    WORKSPACE_REPORTS.pop(workspace_id, None)
-    return {"message": "Workspace deleted successfully"}
 
 
 # ── Agents ────────────────────────────────────────────────────────────────────
 @router.get("/{workspace_id}/agents")
-def get_workspace_agents(workspace_id: str):
-    return {
-        "agents": [
-            {"id": 1, "name": "Document Agent", "status": "Complete", "details": "3 documents processed\n145 pages • 2m ago"},
-            {"id": 2, "name": "Extraction Agent", "status": "Running", "details": "Extracting financial metrics...\n60% complete • Just now"},
-            {"id": 3, "name": "Red Flag Agent", "status": "Complete", "details": "Risk analysis completed\n4 risks identified • 1m ago"},
-            {"id": 4, "name": "Comparison Agent", "status": "Idle", "details": "Ready to compare\nNo active task"},
-            {"id": 5, "name": "Research Agent", "status": "Running", "details": "Answering user queries...\n1 active session • Just now"},
-            {"id": 6, "name": "Report Agent", "status": "Failed", "details": "Report generation failed\nRetry"}
-        ]
+async def get_workspace_agents(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    cursor = agent_logs_collection.find({"workspace_id": workspace_id}).sort("timestamp", 1)
+    logs = []
+    
+    status_map = {
+        "Document Agent": {"status": "Idle", "details": "Waiting for documents"},
+        "Extraction Agent": {"status": "Idle", "details": "Ready to extract"},
+        "Red Flag Agent": {"status": "Idle", "details": "Ready to analyze"},
+        "Comparison Agent": {"status": "Idle", "details": "Ready to compare"},
+        "Research Agent": {"status": "Idle", "details": "Answering queries"},
+        "Report Agent": {"status": "Idle", "details": "Ready to generate"}
     }
+    
+    async for log in cursor:
+        log["id"] = log.pop("_id")
+        if "timestamp" in log and isinstance(log["timestamp"], datetime):
+            log["timestamp"] = log["timestamp"].strftime("%I:%M %p")
+            
+        agent_name = log.get("agent_name")
+        if agent_name in status_map:
+            status = log.get("status")
+            if status == "Running":
+                status_map[agent_name] = {"status": "Running", "details": log.get("action", "Running...")}
+            elif status == "Complete":
+                status_map[agent_name] = {"status": "Complete", "details": log.get("action", "Completed")}
+            elif status == "Failed":
+                status_map[agent_name] = {"status": "Failed", "details": "Failed to complete"}
+                
+        # Insert at 0 so the timeline on frontend is newest first if needed, 
+        # or we just return it chronological (append) if frontend wants Document -> Extraction -> Red Flag
+        logs.append(log) 
+        
+    # Standard placeholder agents if none
+    agents = [
+        {"id": 1, "name": "Document Agent", "status": status_map["Document Agent"]["status"], "details": status_map["Document Agent"]["details"]},
+        {"id": 2, "name": "Extraction Agent", "status": status_map["Extraction Agent"]["status"], "details": status_map["Extraction Agent"]["details"]},
+        {"id": 3, "name": "Red Flag Agent", "status": status_map["Red Flag Agent"]["status"], "details": status_map["Red Flag Agent"]["details"]},
+        {"id": 4, "name": "Comparison Agent", "status": status_map["Comparison Agent"]["status"], "details": status_map["Comparison Agent"]["details"]},
+        {"id": 5, "name": "Research Agent", "status": status_map["Research Agent"]["status"], "details": status_map["Research Agent"]["details"]},
+        {"id": 6, "name": "Report Agent", "status": status_map["Report Agent"]["status"], "details": status_map["Report Agent"]["details"]}
+    ]
+    
+    return {
+        "agents": agents,
+        "logs": logs
+    }
+
+
+@router.get("/{workspace_id}/agent-activity")
+async def get_workspace_agent_activity(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    cursor = agent_logs_collection.find({"workspace_id": workspace_id}).sort("timestamp", 1)
+    logs = []
+    async for log in cursor:
+        log["id"] = log.pop("_id")
+        log["agent"] = log.pop("agent_name", "Unknown Agent")
+        log["metadata"] = log.get("metadata", {})
+        log["details"] = log.get("details", "")
+        
+        if "timestamp" in log and isinstance(log["timestamp"], datetime):
+            log["timestamp"] = log["timestamp"].strftime("%I:%M %p")
+        logs.append(log)
+        
+    return {"timeline": logs}
 
 
 # ── Chat ──────────────────────────────────────────────────────────────────────
@@ -373,411 +456,357 @@ class ChatMessage(BaseModel):
 @router.post("/{workspace_id}/chat")
 async def chat_with_workspace(
     workspace_id: str, 
-    message: str = Form(None),
-    chat_json: ChatMessage = None,
-    files: List[UploadFile] = File(None)
+    message: Optional[str] = Form(None),
+    chat_json: Optional[ChatMessage] = None,
+    files: Optional[List[UploadFile]] = File(None),
+    current_user: dict = Depends(get_current_user)
 ):
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
     
-    # Support both Form data (with files) and JSON body (legacy)
     actual_message = message if message is not None else (chat_json.message if chat_json else "")
     
-    # Increment chat count
-    ws["chats"] = ws.get("chats", 0) + 1
+    await workspaces_collection.update_one({"_id": workspace_id}, {"$inc": {"chats": 1}})
     await asyncio.sleep(0.5)
 
-    # Acknowledge files if attached
     file_ack = ""
     if files and len(files) > 0:
-        file_names = ", ".join([f.filename for f in files])
+        file_names = ", ".join([f.filename or "unnamed" for f in files])
         file_ack = f"I've received your attachments: {file_names}. "
 
-    # Context-aware mock responses
-    message_lower = actual_message.lower()
-    if "overview" in message_lower or "summary" in message_lower or "performance" in message_lower:
-        reply = (
-            f"Based on the uploaded documents for **{ws['name']}**, here is the financial overview:\n\n"
-            "• **Revenue**: ₹38,318 Cr (+4.2% YoY)\n"
-            "• **Net Profit**: ₹6,368 Cr (+7.1% YoY)\n"
-            "• **EBIT Margin**: 20.8% (expanded by 60 bps)\n"
-            "• **Headcount**: 3,17,240 employees\n\n"
-            "Q1 FY25 performance was in-line with analyst expectations, driven by strong deal wins and operational efficiency."
-        )
-        citations = [{"doc": "Infosys_Q1_FY25_Annual_Report.pdf", "page": 4}, {"doc": "Q1_Results_Presentation.pdf", "page": 2}]
-    elif "risk" in message_lower or "red flag" in message_lower:
-        reply = (
-            "The **Risk Analysis Agent** has identified the following key risks:\n\n"
-            "🔴 **High**: Revenue concentration risk — top 10 clients contribute ~32% of revenue\n"
-            "🟠 **Medium**: Currency headwinds from USD/INR fluctuation (negative impact: ~1.2%)\n"
-            "🟡 **Medium**: Attrition rate at 17.3% — above industry average\n"
-            "🟢 **Low**: Regulatory compliance risk — all major geographies compliant\n\n"
-            "Overall risk posture is manageable with strong balance sheet backing."
-        )
-        citations = [{"doc": "Infosys_Q1_FY25_Annual_Report.pdf", "page": 28}, {"doc": "Q1_Results_Presentation.pdf", "page": 15}]
-    elif "compare" in message_lower or "metric" in message_lower:
-        reply = (
-            "**Comparison of Key Financial Metrics** (Q1 FY25):\n\n"
-            "| Metric | Infosys | TCS | Wipro |\n"
-            "|--------|---------|-----|-------|\n"
-            "| Revenue Growth | 4.2% | 8.4% | 3.1% |\n"
-            "| Net Margin | 16.6% | 19.8% | 12.3% |\n"
-            "| EBIT Margin | 20.8% | 24.1% | 17.2% |\n"
-            "| Deal Wins ($B) | 4.1 | 8.3 | 3.7 |\n\n"
-            "TCS leads on most metrics, but Infosys shows stronger margin trajectory."
-        )
-        citations = [{"doc": "Sector_Comparison_Analysis.pdf", "page": 7}]
-    elif "report" in message_lower or "generate" in message_lower:
-        reply = (
-            "I'm generating a comprehensive financial report for **{ws_name}**. "
-            "The report will include:\n\n"
-            "1. Executive Summary & Key Highlights\n"
-            "2. Revenue & Profitability Analysis\n"
-            "3. Segment Performance Breakdown\n"
-            "4. Risk Factors & Red Flags\n"
-            "5. Peer Comparison\n"
-            "6. Outlook & Investment Thesis\n\n"
-            "The report will be ready in approximately 2 minutes. You can track progress in the **Reports** tab."
-        ).format(ws_name=ws["name"])
-        citations = []
-    else:
-        reply = (
-            f"{file_ack}I've analyzed the documents in **{ws['name']}** and here's what I found regarding: *\"{actual_message}\"*\n\n"
-            "The uploaded financial documents contain detailed disclosures about this topic. "
-            "Key data points have been extracted and cross-referenced across all {doc_count} documents. "
-            "For a deeper analysis, try asking about specific metrics like revenue, margins, risk factors, or segment performance."
-        ).format(doc_count=ws.get("docs", 0))
-        citations = [{"doc": "Infosys_Q1_FY25_Annual_Report.pdf", "page": 12}]
-
-    if file_ack and "overview" in message_lower or "risk" in message_lower or "compare" in message_lower or "report" in message_lower:
-        reply = file_ack + "\n\n" + reply
-
-    return {"reply": reply, "citations": citations}
+    reply = (
+        f"{file_ack}I've analyzed the documents in **{ws['name']}** and here's what I found regarding: *\"{actual_message}\"*\n\n"
+        "The uploaded financial documents contain detailed disclosures about this topic. "
+        "Key data points have been extracted and cross-referenced across all {doc_count} documents. "
+    ).format(doc_count=ws.get("docs", 0))
+    
+    return {"reply": reply, "citations": []}
 
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 @router.get("/{workspace_id}/metrics")
-def get_workspace_metrics(workspace_id: str):
-    """Get extracted financial metrics for a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
+async def get_workspace_metrics(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
+    latest_metrics = await metrics_collection.find_one(
+        {"workspace_id": workspace_id},
+        sort=[("_id", -1)]
+    )
+    
+    if latest_metrics:
+        latest_metrics.pop("_id", None)
+        latest_metrics.pop("workspace_id", None)
+        latest_metrics.pop("document_id", None)
+        return latest_metrics
+
+    # Fallback/Dummy data to structure it correctly for the frontend dashboard
     return {
-        "workspace_id": workspace_id,
-        "period": "Q1 FY2025",
+        "period": "Analysis Period",
         "company": ws["name"].split(" ")[0],
         "key_metrics": [
-            {"label": "Revenue", "value": "₹38,318 Cr", "change": "+4.2%", "trend": "up", "period": "YoY"},
-            {"label": "Net Profit", "value": "₹6,368 Cr", "change": "+7.1%", "trend": "up", "period": "YoY"},
-            {"label": "EBIT Margin", "value": "20.8%", "change": "+60 bps", "trend": "up", "period": "YoY"},
-            {"label": "EPS", "value": "₹15.33", "change": "+8.3%", "trend": "up", "period": "YoY"},
-            {"label": "Free Cash Flow", "value": "₹5,245 Cr", "change": "-3.1%", "trend": "down", "period": "YoY"},
-            {"label": "Deal Wins", "value": "$4.1B", "change": "+12.5%", "trend": "up", "period": "QoQ"},
+            {"label": "Data", "value": "Awaiting Documents", "change": "-", "trend": "up", "period": "-"}
         ],
-        "revenue_breakdown": [
-            {"segment": "Financial Services", "value": 32.4, "revenue": "₹12,415 Cr"},
-            {"segment": "Manufacturing", "value": 14.2, "revenue": "₹5,441 Cr"},
-            {"segment": "Energy & Utilities", "value": 13.8, "revenue": "₹5,288 Cr"},
-            {"segment": "Retail", "value": 13.1, "revenue": "₹5,019 Cr"},
-            {"segment": "Communication", "value": 12.7, "revenue": "₹4,866 Cr"},
-            {"segment": "Hi-Tech", "value": 8.5, "revenue": "₹3,257 Cr"},
-            {"segment": "Others", "value": 5.3, "revenue": "₹2,032 Cr"},
-        ],
-        "quarterly_trend": [
-            {"quarter": "Q1 FY24", "revenue": 36844, "profit": 5945, "margin": 20.2},
-            {"quarter": "Q2 FY24", "revenue": 37933, "profit": 6212, "margin": 20.5},
-            {"quarter": "Q3 FY24", "revenue": 38821, "profit": 6106, "margin": 20.3},
-            {"quarter": "Q4 FY24", "revenue": 37923, "profit": 7969, "margin": 21.1},
-            {"quarter": "Q1 FY25", "revenue": 38318, "profit": 6368, "margin": 20.8},
-        ],
-        "geography_split": [
-            {"region": "North America", "percentage": 58.4},
-            {"region": "Europe", "percentage": 25.1},
-            {"region": "India", "percentage": 3.5},
-            {"region": "Rest of World", "percentage": 13.0},
-        ]
-    }
-
-
-# ── Red Flags ─────────────────────────────────────────────────────────────────
-@router.get("/{workspace_id}/red-flags")
-def get_workspace_red_flags(workspace_id: str):
-    """Get AI-detected red flags for a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
-    if not ws:
-        raise HTTPException(status_code=404, detail="Workspace not found")
-
-    return {
-        "workspace_id": workspace_id,
-        "total_flags": 4,
-        "last_analyzed": "1 minute ago",
-        "flags": [
-            {
-                "id": "rf_1",
-                "severity": "High",
-                "category": "Revenue Concentration",
-                "title": "Top 10 clients contribute 32% of revenue",
-                "description": "Significant client concentration risk. A churn in any top-3 client could impact revenue by ~8-12%.",
-                "recommendation": "Monitor client renewal pipeline and diversification strategy.",
-                "source_doc": "Infosys_Q1_FY25_Annual_Report.pdf",
-                "source_page": 28,
-                "detected_at": "1 minute ago",
-            },
-            {
-                "id": "rf_2",
-                "severity": "High",
-                "category": "Attrition",
-                "title": "Annualized attrition at 17.3% — above industry average",
-                "description": "Talent retention remains a key challenge. Q1 FY25 attrition of 17.3% is higher than TCS (13.3%) and Wipro (15.8%).",
-                "recommendation": "Investigate employee satisfaction programs and compensation benchmarking.",
-                "source_doc": "Q1_Results_Presentation.pdf",
-                "source_page": 15,
-                "detected_at": "1 minute ago",
-            },
-            {
-                "id": "rf_3",
-                "severity": "Medium",
-                "category": "Currency Risk",
-                "title": "USD/INR headwind impacting margins",
-                "description": "INR appreciation against USD reduced reported margins by approximately 1.2% on a constant currency basis.",
-                "recommendation": "Review hedging strategy for FY25. Current hedge ratio is 52% of expected revenues.",
-                "source_doc": "Infosys_Q1_FY25_Annual_Report.pdf",
-                "source_page": 42,
-                "detected_at": "2 minutes ago",
-            },
-            {
-                "id": "rf_4",
-                "severity": "Low",
-                "category": "Deal Pipeline",
-                "title": "Large deal ramp-down in BFSI segment",
-                "description": "One large BFSI client deal is ramping down in Q2-Q3 FY25, which may create a revenue gap of ~₹200-400 Cr.",
-                "recommendation": "Monitor replacement pipeline. Management has indicated 3 large BFSI pursuits in final stages.",
-                "source_doc": "Q1_Results_Presentation.pdf",
-                "source_page": 22,
-                "detected_at": "2 minutes ago",
-            },
-        ]
-    }
-
-
-# ── Comparison ────────────────────────────────────────────────────────────────
-@router.get("/{workspace_id}/comparison")
-def get_workspace_comparison(workspace_id: str):
-    """Get peer comparison data for a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
-    if not ws:
-        raise HTTPException(status_code=404, detail="Workspace not found")
-
-    return {
-        "workspace_id": workspace_id,
-        "base_company": ws["name"].split(" ")[0],
-        "period": "Q1 FY2025",
-        "peers": [
-            {
-                "company": "Infosys",
-                "ticker": "INFY",
-                "is_base": True,
-                "metrics": {
-                    "revenue": "₹38,318 Cr",
-                    "revenue_growth": 4.2,
-                    "net_profit": "₹6,368 Cr",
-                    "net_margin": 16.6,
-                    "ebit_margin": 20.8,
-                    "deal_wins": "$4.1B",
-                    "headcount": 317240,
-                    "attrition": 17.3,
-                    "pe_ratio": 24.5,
-                }
-            },
-            {
-                "company": "TCS",
-                "ticker": "TCS",
-                "is_base": False,
-                "metrics": {
-                    "revenue": "₹61,237 Cr",
-                    "revenue_growth": 8.4,
-                    "net_profit": "₹12,105 Cr",
-                    "net_margin": 19.8,
-                    "ebit_margin": 24.1,
-                    "deal_wins": "$8.3B",
-                    "headcount": 601546,
-                    "attrition": 13.3,
-                    "pe_ratio": 32.1,
-                }
-            },
-            {
-                "company": "Wipro",
-                "ticker": "WIPRO",
-                "is_base": False,
-                "metrics": {
-                    "revenue": "₹22,208 Cr",
-                    "revenue_growth": 3.1,
-                    "net_profit": "₹2,870 Cr",
-                    "net_margin": 12.3,
-                    "ebit_margin": 17.2,
-                    "deal_wins": "$3.7B",
-                    "headcount": 234054,
-                    "attrition": 15.8,
-                    "pe_ratio": 19.8,
-                }
-            },
-            {
-                "company": "HCL Tech",
-                "ticker": "HCLTECH",
-                "is_base": False,
-                "metrics": {
-                    "revenue": "₹26,673 Cr",
-                    "revenue_growth": 6.7,
-                    "net_profit": "₹3,843 Cr",
-                    "net_margin": 14.4,
-                    "ebit_margin": 18.5,
-                    "deal_wins": "$2.9B",
-                    "headcount": 227480,
-                    "attrition": 12.8,
-                    "pe_ratio": 26.3,
-                }
-            },
-        ],
-        "ranking": {
-            "revenue_growth": {"Infosys": 3, "TCS": 1, "Wipro": 4, "HCL Tech": 2},
-            "net_margin": {"Infosys": 2, "TCS": 1, "Wipro": 4, "HCL Tech": 3},
-            "attrition": {"Infosys": 4, "TCS": 1, "Wipro": 3, "HCL Tech": 2},
-        }
-    }
-
-
-# ── Agent Activity ────────────────────────────────────────────────────────────
-@router.get("/{workspace_id}/agent-activity")
-def get_workspace_agent_activity(workspace_id: str):
-    """Get detailed agent activity timeline for a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
-    if not ws:
-        raise HTTPException(status_code=404, detail="Workspace not found")
-
-    return {
-        "workspace_id": workspace_id,
-        "timeline": [
-            {
-                "id": "act_1",
-                "agent": "Document Agent",
-                "agent_type": "document",
-                "status": "Complete",
-                "action": "Processed 3 PDF documents",
-                "details": "Successfully extracted text, tables, and charts from all uploaded documents. Total 145 pages processed.",
-                "timestamp": "2 minutes ago",
-                "duration": "45s",
-                "metadata": {"pages_processed": 145, "tables_extracted": 23, "charts_identified": 8}
-            },
-            {
-                "id": "act_2",
-                "agent": "Extraction Agent",
-                "agent_type": "extraction",
-                "status": "Running",
-                "action": "Extracting financial metrics",
-                "details": "Identifying and structuring KPIs, financial ratios, and segment data from documents.",
-                "timestamp": "Just now",
-                "duration": "Running",
-                "metadata": {"metrics_found": 42, "completion_pct": 60}
-            },
-            {
-                "id": "act_3",
-                "agent": "Red Flag Agent",
-                "agent_type": "risk",
-                "status": "Complete",
-                "action": "Risk analysis completed",
-                "details": "Identified 4 potential risk factors ranging from High to Low severity.",
-                "timestamp": "1 minute ago",
-                "duration": "32s",
-                "metadata": {"flags_identified": 4, "high_severity": 2, "medium_severity": 1, "low_severity": 1}
-            },
-            {
-                "id": "act_4",
-                "agent": "Research Agent",
-                "agent_type": "research",
-                "status": "Running",
-                "action": "Answering user queries",
-                "details": "Responding to chat queries with document-backed answers and citations.",
-                "timestamp": "Just now",
-                "duration": "Running",
-                "metadata": {"queries_answered": 12, "citations_provided": 28}
-            },
-            {
-                "id": "act_5",
-                "agent": "Comparison Agent",
-                "agent_type": "comparison",
-                "status": "Idle",
-                "action": "Waiting for peer data",
-                "details": "Ready to perform peer comparison. Awaiting trigger from user.",
-                "timestamp": "1 minute ago",
-                "duration": "Idle",
-                "metadata": {}
-            },
-            {
-                "id": "act_6",
-                "agent": "Report Agent",
-                "agent_type": "report",
-                "status": "Failed",
-                "action": "Report generation failed",
-                "details": "Encountered an error while generating the PDF report. Template rendering failed.",
-                "timestamp": "30 seconds ago",
-                "duration": "Failed",
-                "metadata": {"error": "Template rendering error", "retry_count": 1}
-            },
-        ]
+        "revenue_breakdown": [],
+        "quarterly_trend": [],
+        "geography_split": []
     }
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
 @router.get("/{workspace_id}/reports")
-def get_workspace_reports(workspace_id: str):
-    """Get generated reports for a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
-    if not ws:
-        raise HTTPException(status_code=404, detail="Workspace not found")
-    reports = WORKSPACE_REPORTS.get(workspace_id, [])
-    return {"reports": reports, "total": len(reports)}
-
-
-class ReportGenerateRequest(BaseModel):
-    title: Optional[str] = None
-    report_type: Optional[str] = "Full Analysis"
-
-@router.post("/{workspace_id}/reports/generate")
-def generate_report(workspace_id: str, request: ReportGenerateRequest):
-    """Trigger report generation for a workspace."""
-    ws = next((w for w in MOCK_WORKSPACES if w["id"] == workspace_id), None)
+async def get_workspace_reports(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    """Get all reports for a specific workspace."""
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    report_id = str(uuid.uuid4())
-    title = request.title or f"{ws['name']} — Financial Report"
-    new_report = {
-        "id": report_id,
-        "title": title,
-        "summary": "AI-generated comprehensive financial analysis based on uploaded documents.",
-        "status": "generating",
-        "created_at": "Just now",
-        "pages": 0,
-        "type": request.report_type or "Full Analysis",
+    cursor = reports_collection.find({"workspace_id": workspace_id}).sort("created_at", -1)
+    all_reports: List[Dict[str, Any]] = []
+    total_versions = 0
+
+    async for report in cursor:
+        report_data = dict(report)
+        report_data["id"] = report_data.pop("_id")
+
+        if "workspace_name" not in report_data:
+            report_data["workspace_name"] = ws.get("name", "Unknown Workspace")
+
+        if "created_at" in report_data and hasattr(report_data["created_at"], "strftime"):
+            report_data["created_at"] = report_data["created_at"].strftime("%b %d, %Y %I:%M %p")
+
+        # Ensure versions list exists
+        if "versions" not in report_data:
+            report_data["versions"] = [{
+                "id": report_data["id"],
+                "version": "v1.0",
+                "is_latest": True,
+                "description": report_data.get("summary", "Initial version"),
+                "generated_by": "AI Agent",
+                "created_at": report_data.get("created_at", "Just now")
+            }]
+
+        all_reports.append(report_data)
+        total_versions += len(report_data.get("versions", []))
+
+    return {
+        "reports": all_reports,
+        "metrics": {
+            "total_reports": len(all_reports),
+            "total_versions": total_versions,
+            "storage_used": f"{len(all_reports) * 1.5:.1f} MB" if all_reports else "0 MB"
+        }
     }
 
-    if workspace_id not in WORKSPACE_REPORTS:
-        WORKSPACE_REPORTS[workspace_id] = []
-    WORKSPACE_REPORTS[workspace_id].insert(0, new_report)
-    ws["reports"] = len(WORKSPACE_REPORTS[workspace_id])
-    ws["updatedAt"] = "Just now"
+# ── Red Flags ─────────────────────────────────────────────────────────────────
+@router.get("/{workspace_id}/red-flags")
+async def get_workspace_red_flags(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
 
-    # Simulate report completion (in real app this would be async)
-    import threading
-    def complete_report():
-        time.sleep(3)
-        for r in WORKSPACE_REPORTS.get(workspace_id, []):
-            if r["id"] == report_id:
-                r["status"] = "completed"
-                r["pages"] = 12
-                break
-    threading.Thread(target=complete_report, daemon=True).start()
+    cursor = red_flags_collection.find({"workspace_id": workspace_id})
+    flags = []
+    async for rf in cursor:
+        rf["id"] = rf.pop("_id")
+        if "detected_at" not in rf:
+            rf["detected_at"] = "Just now"
+        flags.append(rf)
 
-    return {"report_id": report_id, "status": "generating", "message": "Report generation started. Check the Reports tab."}
+    return {
+        "workspace_id": workspace_id,
+        "total_flags": len(flags),
+        "last_analyzed": "Just now" if flags else "Not analyzed",
+        "flags": flags
+    }
+
+
+# ── Comparison ────────────────────────────────────────────────────────────────
+@router.get("/{workspace_id}/comparison")
+async def get_workspace_comparison(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+            
+    cursor = documents_collection.find({"workspace_id": workspace_id, "status": "ready"})
+    docs = []
+    async for d in cursor:
+        docs.append(d)
+        
+    peers: List[Dict[str, Any]] = []
+    
+    for idx, doc in enumerate(docs):
+        doc_name = doc.get("name", f"Company {idx+1}")
+        if doc_name.lower().endswith(".pdf"):
+            doc_name = doc_name[:-4]
+            
+        ticker = doc_name[:4].upper()
+        if "infosys" in doc_name.lower(): ticker = "INFY"
+        elif "tcs" in doc_name.lower() or "tata" in doc_name.lower(): ticker = "TCS"
+        elif "wipro" in doc_name.lower(): ticker = "WIPRO"
+        elif "hcl" in doc_name.lower(): ticker = "HCL"
+        
+        metrics_cursor = metrics_collection.find({"document_id": doc.get("_id")})
+        doc_metrics: Dict[str, Any] = {}
+        async for extraction_obj in metrics_cursor:
+            for m in extraction_obj.get("key_metrics", []):
+                label = m.get("label", "").lower()
+                val_str = str(m.get("value", ""))
+                
+                key = None
+                if "revenue growth" in label: key = "revenue_growth"
+                elif "revenue" in label: key = "revenue"
+                elif "net profit margin" in label or "net margin" in label: key = "net_margin"
+                elif "net profit" in label: key = "net_profit"
+                elif "ebit" in label or "operating margin" in label: key = "ebit_margin"
+                elif "deal" in label: key = "deal_wins"
+                elif "headcount" in label or "employees" in label: key = "headcount"
+                elif "attrition" in label: key = "attrition"
+                elif "p/e" in label or "pe ratio" in label: key = "pe_ratio"
+                
+                if key:
+                    num_match = re.search(r'[-+]?\d*\.?\d+', val_str.replace(',', ''))
+                    if num_match:
+                        num_val = float(num_match.group())
+                        if key in ["revenue_growth", "net_margin", "ebit_margin", "attrition", "pe_ratio"]:
+                            doc_metrics[key] = num_val
+                        elif key == "headcount":
+                            doc_metrics[key] = int(num_val)
+                        else:
+                            doc_metrics[key] = val_str
+                    else:
+                        doc_metrics[key] = val_str
+                    
+        for k in ["revenue", "revenue_growth", "net_profit", "net_margin", "ebit_margin", "deal_wins", "headcount", "attrition", "pe_ratio"]:
+            if k not in doc_metrics:
+                doc_metrics[k] = 0 if k not in ["revenue", "net_profit", "deal_wins"] else "N/A"
+                
+        peers.append({
+            "company": doc_name,
+            "ticker": ticker,
+            "is_base": (idx == 0),
+            "metrics": doc_metrics
+        })
+        
+    if not peers:
+        return {
+            "workspace_id": workspace_id,
+            "base_company": ws.get("name", "Unknown").split(" ")[0],
+            "period": "Latest",
+            "peers": [],
+            "ranking": {}
+        }
+        
+    ranking = {}
+    metrics_to_rank = ["revenue_growth", "net_margin", "attrition"]
+    for m in metrics_to_rank:
+        ranking[m] = {}
+        peer_vals = []
+        for p in peers:
+            val = p["metrics"].get(m)
+            if isinstance(val, (int, float)):
+                peer_vals.append((p["company"], val))
+        
+        if m == "attrition":
+            peer_vals.sort(key=lambda x: x[1])
+        else:
+            peer_vals.sort(key=lambda x: x[1], reverse=True)
+            
+        for rank, (comp, val) in enumerate(peer_vals, start=1):
+            ranking[m][comp] = rank
+
+    return {
+        "workspace_id": workspace_id,
+        "base_company": peers[0]["company"] if peers else ws.get("name", "").split(" ")[0],
+        "period": "Latest",
+        "peers": peers,
+        "ranking": ranking
+    }
+
+
+# ── Reports Generation ────────────────────────────────────────────────────────
+
+class GenerateReportRequest(BaseModel):
+    title: str = "AstraFinance Report"
+    report_type: str = "Full Analysis"
+    documents: List[str] = []
+    sections: List[dict] = []
+
+@router.post("/{workspace_id}/reports/generate")
+async def generate_report(workspace_id: str, payload: GenerateReportRequest, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    # Log agent activity
+    await agent_logs_collection.insert_one({
+        "_id": str(uuid.uuid4()),
+        "workspace_id": workspace_id,
+        "document_id": "",
+        "agent_name": "Report Agent",
+        "agent_type": "Report Generator",
+        "status": "Complete",
+        "action": "Generated Report",
+        "details": f"Compiled PDF report '{payload.title}' with {len(payload.documents)} documents.",
+        "duration": "Completed",
+        "metadata": {},
+        "timestamp": datetime.now(timezone.utc)
+    })
+
+    docs = []
+    metrics_data = []
+    red_flags_data = []
+    
+    if payload.documents:
+        docs_cursor = documents_collection.find({"_id": {"$in": payload.documents}, "workspace_id": workspace_id})
+        async for doc in docs_cursor:
+            docs.append(doc)
+            
+            # Fetch metrics for this doc
+            m = await metrics_collection.find_one({"document_id": doc["_id"]})
+            if m:
+                metrics_data.append(m)
+            
+            # Fetch all red flags for this doc (each flag is a separate document)
+            rf_cursor = red_flags_collection.find({"document_id": doc["_id"]})
+            async for rf in rf_cursor:
+                red_flags_data.append(rf)
+                
+    try:
+        # Run synchronous PDF generation in a thread to avoid blocking the event loop
+        pdf_path = await asyncio.to_thread(
+            report_agent.generate_report,
+            workspace_name=ws.get("name", "Unknown"),
+            documents=docs,
+            sections=payload.sections,
+            metrics_data=metrics_data,
+            red_flags_data=red_flags_data
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
+    
+    # Store report record in DB
+    report_id = str(uuid.uuid4())
+    report_doc = {
+        "_id": report_id,
+        "workspace_id": workspace_id,
+        "title": payload.title,
+        "summary": "AI generated comprehensive report.",
+        "status": "completed",
+        "created_at": datetime.now(timezone.utc),
+        "pages": 0, # Could be calculated
+        "type": payload.report_type,
+        "companies": len(docs),
+        "sections": len(payload.sections),
+        "red_flags_included": any(s.get("id") == "risk_analysis" for s in payload.sections),
+        "versions": [
+            {
+                "id": str(uuid.uuid4()),
+                "version": "v1",
+                "is_latest": True,
+                "description": "Initial generated version",
+                "generated_by": current_user.get("name", "User"),
+                "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "pdf_path": pdf_path
+            }
+        ]
+    }
+    
+    await reports_collection.insert_one(report_doc)
+    
+    # Increment workspace report count
+    await workspaces_collection.update_one(
+        {"_id": workspace_id},
+        {"$inc": {"reports": 1}, "$set": {"updated_at": datetime.now(timezone.utc)}}
+    )
+    
+    return {"report_id": report_id, "pdf_path": pdf_path}
+
+
+@router.get("/{workspace_id}/reports/{report_id}/download")
+async def download_report(workspace_id: str, report_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    report = await reports_collection.find_one({"_id": report_id, "workspace_id": workspace_id})
+    if not report or not report.get("versions"):
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    latest_version = next((v for v in report["versions"] if v.get("is_latest")), report["versions"][0])
+    pdf_path = latest_version.get("pdf_path")
+    
+    if not pdf_path or not os.path.exists(pdf_path):
+        raise HTTPException(status_code=404, detail="PDF file not found on server")
+        
+    return FileResponse(path=pdf_path, media_type='application/pdf', filename=f"{report.get('title', 'report')}.pdf")
+

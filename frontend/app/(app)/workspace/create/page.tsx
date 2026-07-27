@@ -295,9 +295,7 @@ export default function CreateWorkspacePage() {
 
   const canProceedStep1 =
     name.trim().length >= 2 &&
-    (nameStatus === "available" || nameStatus === "idle") &&
-    nameStatus !== "taken" &&
-    nameStatus !== "checking";
+    (nameStatus === "available" || nameStatus === "idle");
 
   const pendingCount = uploadFiles.filter((f) => f.status === "pending").length;
 

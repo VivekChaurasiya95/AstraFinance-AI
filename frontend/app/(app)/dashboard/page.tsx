@@ -2,8 +2,10 @@
 
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { fetcher } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { fetcher, API_BASE_URL } from "@/lib/api";
+import { auth } from "@/lib/firebase";
+import { getIdToken } from "firebase/auth";
 import { 
   FolderIcon, 
   FileTextIcon, 
@@ -17,9 +19,16 @@ import {
   GlobeIcon,
   Building2,
   Scale,
-  Folder
+  Folder,
+  PinIcon,
+  Trash2Icon,
+  Loader2,
+  DownloadIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Building2,
@@ -43,16 +52,21 @@ interface AgentActivity {
 
 interface RedFlag {
   id: string;
+  workspace_id: string;
   severity: string;
   title: string;
   time_ago: string;
+  pinned?: boolean;
 }
 
 interface DashboardStats {
   active_workspaces: number;
+  active_workspaces_trend: string;
   documents_processed: number;
+  documents_processed_trend: string;
   open_red_flags: number;
   reports_generated: number;
+  reports_generated_trend: string;
   agent_activity: AgentActivity[];
   red_flags: RedFlag[];
 }
@@ -73,9 +87,98 @@ export default function DashboardPage() {
   const rawName = dbUser?.name || firebaseUser?.displayName || "User";
   const userName = rawName.split(" ")[0];
 
+  const router = useRouter();
+
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Daily Summary State
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryData, setSummaryData] = useState<any>(null);
+  const [summaryError, setSummaryError] = useState("");
+
+  const handleGenerateSummary = async () => {
+    setSummaryOpen(true);
+    setSummaryLoading(true);
+    setSummaryError("");
+    try {
+      const res = await fetcher<any>("/dashboard/daily-summary", { method: "POST" });
+      setSummaryData(res);
+    } catch (err) {
+      setSummaryError("Failed to generate summary. Please try again later.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      const user = auth.currentUser;
+      const token = user ? await getIdToken(user) : "";
+      const response = await fetch(`${API_BASE_URL}/dashboard/daily-summary/pdf`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error("Failed to generate PDF");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // Get filename from Content-Disposition if possible, else default
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = "agent_activity_summary.pdf";
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename=(.+)/);
+        if (filenameMatch && filenameMatch.length === 2) {
+          filename = filenameMatch[1];
+        }
+      }
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to download PDF summary.");
+    }
+  };
+
+  const handleDismissFlag = async (flagId: string) => {
+    // Optimistic UI update
+    if (stats) {
+      setStats({
+        ...stats,
+        red_flags: stats.red_flags.filter(f => f.id !== flagId)
+      });
+    }
+    try {
+      await fetcher(`/dashboard/red-flags/${flagId}/dismiss`, { method: "POST" });
+    } catch (err) {
+      console.error("Failed to dismiss flag:", err);
+    }
+  };
+
+  const handlePinFlag = async (flagId: string) => {
+    // Optimistic UI update
+    if (stats) {
+      setStats({
+        ...stats,
+        red_flags: stats.red_flags.map(f => 
+          f.id === flagId ? { ...f, pinned: !f.pinned } : f
+        ).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)) // Re-sort putting pinned first
+      });
+    }
+    try {
+      await fetcher(`/dashboard/red-flags/${flagId}/pin`, { method: "POST" });
+    } catch (err) {
+      console.error("Failed to pin flag:", err);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -127,7 +230,7 @@ export default function DashboardPage() {
           </div>
           <div className="font-mono text-slate-900 text-2xl font-medium mt-2">{workspaces.length}</div>
           <div className="text-sm text-blue-700 flex items-center gap-1 mt-1 font-medium">
-            <ActivityIcon className="w-3.5 h-3.5" /> <span>+2 this week</span>
+            <ActivityIcon className="w-3.5 h-3.5" /> <span>{stats?.active_workspaces_trend}</span>
           </div>
         </div>
 
@@ -138,7 +241,7 @@ export default function DashboardPage() {
             <FileTextIcon className="text-slate-400 w-[18px] h-[18px]" />
           </div>
           <div className="font-mono text-slate-900 text-2xl font-medium mt-2">{stats?.documents_processed}</div>
-          <div className="text-sm text-slate-500 mt-1 font-medium">Last 30 days</div>
+          <div className="text-sm text-slate-500 mt-1 font-medium">{stats?.documents_processed_trend}</div>
         </div>
 
         {/* Card 3 */}
@@ -159,7 +262,7 @@ export default function DashboardPage() {
           </div>
           <div className="font-mono text-slate-900 text-2xl font-medium mt-2">{stats?.reports_generated}</div>
           <div className="text-sm text-blue-700 flex items-center gap-1 mt-1 font-medium">
-            <ActivityIcon className="w-3.5 h-3.5" /> <span>15% vs last mo</span>
+            <ActivityIcon className="w-3.5 h-3.5" /> <span>{stats?.reports_generated_trend}</span>
           </div>
         </div>
       </div>
@@ -175,22 +278,37 @@ export default function DashboardPage() {
             {stats.red_flags.map((flag) => (
               <div key={flag.id} className="min-w-[300px] bg-white rounded-lg p-4 border border-slate-200 shadow-sm flex flex-col gap-1 snap-start hover:bg-slate-50 transition-colors cursor-pointer">
                 <div className="flex justify-between items-start">
-                  <span className={cn(
-                    "text-[11px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded",
-                    flag.severity === "Critical" ? "text-red-700 bg-red-100" : "text-orange-700 bg-orange-100"
-                  )}>
-                    {flag.severity}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "text-[11px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded",
+                      flag.severity === "Critical" ? "text-red-700 bg-red-100" : "text-orange-700 bg-orange-100"
+                    )}>
+                      {flag.severity}
+                    </span>
+                    {flag.pinned && <PinIcon className="w-3.5 h-3.5 text-blue-600 fill-blue-100" />}
+                  </div>
                   <span className="text-xs text-slate-500">{flag.time_ago}</span>
                 </div>
                 <h3 className="text-sm font-medium text-slate-900 mt-1">{flag.title}</h3>
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-xs font-medium text-blue-700 flex items-center gap-1">
+                  <button 
+                    onClick={() => router.push(`/workspace/${flag.workspace_id}/red-flags`)}
+                    className="text-xs font-medium text-blue-700 flex items-center gap-1 hover:underline">
                     <EyeIcon className="w-3.5 h-3.5" /> View details
-                  </span>
-                  <button className="text-slate-400 hover:text-slate-700">
-                    <MoreHorizontalIcon className="w-[18px] h-[18px]" />
                   </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="text-slate-400 hover:text-slate-700 p-1 outline-none">
+                      <MoreHorizontalIcon className="w-[18px] h-[18px]" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePinFlag(flag.id); }}>
+                        <PinIcon className="w-4 h-4 mr-2" /> {flag.pinned ? "Unpin" : "Pin"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDismissFlag(flag.id); }} className="text-red-600 focus:text-red-700 focus:bg-red-50">
+                        <Trash2Icon className="w-4 h-4 mr-2" /> Dismiss
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))}
@@ -274,12 +392,146 @@ export default function DashboardPage() {
             })}
 
             {/* AI Action Prompt */}
-            <button className="mt-auto bg-violet-50 text-violet-700 border border-violet-200 rounded-lg p-2.5 text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-violet-100 transition-all shadow-sm">
-              Ask Agents for Daily Summary
+            <button 
+              onClick={handleGenerateSummary}
+              className="mt-auto bg-violet-50 text-violet-700 border border-violet-200 rounded-lg p-2.5 text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-violet-100 transition-all shadow-sm">
+              <BotIcon className="w-4 h-4" /> Ask Agents for Daily Summary
             </button>
           </div>
         </div>
       </div>
+
+      {/* Daily Summary Dialog */}
+      <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
+        <DialogContent className="w-[92vw] sm:w-[560px] sm:max-w-[560px] max-h-[85vh] bg-white p-0 border-0 shadow-2xl rounded-2xl flex flex-col overflow-hidden">
+          {/* Header */}
+          <DialogHeader className="p-6 pb-4 border-b border-slate-100 shrink-0 flex flex-row items-start justify-between">
+            <div>
+              <DialogTitle className="flex items-center gap-3 text-violet-700 text-lg font-bold">
+                <div className="p-2 bg-violet-100 rounded-xl">
+                  <BotIcon className="w-5 h-5" />
+                </div>
+                Agent Activity Summary
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 mt-1">
+                {summaryData?.date ? `Report for ${summaryData.date}` : "Loading..."}
+              </DialogDescription>
+            </div>
+            {summaryData && !summaryLoading && (
+              <button
+                onClick={handleDownloadPdf}
+                className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-violet-700 hover:border-violet-200 transition-colors px-3 py-1.5 rounded-md text-sm font-medium shadow-sm"
+              >
+                <DownloadIcon className="w-4 h-4" />
+                <span>PDF</span>
+              </button>
+            )}
+          </DialogHeader>
+
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-5">
+            {summaryLoading ? (
+              <div className="flex flex-col items-center justify-center gap-3 text-violet-600 py-16">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <span className="text-sm font-semibold">Compiling agent summary...</span>
+              </div>
+            ) : summaryError ? (
+              <div className="text-center text-red-500 py-12 text-sm">{summaryError}</div>
+            ) : summaryData ? (
+              <>
+                {/* Overview */}
+                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 rounded-xl p-4 border border-slate-200">
+                  {summaryData.overview}
+                </p>
+
+                {/* Stat Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { label: "Agent Actions", value: summaryData.total_agent_actions, color: "text-violet-600", bg: "bg-violet-50" },
+                    { label: "Docs Processed", value: summaryData.total_docs_processed, color: "text-blue-600", bg: "bg-blue-50" },
+                    { label: "Risks Found", value: summaryData.total_risks_found, color: "text-red-600", bg: "bg-red-50" },
+                    { label: "Reports", value: summaryData.total_reports, color: "text-emerald-600", bg: "bg-emerald-50" }
+                  ].map((s) => (
+                    <div key={s.label} className={cn("rounded-xl p-3 text-center border", s.bg, "border-transparent")}>
+                      <div className={cn("text-2xl font-bold", s.color)}>{s.value}</div>
+                      <div className="text-[11px] text-slate-500 font-medium mt-0.5">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Per-Agent Breakdown */}
+                {summaryData.agents?.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Agent Breakdown</h3>
+                    <div className="space-y-2">
+                      {summaryData.agents.map((agent: any) => (
+                        <div key={agent.agent_name} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-2 h-2 rounded-full bg-violet-500 shrink-0"></div>
+                            <span className="text-sm font-semibold text-slate-800 truncate">{agent.agent_name}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-slate-500 shrink-0">
+                            <span className="text-emerald-600 font-medium">{agent.completed} done</span>
+                            {agent.failed > 0 && <span className="text-red-500 font-medium">{agent.failed} failed</span>}
+                            <span className="text-slate-400">{agent.latest_time}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Per-Workspace Breakdown */}
+                {summaryData.workspaces?.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Workspace Overview</h3>
+                    <div className="space-y-2">
+                      {summaryData.workspaces.map((ws: any) => (
+                        <div key={ws.name} className="bg-white border border-slate-200 rounded-lg p-3">
+                          <div className="text-sm font-semibold text-slate-800 truncate mb-1.5">{ws.name}</div>
+                          <div className="flex items-center gap-4 text-xs text-slate-500">
+                            <span><span className="font-bold text-blue-600">{ws.docs_processed}</span> docs</span>
+                            <span><span className="font-bold text-red-500">{ws.risks_found}</span> risks</span>
+                            <span><span className="font-bold text-emerald-600">{ws.reports_generated}</span> reports</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Activity Timeline */}
+                {summaryData.recent_activity?.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Recent Activity</h3>
+                    <div className="space-y-1">
+                      {summaryData.recent_activity.map((act: any, i: number) => {
+                        const statusColor = act.status === "Complete" ? "bg-emerald-500" : act.status === "Failed" ? "bg-red-500" : "bg-amber-500";
+                        return (
+                          <div key={i} className="flex gap-3 py-2 border-b border-slate-100 last:border-0">
+                            <div className="flex flex-col items-center pt-1.5 shrink-0">
+                              <div className={cn("w-2 h-2 rounded-full", statusColor)}></div>
+                              {i < summaryData.recent_activity.length - 1 && <div className="w-px flex-1 bg-slate-200 mt-1"></div>}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-bold text-slate-700 truncate">{act.agent_name}</span>
+                                <span className="text-[10px] text-slate-400 shrink-0">{act.time_ago}</span>
+                              </div>
+                              <p className="text-xs text-slate-600 mt-0.5 truncate">{act.action} — {act.details}</p>
+                              <span className="text-[10px] text-slate-400">{act.workspace_name}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -41,15 +41,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setToken(idToken);
           setUser(firebaseUser);
 
-          // Use Firebase data immediately; backend user sync happens lazily on authenticated requests.
-          setDbUser({
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || "",
-            email: firebaseUser.email || "",
-            profile_picture: firebaseUser.photoURL || null,
+          // Synchronize user with backend MongoDB
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1"}/auth/sync`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${idToken}`
+            }
           });
-        } catch {
-          // Token refresh failed — clear auth state
+
+          if (response.ok) {
+            const dbData = await response.json();
+            setDbUser({
+              id: dbData.id,
+              name: dbData.name || firebaseUser.displayName || "",
+              email: dbData.email || firebaseUser.email || "",
+              profile_picture: dbData.profile_picture_url || firebaseUser.photoURL || null,
+            });
+          } else {
+            console.error("Backend sync failed", await response.text());
+            // Enforce MongoDB Sync: If sync fails, the user is not fully authenticated in our system.
+            auth.signOut();
+            setUser(null);
+            setDbUser(null);
+            setToken(null);
+          }
+        } catch (error) {
+          console.error("Token refresh or sync failed", error);
+          auth.signOut();
           setUser(null);
           setDbUser(null);
           setToken(null);

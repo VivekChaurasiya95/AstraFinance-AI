@@ -66,3 +66,7 @@ logs/
 .turbo/
 __pycache__/
 *.pyc
+
+# Local vector db & outputs
+backend/chroma_db/
+backend/reports_output/

@@ -34,14 +34,15 @@ function LoginContent() {
     switch (code) {
       case "auth/invalid-credential":
       case "auth/wrong-password":
+        return "Incorrect password. If you originally signed up with Google or GitHub, please use that method.";
       case "auth/user-not-found":
-        return "Invalid email or password. Please try again.";
+        return "No account exists with this email.";
       case "auth/too-many-requests":
         return "Too many failed attempts. Please try again later.";
       case "auth/user-disabled":
         return "This account has been disabled.";
       case "auth/network-request-failed":
-        return "Network error. Please check your connection.";
+        return "Unable to connect. Please check your internet connection.";
       case "auth/popup-closed-by-user":
         return "Sign-in popup was closed. Please try again.";
       case "auth/cancelled-popup-request":
@@ -71,6 +72,8 @@ function LoginContent() {
   };
 
   const handleOAuth = async (provider: string) => {
+    if (loading) return;
+    setLoading(true);
     try {
       const authProvider =
         provider === "Google" ? googleProvider : githubProvider;
@@ -81,6 +84,8 @@ function LoginContent() {
     } catch (err: unknown) {
       const msg = getFirebaseErrorMessage(err);
       if (msg) toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -102,13 +107,9 @@ function LoginContent() {
               href="/"
               className="h-16 w-auto mb-2 flex items-center justify-center cursor-pointer"
             >
-              <Image
+              <img
                 alt="AstraFinance AI Logo"
-                className="h-16 w-auto object-contain"
-                height={64}
-                width={64}
-                unoptimized
-                priority
+                className="object-contain h-16 w-auto"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHTeJtTNNmIDRKtXzrDbdUcEscRsdbSrQ1rXU46QeWbkEBYIbYJbjfKiHDq1KBUofieyE9PYcYvrSh69qSi4WRTQ2m_S4YVLrGg5PBXmU5EtRC1edRXc4ERfDjO32-bkbwAYlQv0iCQ0UcU6RukW0bd0EqRxoc9r-sh4t-nqpOJ3smwrfxzCg9jNsj2gb0Thw-NtmO4skiiCLfeOMSiCnHBZ7OZeVksbTAzr7JQHqKelJyIiufN4NN2hIO7OXsNc2_IQ"
               />
             </Link>

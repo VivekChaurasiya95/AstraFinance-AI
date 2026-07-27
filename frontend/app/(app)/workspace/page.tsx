@@ -21,7 +21,7 @@ import {
   ChevronRight,
   FileTextIcon
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, timeAgo } from "@/lib/utils";
 import { fetcher } from "@/lib/api";
 import { CreateWorkspaceModal } from "@/components/workspace/CreateWorkspaceModal";
 
@@ -84,7 +84,7 @@ function DeleteModal({ workspace, onClose, onConfirm }: { workspace: Workspace; 
               <p className="text-xs text-slate-500 mt-0.5">This action cannot be undone</p>
             </div>
           </div>
-          <button
+          <button suppressHydrationWarning
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
@@ -105,7 +105,7 @@ function DeleteModal({ workspace, onClose, onConfirm }: { workspace: Workspace; 
           <label className="text-sm text-slate-600">
             Type <span className="font-semibold text-slate-900">"{workspace.name}"</span> to confirm deletion:
           </label>
-          <input
+          <input suppressHydrationWarning
             className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 text-sm text-slate-900 placeholder:text-slate-400 transition-colors"
             placeholder="Type workspace name here..."
             value={input}
@@ -117,13 +117,13 @@ function DeleteModal({ workspace, onClose, onConfirm }: { workspace: Workspace; 
 
         {/* Actions */}
         <div className="flex gap-3 pt-1">
-          <button
+          <button suppressHydrationWarning
             onClick={onClose}
             className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors"
           >
             Cancel
           </button>
-          <button
+          <button suppressHydrationWarning
             disabled={!confirmed || loading}
             onClick={async () => {
               setLoading(true);
@@ -155,10 +155,160 @@ function DeleteModal({ workspace, onClose, onConfirm }: { workspace: Workspace; 
   return createPortal(modalContent, document.body);
 }
 
-// ── Workspace Card (Grid View) ─────────────────────────────────────────────────
-function WorkspaceCard({ ws, onDelete }: { ws: Workspace; onDelete: (ws: Workspace) => void }) {
+// ── Rename Modal ───────────────────────────────────────────────────────────────
+function RenameModal({ workspace, onClose, onConfirm }: { workspace: Workspace; onClose: () => void; onConfirm: (name: string) => Promise<void> }) {
+  const [input, setInput] = useState(workspace.name);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md min-w-[320px] p-7 flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200">
+        
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+              <Edit3 className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Rename Workspace</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Enter a new name for this workspace</p>
+            </div>
+          </div>
+          <button suppressHydrationWarning onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+            <span className="text-xl leading-none">&times;</span>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm text-slate-600">Workspace Name</label>
+          <input suppressHydrationWarning
+            className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 text-sm text-slate-900 placeholder:text-slate-400 transition-colors"
+            placeholder="Name..."
+            value={input}
+            onChange={(e) => { setInput(e.target.value); setError(""); }}
+            autoFocus
+          />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <button suppressHydrationWarning onClick={onClose} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button suppressHydrationWarning
+            disabled={!input.trim() || input === workspace.name || loading}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                await onConfirm(input.trim());
+              } catch (e: any) {
+                setError(e.message || "Failed to rename workspace");
+                setLoading(false);
+              }
+            }}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? "Renaming..." : "Rename"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ── Workspace Card ─────────────────────────────────────────────────────────────
+function WorkspaceCard({ 
+  ws, 
+  view,
+  onDelete,
+  onRename,
+  onDuplicate
+}: { 
+  ws: Workspace; 
+  view: "grid" | "list";
+  onDelete: (ws: Workspace) => void;
+  onRename: (ws: Workspace) => void;
+  onDuplicate: (ws: Workspace) => void;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const IconComponent = ICON_MAP[ws.icon] || FileText;
+
+  if (view === "list") {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow relative flex items-center justify-between cursor-pointer group">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", ws.iconBg)}>
+            <IconComponent className={cn("w-5 h-5", ws.iconColor)} />
+          </div>
+          <div className="flex flex-col min-w-0 pr-6">
+            <Link href={`/workspace/${ws.id}`}>
+              <h3 className="font-bold text-slate-900 text-base leading-tight truncate group-hover:text-blue-700 transition-colors">
+                {ws.name}
+              </h3>
+            </Link>
+            <div className="flex items-center gap-4 text-xs text-slate-500 mt-1">
+              <span>{timeAgo(ws.updatedAt)}</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="hidden sm:inline">{ws.docs} Docs</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="hidden sm:inline">{ws.reports} Reports</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="hidden md:flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-[10px] font-bold">
+              {ws.owner_initial}
+            </div>
+            <span className="text-xs text-slate-600 w-24 truncate">{ws.owner_name}</span>
+          </div>
+
+          <div className="relative">
+            <button suppressHydrationWarning
+              onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
+                <div className="absolute right-0 top-8 w-36 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <button suppressHydrationWarning onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRename(ws); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                    <Edit3 className="w-4 h-4 text-slate-400" /> Rename
+                  </button>
+                  <button suppressHydrationWarning onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDuplicate(ws); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                    <Copy className="w-4 h-4 text-slate-400" /> Duplicate
+                  </button>
+                  <button suppressHydrationWarning
+                    onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(ws); }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" /> Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow relative flex flex-col cursor-pointer group">
@@ -174,12 +324,12 @@ function WorkspaceCard({ ws, onDelete }: { ws: Workspace; onDelete: (ws: Workspa
               {ws.name}
             </h3>
           </Link>
-          <p className="text-xs text-slate-500 mt-1.5">{ws.updatedAt}</p>
+          <p className="text-xs text-slate-500 mt-1.5">{timeAgo(ws.updatedAt)}</p>
         </div>
         
         {/* 3-dot Menu */}
         <div className="absolute top-4 right-3">
-          <button
+          <button suppressHydrationWarning
             onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
           >
@@ -189,13 +339,13 @@ function WorkspaceCard({ ws, onDelete }: { ws: Workspace; onDelete: (ws: Workspa
             <>
               <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setMenuOpen(false); }} />
               <div className="absolute right-0 top-8 w-36 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-150">
-                <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                <button suppressHydrationWarning onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRename(ws); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
                   <Edit3 className="w-4 h-4 text-slate-400" /> Rename
                 </button>
-                <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
+                <button suppressHydrationWarning onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDuplicate(ws); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors">
                   <Copy className="w-4 h-4 text-slate-400" /> Duplicate
                 </button>
-                <button
+                <button suppressHydrationWarning
                   onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(ws); }}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
                 >
@@ -245,10 +395,11 @@ export default function WorkspacesPage() {
   const [sort, setSort] = useState("Recent");
   const [showNewModal, setShowNewModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Workspace | null>(null);
+  const [renameTarget, setRenameTarget] = useState<Workspace | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6;
+  const itemsPerPage = view === "grid" ? 6 : 8;
 
   const sortOptions = ["Recent", "Name (A–Z)", "Most Documents"];
 
@@ -293,6 +444,33 @@ export default function WorkspacesPage() {
     }
   };
 
+  const handleDuplicate = async (ws: Workspace) => {
+    try {
+      await fetcher(`/workspaces/${ws.id}/duplicate`, { method: "POST" });
+      loadWorkspaces();
+    } catch (error) {
+      console.error("Failed to duplicate workspace:", error);
+    }
+  };
+
+  const handleRename = async (newName: string) => {
+    if (!renameTarget) return;
+    try {
+      await fetcher(`/workspaces/${renameTarget.id}`, { 
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name: newName }) 
+      });
+      setRenameTarget(null);
+      loadWorkspaces();
+    } catch (error) {
+      console.error("Failed to rename workspace:", error);
+      throw error;
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col min-h-screen px-8 py-8 w-full max-w-[1440px] mx-auto bg-slate-50/50">
@@ -310,7 +488,7 @@ export default function WorkspacesPage() {
             {/* Search */}
             <div className="relative w-full md:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
+              <input suppressHydrationWarning
                 className="w-full pl-9 pr-4 h-10 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm"
                 placeholder="Search workspaces..."
                 value={search}
@@ -323,7 +501,7 @@ export default function WorkspacesPage() {
 
             {/* Sort */}
             <div className="relative hidden md:block">
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setSortOpen(!sortOpen)}
                 className="flex items-center justify-between w-40 h-10 px-4 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-sm text-slate-600 shadow-sm"
               >
@@ -335,7 +513,7 @@ export default function WorkspacesPage() {
                   <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
                   <div className="absolute right-0 top-12 w-full bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-20">
                     {sortOptions.map((opt) => (
-                      <button
+                      <button suppressHydrationWarning
                         key={opt}
                         onClick={() => { setSort(opt); setSortOpen(false); }}
                         className={cn("w-full text-left px-4 py-2 text-sm", sort === opt ? "text-blue-700 bg-blue-50 font-medium" : "text-slate-600 hover:bg-slate-50")}
@@ -352,14 +530,14 @@ export default function WorkspacesPage() {
           <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
             {/* View Toggle */}
             <div className="flex items-center border border-slate-200 rounded-lg h-10 bg-white shadow-sm overflow-hidden">
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setView("grid")}
                 className={cn("w-10 h-full flex items-center justify-center transition-colors", view === "grid" ? "bg-blue-50 text-blue-600" : "text-slate-400 hover:bg-slate-50")}
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <div className="w-px h-full bg-slate-200" />
-              <button
+              <button suppressHydrationWarning
                 onClick={() => setView("list")}
                 className={cn("w-10 h-full flex items-center justify-center transition-colors", view === "list" ? "bg-blue-50 text-blue-600" : "text-slate-400 hover:bg-slate-50")}
               >
@@ -368,7 +546,7 @@ export default function WorkspacesPage() {
             </div>
 
             {/* New Workspace */}
-            <button
+            <button suppressHydrationWarning
               onClick={() => setShowNewModal(true)}
               className="flex items-center gap-2 h-10 px-5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors shadow-sm"
             >
@@ -393,9 +571,16 @@ export default function WorkspacesPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className={view === "grid" ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" : "flex flex-col gap-4"}>
               {paginatedWorkspaces.map((ws) => (
-                <WorkspaceCard key={ws.id} ws={ws} onDelete={setDeleteTarget} />
+                <WorkspaceCard 
+                  key={ws.id} 
+                  ws={ws} 
+                  view={view}
+                  onDelete={setDeleteTarget} 
+                  onRename={setRenameTarget}
+                  onDuplicate={handleDuplicate}
+                />
               ))}
             </div>
           )}
@@ -408,7 +593,7 @@ export default function WorkspacesPage() {
               Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} workspaces
             </span>
             <div className="flex items-center gap-1">
-              <button 
+              <button suppressHydrationWarning 
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(p => p - 1)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -419,7 +604,7 @@ export default function WorkspacesPage() {
               {Array.from({ length: totalPages }).map((_, idx) => {
                 const page = idx + 1;
                 return (
-                  <button
+                  <button suppressHydrationWarning
                     key={page}
                     onClick={() => setCurrentPage(page)}
                     className={cn(
@@ -434,7 +619,7 @@ export default function WorkspacesPage() {
                 );
               })}
 
-              <button 
+              <button suppressHydrationWarning 
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(p => p + 1)}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -451,6 +636,9 @@ export default function WorkspacesPage() {
       {showNewModal && <CreateWorkspaceModal onClose={() => setShowNewModal(false)} onCreated={loadWorkspaces} />}
       {deleteTarget && (
         <DeleteModal workspace={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={() => handleDelete(deleteTarget)} />
+      )}
+      {renameTarget && (
+        <RenameModal workspace={renameTarget} onClose={() => setRenameTarget(null)} onConfirm={handleRename} />
       )}
     </>
   );

@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     CHROMA_DB_PATH: str
 
     GEMINI_API_KEY: str
+    GROQ_API_KEY: str = "YOUR_GROQ_API_KEY"
+
+    FIREBASE_SERVICE_ACCOUNT_KEY: str = "app/config/astrafinance-ai-firebase-adminsdk-fbsvc-78efa35b8d.json"
 
     # JWT_SECRET_KEY: str
     # JWT_ALGORITHM: str

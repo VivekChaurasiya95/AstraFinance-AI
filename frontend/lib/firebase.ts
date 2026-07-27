@@ -18,6 +18,9 @@ const auth = getAuth(app);
 
 // Providers
 const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 const githubProvider = new GithubAuthProvider();
 
 export { app, auth, googleProvider, githubProvider };

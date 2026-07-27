@@ -59,7 +59,7 @@ export default function RegisterPage() {
     const code = error?.code || "";
     switch (code) {
       case "auth/email-already-in-use":
-        return ""; // Handled separately via setEmailError
+        return "Account already exists with this email.";
       case "auth/invalid-email":
         return "Please enter a valid email address.";
       case "auth/weak-password":
@@ -67,7 +67,7 @@ export default function RegisterPage() {
       case "auth/too-many-requests":
         return "Too many attempts. Please try again later.";
       case "auth/network-request-failed":
-        return "Network error. Please check your connection.";
+        return "Unable to connect. Please check your internet connection.";
       case "auth/popup-closed-by-user":
         return "Sign-in popup was closed. Please try again.";
       case "auth/cancelled-popup-request":
@@ -93,11 +93,18 @@ export default function RegisterPage() {
         normalizedEmail,
         password,
       );
+      
       // Update display name
       if (userCredential.user) {
         await updateProfile(userCredential.user, { displayName: fullName });
+        
+        // Send Email Verification
+        import("firebase/auth").then(({ sendEmailVerification }) => {
+            sendEmailVerification(userCredential.user).catch(console.error);
+        });
       }
-      toast.success("Account created successfully!");
+      
+      toast.success("Account created! Please check your email to verify.");
       router.push("/dashboard");
       router.refresh();
     } catch (err: unknown) {
@@ -114,6 +121,8 @@ export default function RegisterPage() {
   };
 
   const handleOAuth = async (provider: string) => {
+    if (loading) return;
+    setLoading(true);
     try {
       const authProvider =
         provider === "Google" ? googleProvider : githubProvider;
@@ -124,6 +133,8 @@ export default function RegisterPage() {
     } catch (err: unknown) {
       const msg = getFirebaseErrorMessage(err);
       if (msg) toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -145,13 +156,9 @@ export default function RegisterPage() {
               href="/"
               className="h-16 w-auto mb-2 flex items-center justify-center cursor-pointer"
             >
-              <Image
+              <img
                 alt="AstraFinance AI Logo"
-                className="h-16 w-auto object-contain"
-                height={64}
-                width={64}
-                unoptimized
-                priority
+                className="object-contain h-16 w-auto"
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHTeJtTNNmIDRKtXzrDbdUcEscRsdbSrQ1rXU46QeWbkEBYIbYJbjfKiHDq1KBUofieyE9PYcYvrSh69qSi4WRTQ2m_S4YVLrGg5PBXmU5EtRC1edRXc4ERfDjO32-bkbwAYlQv0iCQ0UcU6RukW0bd0EqRxoc9r-sh4t-nqpOJ3smwrfxzCg9jNsj2gb0Thw-NtmO4skiiCLfeOMSiCnHBZ7OZeVksbTAzr7JQHqKelJyIiufN4NN2hIO7OXsNc2_IQ"
               />
             </Link>

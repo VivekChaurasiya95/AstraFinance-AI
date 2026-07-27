@@ -1,8 +1,8 @@
 import { auth } from "./firebase";
 import { getIdToken } from "firebase/auth";
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+// Hardcoding 127.0.0.1 to avoid localhost IPv6 resolution issues on Windows
+export const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
 
 export async function fetcher<T>(
   endpoint: string,

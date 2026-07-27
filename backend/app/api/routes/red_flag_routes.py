@@ -1,10 +1,11 @@
 from fastapi import APIRouter, UploadFile, File
 import shutil
 import os
+import uuid
 
-from app.agents.document_agent import DocumentAgent
-from app.agents.extraction_agent import ExtractionAgent
-from app.agents.red_flag_agent import RedFlagAgent
+from ...agents.document_agent import DocumentAgent
+from ...agents.extraction_agent import ExtractionAgent
+from ...agents.red_flag_agent import RedFlagAgent
 
 router = APIRouter(
     prefix="/red-flag",
@@ -21,20 +22,26 @@ async def analyze(file: UploadFile = File(...)):
 
     os.makedirs("uploads", exist_ok=True)
 
-    file_path = f"uploads/{file.filename}"
+    document_id = str(uuid.uuid4())
+    file_name = file.filename or "unnamed.pdf"
+    file_path = f"uploads/{document_id}_{file_name}"
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    document_text = document_agent.extract_text(file_path)
+    # Step 1: Parse, chunk, embed and index into ChromaDB
+    workspace_id = "standalone"
+    stats = document_agent.process_and_index(file_path, workspace_id, document_id, file_name)
 
-    financial_data = extraction_agent.extract_financial_data(
-        document_text
-    )
+    # Step 2: Extract financial metrics from indexed chunks
+    financial_data = extraction_agent.extract(document_id)
 
-    risk_analysis = red_flag_agent.analyze_financial_risk(
-        financial_data
-    )
+    # Step 3: Analyze for red flags from indexed chunks
+    risk_analysis = red_flag_agent.analyze(document_id)
+
+    # Cleanup uploaded file
+    if os.path.exists(file_path):
+        os.remove(file_path)
 
     return {
         "financial_data": financial_data,
