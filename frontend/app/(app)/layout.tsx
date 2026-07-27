@@ -36,7 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      window.location.href = "/login";
     } else if (user) {
       // Fetch initial notification status
       fetcher<{has_unread: boolean}>("/dashboard/notifications")
