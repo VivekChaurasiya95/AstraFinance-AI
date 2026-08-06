@@ -20,7 +20,11 @@ class RedFlagAgent:
             api_key=groq_api_key,
             temperature=0
         )
-        self.collection = get_document_collection()
+        try:
+            self.collection = get_document_collection()
+        except Exception as e:
+            logger.error(f"ChromaDB collection unavailable in RedFlagAgent: {e}")
+            self.collection = None
         self.embeddings = get_embeddings_model()
 
         self.prompt = ChatPromptTemplate.from_messages([
@@ -77,13 +81,15 @@ Do NOT hallucinate. If no risks are found, return an empty array for red_flags a
                 else:
                     raise e
                     
-        if not query_embeddings:
+        if not query_embeddings or self.collection is None:
+            if self.collection is None:
+                logger.error("Cannot analyze: ChromaDB collection is not available.")
             return {"risk_level": "Low", "red_flags": []}
             
         results = self.collection.query(
             query_embeddings=query_embeddings,  # type: ignore
             where={"document_id": document_id},
-            n_results=10
+            n_results=20
         )
         
         documents = results.get("documents")

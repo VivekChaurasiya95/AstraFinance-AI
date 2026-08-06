@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
+
 from app.api.upload import router as upload_router
 from app.config.settings import settings
 from app.auth.firebase_auth import init_firebase
@@ -13,10 +14,19 @@ from app.api.routes.workspace_routes import router as workspace_router
 from app.api.routes.dashboard_routes import router as dashboard_router
 from app.api.routes.auth_routes import router as auth_router
 from app.api.routes.report_routes import router as report_router
+from app.api.routes.comparison_routes import router as comparison_router
+from app.api.routes.research_routes import router as research_router
 from app.database.mongo_client import db
 
 from app.agents.extraction_agent import ExtractionAgent
 from app.agents.red_flag_agent import RedFlagAgent
+
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -61,6 +71,9 @@ app.include_router(workspace_router, prefix="/api/v1")
 app.include_router(dashboard_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(report_router, prefix="/api/v1")
+app.include_router(comparison_router, prefix="/api/v1")
+app.include_router(research_router, prefix="/api/v1")
+
 
 @app.get("/")
 def root():

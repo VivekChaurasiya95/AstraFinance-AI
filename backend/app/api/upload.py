@@ -2,12 +2,13 @@ from pathlib import Path
 import shutil
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
-
+from langchain_core.documents import Document
 from app.document_processing.metadata_extractor import MetadataExtractor
 from app.document_processing.pdf_parser import PDFParser
 from app.document_processing.text_cleaner import clean_text
 from app.document_processing.chunker import DocumentChunker
 from app.document_processing.table_extractor import TableExtractor
+from app.embeddings.vector_store import create_vector_store
 
 router = APIRouter(
     prefix="/documents",
@@ -58,6 +59,25 @@ async def upload_pdf(file: UploadFile = File(...)):
     # -----------------------------
     chunker = DocumentChunker()
     chunks = chunker.chunk_text(cleaned_text)
+
+    company_name = file.filename.split("_")[0]
+
+
+    documents = []
+
+    for i, chunk in enumerate(chunks):
+        documents.append(
+            Document(
+                page_content=chunk,
+                metadata={
+                "company_name": file.filename.replace(".pdf", ""),
+                "source": file.filename,
+                "chunk_id": i
+            }
+        )
+    )
+
+    create_vector_store(documents)
 
     # -----------------------------
     # 5. Extract Tables

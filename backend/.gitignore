@@ -7,3 +7,4 @@ __pycache__/
 *firebase-adminsdk*.json
 serviceAccountKey.json
 firebase-service-account.json
+app/config/astrafinance-ai-firebase-adminsdk-fbsvc-78efa35b8d.json
