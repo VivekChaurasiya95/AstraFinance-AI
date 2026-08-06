@@ -2,7 +2,6 @@ from pypdf import PdfReader
 from loguru import logger
 import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from app.embeddings.chroma_client import get_document_collection
 from app.embeddings.embedding_service import get_embeddings_model
 
 class DocumentAgent:
@@ -12,7 +11,12 @@ class DocumentAgent:
             chunk_overlap=150,
             separators=["\n\n", "\n", ".", " ", ""]
         )
-        self.collection = get_document_collection()
+        try:
+            from app.embeddings.chroma_client import get_document_collection
+            self.collection = get_document_collection()
+        except Exception as e:
+            logger.error(f"ChromaDB collection unavailable: {e}")
+            self.collection = None
         self.embeddings = get_embeddings_model()
 
     def process_and_index(self, file_path: str, workspace_id: str, document_id: str, file_name: str) -> dict:

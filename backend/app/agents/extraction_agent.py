@@ -5,8 +5,8 @@ from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from ..embeddings.chroma_client import get_document_collection
 from ..embeddings.embedding_service import get_embeddings_model
-
 from ..config.settings import settings
+from .research_agent import _retrieval_queries, _dedup_and_rank
 
 class ExtractionAgent:
     def __init__(self):
@@ -20,7 +20,11 @@ class ExtractionAgent:
             api_key=groq_api_key,
             temperature=0
         )
-        self.collection = get_document_collection()
+        try:
+            self.collection = get_document_collection()
+        except Exception as e:
+            logger.error(f"ChromaDB collection unavailable in ExtractionAgent: {e}")
+            self.collection = None
         self.embeddings = get_embeddings_model()
 
         self.prompt = ChatPromptTemplate.from_messages([
@@ -56,6 +60,10 @@ Return ONLY valid JSON in this exact format:
 - Ensure revenue_breakdown percentages sum up to 100.
 - Ensure geography_split percentages sum up to 100.
 - Do not include markdown formatting like ```json.
+- CRITICAL: Distinguish carefully between "Profit Before Tax (PBT)" and "Net Profit / Profit After Tax (PAT)". If a number is explicitly labeled "Profit Before Tax", do NOT report it as "Net Profit".
+- CRITICAL: Revenue must be Total Revenue or Revenue from Operations. NEVER use Segment Revenue.
+- Prefer Consolidated over Standalone. Do not mix reporting years.
+- Only return values explicitly available. If unavailable, return null. Never guess or fabricate.
 """),
             ("human", "Context chunks:\n{context}")
         ])
@@ -64,7 +72,7 @@ Return ONLY valid JSON in this exact format:
 
     def extract(self, document_id: str):
         # 1. Retrieve chunks relevant to financial metrics
-        queries = ["Financial summary revenue profit margin debt assets liabilities EPS ROE"]
+        queries = _retrieval_queries("", "")
         import time
         query_embeddings = None
         for attempt in range(3):
@@ -78,7 +86,9 @@ Return ONLY valid JSON in this exact format:
                 else:
                     raise e
                     
-        if not query_embeddings:
+        if not query_embeddings or self.collection is None:
+            if self.collection is None:
+                logger.error("Cannot extract: ChromaDB collection is not available.")
             return {"key_metrics": [], "revenue_breakdown": [], "quarterly_trend": [], "geography_split": []}
             
         results = self.collection.query(
@@ -87,20 +97,33 @@ Return ONLY valid JSON in this exact format:
             n_results=10
         )
         
-        documents = results.get("documents")
-        if not documents or not documents[0]:
+        raw_chunks = []
+        documents = results.get("documents", [])
+        metadatas = results.get("metadatas", [])
+        ids = results.get("ids", [])
+        
+        for qi in range(len(documents)):
+            for i, text in enumerate(documents[qi]):
+                meta = metadatas[qi][i] if metadatas and qi < len(metadatas) and i < len(metadatas[qi]) else {}
+                chunk_id = ids[qi][i] if ids and qi < len(ids) and i < len(ids[qi]) else f"chunk_{qi}_{i}"
+                raw_chunks.append({
+                    "content": text,
+                    "chunk_id": chunk_id,
+                    "metadata": meta
+                })
+                
+        if not raw_chunks:
             logger.warning(f"No chunks found for document {document_id}")
             return {"key_metrics": [], "revenue_breakdown": [], "quarterly_trend": [], "geography_split": []}
             
-        context_parts = []
-        metadatas = results.get("metadatas")
-        ids = results.get("ids")
+        ranked = _dedup_and_rank(raw_chunks, company="", limit=15)
         
-        for i, text in enumerate(documents[0]):
-            meta = metadatas[0][i] if metadatas and metadatas[0] else {}
-            chunk_id = ids[0][i] if ids and ids[0] else f"chunk_{i}"
+        context_parts = []
+        for r in ranked:
+            meta = r.get("metadata", {})
+            chunk_id = r.get("chunk_id", "unknown")
             page = meta.get("page_number", 0) if isinstance(meta, dict) else 0
-            context_parts.append(f"--- Chunk ID: {chunk_id} | Page: {page} ---\n{text}")
+            context_parts.append(f"--- Chunk ID: {chunk_id} | Page: {page} ---\n{r['content']}")
             
         context = "\n\n".join(context_parts)
         

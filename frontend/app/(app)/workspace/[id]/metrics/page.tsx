@@ -323,7 +323,7 @@ export default function MetricsPage() {
             {/* Operating Margin Gauge */}
             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex items-center justify-around">
               <CircularGauge
-                value={data.quarterly_trend[data.quarterly_trend.length - 1].margin}
+                value={data.quarterly_trend[data.quarterly_trend.length - 1].margin || 0}
                 label="Operating Margin"
               />
               <div className="space-y-2">
@@ -340,7 +340,9 @@ export default function MetricsPage() {
                     Profit
                   </p>
                   <p className="text-sm font-bold text-slate-800">
-                    ₹{data.quarterly_trend[data.quarterly_trend.length - 1].profit.toLocaleString()} Cr
+                    {data.quarterly_trend[data.quarterly_trend.length - 1].profit != null
+                      ? `₹${data.quarterly_trend[data.quarterly_trend.length - 1].profit.toLocaleString()} Cr`
+                      : "N/A"}
                   </p>
                 </div>
               </div>

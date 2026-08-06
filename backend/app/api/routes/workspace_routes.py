@@ -14,6 +14,7 @@ from ...schemas.workspace_schema import WorkspaceCreate, WorkspaceResponse
 from ...agents.document_agent import DocumentAgent
 from ...agents.extraction_agent import ExtractionAgent
 from ...agents.red_flag_agent import RedFlagAgent
+from ...agents.research_agent import ResearchAgent
 from .auth_routes import get_current_user
 from ...database.mongo_client import (
     workspaces_collection,
@@ -31,6 +32,11 @@ router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 document_agent = DocumentAgent()
 extraction_agent = ExtractionAgent()
 red_flag_agent = RedFlagAgent()
+try:
+    research_agent = ResearchAgent()
+except Exception as e:
+    print(f"Failed to initialize ResearchAgent: {e}")
+    research_agent = None
 
 # ── Helper ────────────────────────────────────────────────────────────────────
 def format_workspace(ws: dict) -> dict:
@@ -469,20 +475,99 @@ async def chat_with_workspace(
     actual_message = message if message is not None else (chat_json.message if chat_json else "")
     
     await workspaces_collection.update_one({"_id": workspace_id}, {"$inc": {"chats": 1}})
-    await asyncio.sleep(0.5)
 
     file_ack = ""
     if files and len(files) > 0:
         file_names = ", ".join([f.filename or "unnamed" for f in files])
-        file_ack = f"I've received your attachments: {file_names}. "
+        file_ack = f"I've received your attachments: {file_names}. \n\n"
 
-    reply = (
-        f"{file_ack}I've analyzed the documents in **{ws['name']}** and here's what I found regarding: *\"{actual_message}\"*\n\n"
-        "The uploaded financial documents contain detailed disclosures about this topic. "
-        "Key data points have been extracted and cross-referenced across all {doc_count} documents. "
-    ).format(doc_count=ws.get("docs", 0))
-    
-    return {"reply": reply, "citations": []}
+    try:
+        # Log agent activity
+        await agent_logs_collection.insert_one({
+            "_id": str(uuid.uuid4()),
+            "workspace_id": workspace_id,
+            "document_id": "",
+            "agent_name": "Research Agent",
+            "agent_type": "Q&A",
+            "status": "Running",
+            "action": "Answering Query",
+            "details": f"Analyzing query: '{actual_message[:50]}...'",
+            "duration": "Running",
+            "metadata": {},
+            "timestamp": datetime.now(timezone.utc)
+        })
+
+        if research_agent:
+            res_json = await asyncio.to_thread(research_agent.analyze, actual_message)
+            res = json.loads(res_json)
+
+            reply_text = res.get("analysis", "")
+            
+            if res.get("comparison"):
+                reply_text += "\n\n**Comparison**\n" + res.get("comparison")
+            if res.get("insights"):
+                reply_text += "\n\n**Key Insights**\n"
+                for ins in res.get("insights"):
+                    reply_text += f"- {ins}\n"
+            
+            if not reply_text:
+                reply_text = "I couldn't find a detailed answer, but I've reviewed the documents."
+
+            reply = file_ack + reply_text
+            raw_citations = res.get("citations", [])
+            citations = [{"doc": c.get("document", "Unknown"), "page": c.get("page", 1)} for c in raw_citations]
+            
+            await agent_logs_collection.insert_one({
+                "_id": str(uuid.uuid4()),
+                "workspace_id": workspace_id,
+                "document_id": "",
+                "agent_name": "Research Agent",
+                "agent_type": "Q&A",
+                "status": "Complete",
+                "action": "Answered Query",
+                "details": f"Successfully generated answer with {len(citations)} citations.",
+                "duration": "Completed",
+                "metadata": {},
+                "timestamp": datetime.now(timezone.utc)
+            })
+
+        else:
+            reply = file_ack + "Research agent is currently unavailable."
+            citations = []
+            
+            await agent_logs_collection.insert_one({
+                "_id": str(uuid.uuid4()),
+                "workspace_id": workspace_id,
+                "document_id": "",
+                "agent_name": "Research Agent",
+                "agent_type": "Q&A",
+                "status": "Failed",
+                "action": "Answered Query",
+                "details": "Agent unavailable",
+                "duration": "Failed",
+                "metadata": {},
+                "timestamp": datetime.now(timezone.utc)
+            })
+
+    except Exception as e:
+        reply = file_ack + f"Sorry, I encountered an error while analyzing: {e}"
+        citations = []
+        
+        await agent_logs_collection.insert_one({
+            "_id": str(uuid.uuid4()),
+            "workspace_id": workspace_id,
+            "document_id": "",
+            "agent_name": "Research Agent",
+            "agent_type": "Q&A",
+            "status": "Failed",
+            "action": "Answered Query",
+            "details": str(e),
+            "duration": "Failed",
+            "metadata": {},
+            "timestamp": datetime.now(timezone.utc)
+        })
+
+    return {"reply": reply, "citations": citations}
 
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
