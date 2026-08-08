@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks, Form, Depends
 from typing import List, Optional, Dict, Any
+import json
 import uuid
 from pydantic import BaseModel
 import time
@@ -464,6 +465,7 @@ async def chat_with_workspace(
     workspace_id: str, 
     message: Optional[str] = Form(None),
     chat_json: Optional[ChatMessage] = None,
+    session_id: Optional[str] = Form(None),
     files: Optional[List[UploadFile]] = File(None),
     current_user: dict = Depends(get_current_user)
 ):
@@ -474,12 +476,46 @@ async def chat_with_workspace(
     
     actual_message = message if message is not None else (chat_json.message if chat_json else "")
     
-    await workspaces_collection.update_one({"_id": workspace_id}, {"$inc": {"chats": 1}})
-
+    # Session handling
+    from app.database.mongo_client import chat_sessions_collection, messages_collection
+    
+    if not session_id:
+        session_id = str(uuid.uuid4())
+        await chat_sessions_collection.insert_one({
+            "_id": session_id,
+            "workspace_id": workspace_id,
+            "owner_id": user_id,
+            "title": actual_message[:50] + "..." if len(actual_message) > 50 else actual_message,
+            "message_count": 0,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        })
+    else:
+        # Verify session exists
+        sess = await chat_sessions_collection.find_one({"_id": session_id, "owner_id": user_id})
+        if not sess:
+            raise HTTPException(status_code=404, detail="Chat session not found")
+            
+    # File handling
+    attachments_info = []
     file_ack = ""
     if files and len(files) > 0:
         file_names = ", ".join([f.filename or "unnamed" for f in files])
         file_ack = f"I've received your attachments: {file_names}. \n\n"
+        attachments_info = [{"name": f.filename or "unnamed", "type": f.content_type or "application/octet-stream"} for f in files]
+
+    # Save user message
+    user_msg_id = str(uuid.uuid4())
+    await messages_collection.insert_one({
+        "_id": user_msg_id,
+        "session_id": session_id,
+        "role": "user",
+        "content": actual_message,
+        "attachments": attachments_info,
+        "timestamp": datetime.now(timezone.utc)
+    })
+    
+    await workspaces_collection.update_one({"_id": workspace_id}, {"$inc": {"chats": 1}})
 
     try:
         # Log agent activity
@@ -498,7 +534,7 @@ async def chat_with_workspace(
         })
 
         if research_agent:
-            res_json = await asyncio.to_thread(research_agent.analyze, actual_message)
+            res_json = await asyncio.to_thread(research_agent.analyze, actual_message, workspace_id)
             res = json.loads(res_json)
 
             reply_text = res.get("analysis", "")
@@ -567,7 +603,112 @@ async def chat_with_workspace(
             "timestamp": datetime.now(timezone.utc)
         })
 
-    return {"reply": reply, "citations": citations}
+    # Save assistant message
+    assistant_msg_id = str(uuid.uuid4())
+    await messages_collection.insert_one({
+        "_id": assistant_msg_id,
+        "session_id": session_id,
+        "role": "assistant",
+        "content": reply,
+        "citations": citations,
+        "timestamp": datetime.now(timezone.utc)
+    })
+    
+    await chat_sessions_collection.update_one(
+        {"_id": session_id},
+        {
+            "$inc": {"message_count": 2},
+            "$set": {"updated_at": datetime.now(timezone.utc)}
+        }
+    )
+
+    return {
+        "reply": reply, 
+        "citations": citations, 
+        "session_id": session_id
+    }
+
+@router.get("/{workspace_id}/chat_sessions")
+async def get_chat_sessions(
+    workspace_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    from app.database.mongo_client import chat_sessions_collection
+    user_id = str(current_user["_id"])
+    cursor = chat_sessions_collection.find({"workspace_id": workspace_id, "owner_id": user_id}).sort("updated_at", -1)
+    sessions = await cursor.to_list(length=100)
+    return {"sessions": sessions}
+
+@router.get("/{workspace_id}/chat_sessions/{session_id}")
+async def get_chat_session_messages(
+    workspace_id: str,
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    from app.database.mongo_client import chat_sessions_collection, messages_collection
+    user_id = str(current_user["_id"])
+    sess = await chat_sessions_collection.find_one({"_id": session_id, "workspace_id": workspace_id, "owner_id": user_id})
+    if not sess:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+        
+    cursor = messages_collection.find({"session_id": session_id}).sort("timestamp", 1)
+    messages = await cursor.to_list(length=500)
+    return {"messages": messages}
+
+class ChatSessionUpdate(BaseModel):
+    title: str
+
+@router.put("/{workspace_id}/chat_sessions/{session_id}")
+async def rename_chat_session(
+    workspace_id: str,
+    session_id: str,
+    update_data: ChatSessionUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    from app.database.mongo_client import chat_sessions_collection
+    user_id = str(current_user["_id"])
+    
+    # Check if session exists and belongs to the user
+    sess = await chat_sessions_collection.find_one({"_id": session_id, "workspace_id": workspace_id, "owner_id": user_id})
+    if not sess:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+        
+    await chat_sessions_collection.update_one(
+        {"_id": session_id},
+        {
+            "$set": {
+                "title": update_data.title[:100],  # Limit title length
+                "updated_at": datetime.now(timezone.utc)
+            }
+        }
+    )
+    
+    return {"status": "success", "message": "Chat session renamed"}
+
+@router.delete("/{workspace_id}/chat_sessions/{session_id}")
+async def delete_chat_session(
+    workspace_id: str,
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    from app.database.mongo_client import chat_sessions_collection, messages_collection
+    user_id = str(current_user["_id"])
+    
+    # Check if session exists and belongs to the user
+    sess = await chat_sessions_collection.find_one({"_id": session_id, "workspace_id": workspace_id, "owner_id": user_id})
+    if not sess:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+        
+    # Delete the session
+    await chat_sessions_collection.delete_one({"_id": session_id})
+    
+    # Delete all messages associated with the session
+    await messages_collection.delete_many({"session_id": session_id})
+    
+    # Decrement workspace chat count (optional, but keeps stats accurate)
+    await workspaces_collection.update_one({"_id": workspace_id}, {"$inc": {"chats": -1}})
+    
+    return {"status": "success", "message": "Chat session deleted"}
 
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
@@ -680,6 +821,21 @@ async def get_workspace_comparison(workspace_id: str, current_user: dict = Depen
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
             
+    # Log agent activity start
+    await agent_logs_collection.insert_one({
+        "_id": str(uuid.uuid4()),
+        "workspace_id": workspace_id,
+        "document_id": "",
+        "agent_name": "Comparison Agent",
+        "agent_type": "Peer Comparison",
+        "status": "Running",
+        "action": "Generating Comparison",
+        "details": "Comparing financial metrics across workspace documents...",
+        "duration": "Running",
+        "metadata": {},
+        "timestamp": datetime.now(timezone.utc)
+    })
+            
     cursor = documents_collection.find({"workspace_id": workspace_id, "status": "ready"})
     docs = []
     async for d in cursor:
@@ -766,6 +922,21 @@ async def get_workspace_comparison(workspace_id: str, current_user: dict = Depen
             
         for rank, (comp, val) in enumerate(peer_vals, start=1):
             ranking[m][comp] = rank
+
+    # Log agent activity complete
+    await agent_logs_collection.insert_one({
+        "_id": str(uuid.uuid4()),
+        "workspace_id": workspace_id,
+        "document_id": "",
+        "agent_name": "Comparison Agent",
+        "agent_type": "Peer Comparison",
+        "status": "Complete",
+        "action": "Comparison Generated",
+        "details": f"Generated peer comparison across {len(peers)} documents.",
+        "duration": "1s",
+        "metadata": {"documents_compared": len(peers)},
+        "timestamp": datetime.now(timezone.utc)
+    })
 
     return {
         "workspace_id": workspace_id,

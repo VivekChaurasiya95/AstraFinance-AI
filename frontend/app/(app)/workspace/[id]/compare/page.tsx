@@ -271,7 +271,7 @@ export default function ComparePage() {
                       const c = COLORS[i % COLORS.length];
                       return (
                         <th
-                          key={p.ticker}
+                          key={`${p.ticker}-${i}`}
                           className={cn(
                             "text-center py-3.5 px-4 font-bold text-sm min-w-[140px]",
                             p.is_base ? "bg-blue-50/60" : ""
@@ -319,7 +319,7 @@ export default function ComparePage() {
                           const isWinner = p.ticker === winner;
                           return (
                             <td
-                              key={p.ticker}
+                              key={`${p.ticker}-${i}`}
                               className={cn(
                                 "py-3 px-4 text-center font-semibold text-sm",
                                 p.is_base ? "bg-blue-50/30" : "",
@@ -364,7 +364,7 @@ export default function ComparePage() {
                         const hPct = maxVal > 0 ? (v.value / maxVal) * 100 : 0;
                         return (
                           <div
-                            key={v.ticker}
+                            key={`${v.ticker}-${i}`}
                             className="flex-1 flex flex-col items-center gap-1"
                           >
                             <span className="text-[10px] font-bold text-slate-600">

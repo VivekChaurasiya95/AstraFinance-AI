@@ -20,10 +20,10 @@ export function AgentsSection() {
   return (
     <section className="py-24 px-6 md:px-12 lg:px-24 max-w-[1600px] mx-auto">
       <div className="text-center mb-16 max-w-2xl mx-auto">
-        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4 tracking-tight">
+        <h2 className="text-3xl md:text-4xl font-bold text-zinc-900 mb-4 tracking-tight">
           Specialized Agent Architecture
         </h2>
-        <p className="text-lg text-slate-600 dark:text-slate-400">
+        <p className="text-lg text-zinc-600 ">
           Six specialized AI models collaborating to synthesize your research.
         </p>
       </div>
@@ -32,12 +32,12 @@ export function AgentsSection() {
         {agents.map((agent, idx) => (
           <div 
             key={idx}
-            className="flex items-center gap-3 bg-white dark:bg-slate-800 p-2 pr-6 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow cursor-default"
+            className="flex items-center gap-3 bg-white p-2 pr-6 rounded-full border border-zinc-200 shadow-sm hover:shadow-md transition-shadow cursor-default"
           >
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${agent.bg} ${agent.color}`}>
               {agent.icon}
             </div>
-            <span className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+            <span className="text-sm font-bold uppercase tracking-wider text-zinc-700 ">
               {agent.name}
             </span>
           </div>

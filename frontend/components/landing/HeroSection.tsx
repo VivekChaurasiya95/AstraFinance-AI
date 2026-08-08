@@ -20,7 +20,7 @@ export function HeroSection() {
         className="absolute inset-0 z-10 pointer-events-none"
         style={{
           background:
-            "linear-gradient(to right, rgba(248,250,252,0.98) 0%, rgba(248,250,252,0.96) 38%, rgba(248,250,252,0.60) 58%, transparent 78%)",
+            "linear-gradient(to right, rgba(250,250,250,0.98) 0%, rgba(250,250,250,0.96) 38%, rgba(250,250,250,0.60) 58%, transparent 78%)",
         }}
       />
 
@@ -31,21 +31,21 @@ export function HeroSection() {
         <div className="w-full md:w-[520px] lg:w-[560px] flex flex-col gap-8">
 
           {/* Badge */}
-          <div className="flex items-center gap-2 w-fit px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-700 shadow-sm">
-            <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <span className="text-xs font-semibold tracking-widest text-indigo-700 dark:text-indigo-300 uppercase">
+          <div className="flex items-center gap-2 w-fit px-4 py-2 rounded-full bg-indigo-50 border border-indigo-200 shadow-sm">
+            <CheckCircle2 className="w-4 h-4 text-indigo-600 " />
+            <span className="text-xs font-semibold tracking-widest text-indigo-700 uppercase">
               Zero hallucinated figures
             </span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-zinc-900 ">
             Ask your financial reports{" "}
-            <span className="text-blue-600 dark:text-blue-400">anything</span>
+            <span className="text-blue-600 ">anything</span>
           </h1>
 
           {/* Sub-copy */}
-          <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-[480px]">
+          <p className="text-lg md:text-xl text-zinc-600 leading-relaxed max-w-[480px]">
             Expert analysis with verifiable citations. Zero hallucinations, total
             transparency. Experience Bloomberg-level precision powered by advanced AI.
           </p>
@@ -60,7 +60,7 @@ export function HeroSection() {
             </Link>
             <Button
               variant="outline"
-              className="border-2 border-slate-300 dark:border-slate-600 hover:bg-white/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold px-8 py-6 rounded-xl transition-all text-base backdrop-blur-sm bg-white/60"
+              className="border-2 border-zinc-300 hover:bg-white/80 text-zinc-700 font-semibold px-8 py-6 rounded-xl transition-all text-base backdrop-blur-sm bg-white/60"
             >
               Watch Demo
             </Button>
@@ -70,15 +70,15 @@ export function HeroSection() {
       </div>
 
       {/* ── Status badge — bottom-right, outside the text area ── */}
-      <div className="absolute bottom-8 right-8 z-30 bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3">
-        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/50 rounded-xl">
-          <Loader2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400 animate-spin" />
+      <div className="absolute bottom-8 right-8 z-30 bg-white/90 backdrop-blur-md border border-zinc-200 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3">
+        <div className="p-2 bg-indigo-100 rounded-xl">
+          <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
         </div>
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ">
             Status
           </span>
-          <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <span className="text-sm font-semibold text-zinc-800 ">
             Generating Financial Report...
           </span>
         </div>

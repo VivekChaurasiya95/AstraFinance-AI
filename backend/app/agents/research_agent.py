@@ -152,20 +152,21 @@ def _dedup_and_rank(chunks: List[Dict], company: str, limit: int = 20) -> List[D
 
 def _retrieval_queries(company: str, question: str) -> List[str]:
     """Generate 6-8 focused retrieval queries covering all financial areas."""
+    prefix = f"{company} " if company and company != "Workspace Context" else ""
     queries = [
-        f"{company} Revenue from Operations Total Revenue",
-        f"{company} Statement of Profit and Loss Net Profit PAT",
-        f"{company} EBITDA EBIT Operating Profit",
-        f"{company} Balance Sheet Total Assets Liabilities",
-        f"{company} Cash Flow Statement",
-        f"{company} Financial Ratios EPS",
+        f"{prefix}Revenue from Operations Total Revenue",
+        f"{prefix}Statement of Profit and Loss Net Profit PAT",
+        f"{prefix}EBITDA EBIT Operating Profit",
+        f"{prefix}Balance Sheet Total Assets Liabilities",
+        f"{prefix}Cash Flow Statement",
+        f"{prefix}Financial Ratios EPS",
     ]
     if question.strip():
-        queries.append(f"{company} {question}")
+        queries.append(f"{prefix}{question}")
     return queries
 
 
-def call_document_agent(company_name: str, question: str = "") -> Optional[List[Dict[str, Any]]]:
+def call_document_agent(company_name: str, question: str = "", workspace_id: str = None) -> Optional[List[Dict[str, Any]]]:
     global _vector_store_retriever
 
     results = []
@@ -182,10 +183,19 @@ def call_document_agent(company_name: str, question: str = "") -> Optional[List[
             embeddings_model = get_embeddings_model()
             # Batch all query embeddings in one API call for efficiency
             query_embeddings = embeddings_model.embed_documents(queries)
-            chroma_results = collection.query(
-                query_embeddings=query_embeddings,
-                n_results=8
-            )
+            where_filter = {"workspace_id": workspace_id} if workspace_id else None
+
+            if where_filter:
+                chroma_results = collection.query(
+                    query_embeddings=query_embeddings,
+                    n_results=8,
+                    where=where_filter
+                )
+            else:
+                chroma_results = collection.query(
+                    query_embeddings=query_embeddings,
+                    n_results=8
+                )
 
             documents = chroma_results.get("documents", [])
             metadatas = chroma_results.get("metadatas", [])
@@ -255,7 +265,7 @@ def call_document_agent(company_name: str, question: str = "") -> Optional[List[
 
 
 
-def search_company(company_name: str, question: str) -> str:
+def search_company(company_name: str, question: str, workspace_id: str = None) -> str:
     """Search the vector store for financial information about a company.
 
     Args:
@@ -265,7 +275,7 @@ def search_company(company_name: str, question: str) -> str:
     logger.info("Tool search_company called for '%s' with question: '%s'", company_name, question)
 
     try:
-        document_results = call_document_agent(company_name, question)
+        document_results = call_document_agent(company_name, question, workspace_id)
     except Exception as e:
         logger.error("Unexpected error during document retrieval: %s", e)
         document_results = None
@@ -422,7 +432,7 @@ class ResearchAgent:
         data["citations"] = final_citations
         return json.dumps(data)
 
-    def analyze(self, user_query: str) -> str:
+    def analyze(self, user_query: str, workspace_id: str = None) -> str:
         start_time = time.time()
         logger.info("=== Research Agent Query: %s ===", user_query)
 
@@ -430,7 +440,7 @@ class ResearchAgent:
         company_names = self._extract_company_names(user_query)
         logger.info("Detected companies: %s", company_names)
 
-        if not company_names:
+        if not company_names and not workspace_id:
             return json.dumps({
                 "companies": [],
                 "analysis": "No company names could be identified in your query. Please mention a specific company name.",
@@ -440,6 +450,9 @@ class ResearchAgent:
                 "missing_companies": [],
             })
 
+        if not company_names and workspace_id:
+            company_names = ["Workspace Context"]
+
         # Step 2: Retrieve data for each company
         retrieval_start = time.time()
         all_results = {}
@@ -448,7 +461,7 @@ class ResearchAgent:
         for name in company_names:
             logger.info("Retrieving data for: %s", name)
             try:
-                data = call_document_agent(name, user_query)
+                data = call_document_agent(name, user_query, workspace_id)
             except Exception as e:
                 logger.error("Error retrieving data for %s: %s", name, e)
                 data = None
@@ -488,16 +501,22 @@ class ResearchAgent:
         retrieved_data = "\n\n".join(context_parts)
 
         # Step 4: Comprehensive LLM analysis with strict metric validation
-        analysis_prompt = f"""You are an expert Financial Research Agent analyzing annual reports.
+        analysis_prompt = f"""You are an expert Financial Research Agent assisting a user with their documents.
 
 User query: "{user_query}"
 
 Retrieved data:
 {retrieved_data}
 
+INSTRUCTIONS:
+1. Answer the user's query DIRECTLY in the "analysis" field based on the Retrieved data.
+2. If the user asks a general conversational question (like "hello", "how are you"), respond politely in the "analysis" field and leave financial arrays empty.
+3. If the user asks for financial data, metrics, or comparisons, extract and populate the "companies" array.
+4. If there is no relevant financial data for the query, just provide your textual answer in the "analysis" field.
+
 Return a valid JSON object with this structure:
 {{
-  "companies": [{{
+  "companies": [{{ // Only include if relevant financial data is extracted
     "company_name": "Actual company name from report (NEVER use filename)", "found": true,
     "financial_year": "e.g. FY2025 or null", "reporting_type": "Consolidated or Standalone or null",
     "_internal_metrics": {{
@@ -527,9 +546,9 @@ Return a valid JSON object with this structure:
       "eps": {{"value": "...", "confidence": "High/Medium/Low"}}
     }}
   }}],
-  "analysis": "Detailed financial analysis based on extracted data.",
+  "analysis": "Direct answer to the User query. Be conversational if they just said hello. Be detailed if they asked a question.",
   "comparison": "Side-by-side comparison if multiple companies, else empty string.",
-  "insights": ["2-4 concise data-driven insights."],
+  "insights": ["2-4 concise data-driven insights if applicable, else empty."],
   "missing_companies": {json.dumps(missing_companies)}
 }}
 
