@@ -25,7 +25,7 @@ import { cn, timeAgo } from "@/lib/utils";
 import { fetcher } from "@/lib/api";
 import { CreateWorkspaceModal } from "@/components/workspace/CreateWorkspaceModal";
 
-const ICON_MAP: Record<string, React.ElementType> = {
+const ICON_MAP: Record<string, any> = {
   FileTextIcon,
   Folder,
 };

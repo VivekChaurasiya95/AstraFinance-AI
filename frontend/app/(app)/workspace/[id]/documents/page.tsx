@@ -126,7 +126,9 @@ const PROCESSING_STEPS = [
   "Document Agent (Chunking)",
   "Extraction Agent (Metrics)",
   "Red Flag Agent (Risks)",
-  "Finalizing Data"
+  "Comparison Agent (Baselines)",
+  "Research Agent (Indexing)",
+  "Report Agent (Templates)"
 ];
 
 function DocumentProcessingView({ workspaceId, onComplete }: { workspaceId: string, onComplete: () => void }) {
@@ -168,7 +170,7 @@ function DocumentProcessingView({ workspaceId, onComplete }: { workspaceId: stri
                  </div>
                  <div>
                    <h3 className="text-lg font-bold text-slate-800">{doc.name}</h3>
-                   <p className="text-sm font-medium text-slate-400 mt-0.5">Step {doc.processing_step || 1} of 4</p>
+                   <p className="text-sm font-medium text-slate-400 mt-0.5">Step {doc.processing_step || 1} of 6</p>
                  </div>
                </div>
                <div className="text-right">
@@ -181,7 +183,7 @@ function DocumentProcessingView({ workspaceId, onComplete }: { workspaceId: stri
                 <div className="absolute top-5 left-4 right-4 h-1 bg-slate-100 rounded-full" />
                 <div 
                    className="absolute top-5 left-4 h-1 bg-blue-500 rounded-full transition-all duration-500" 
-                   style={{ width: `calc(${(((doc.processing_step || 1) - 1) / 3) * 100}% - 0px)` }}
+                   style={{ width: `calc(${(((doc.processing_step || 1) - 1) / 5) * 100}% - 0px)` }}
                 />
                 
                 <div className="relative flex justify-between">
@@ -193,7 +195,7 @@ function DocumentProcessingView({ workspaceId, onComplete }: { workspaceId: stri
                     if (stepNum === currentStep) state = "active";
                     
                     return (
-                      <div key={idx} className="flex flex-col items-center gap-3 w-28 -translate-x-1/2" style={{ left: `${(idx / 3) * 100}%`, position: idx === 0 || idx === 3 ? "relative" : "absolute", transform: idx === 0 ? "translateX(0)" : idx === 3 ? "translateX(0)" : "translateX(-50%)" }}>
+                      <div key={idx} className="flex flex-col items-center gap-3 w-28 -translate-x-1/2" style={{ left: `${(idx / 5) * 100}%`, position: idx === 0 || idx === 5 ? "relative" : "absolute", transform: idx === 0 ? "translateX(0)" : idx === 5 ? "translateX(0)" : "translateX(-50%)" }}>
                         <div className={cn(
                           "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 shadow-sm z-10",
                           state === "complete" ? "bg-blue-600 text-white border-2 border-blue-600" : 

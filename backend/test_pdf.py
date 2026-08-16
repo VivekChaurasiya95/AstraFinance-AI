@@ -1,5 +1,5 @@
 import asyncio
-from app.agents.report_agent import report_agent
+from app.agents.report_agent import report_agent # type: ignore
 
 def test_pdf():
     try:

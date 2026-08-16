@@ -34,21 +34,21 @@ function LoginContent() {
     switch (code) {
       case "auth/invalid-credential":
       case "auth/wrong-password":
-        return "Incorrect password. If you originally signed up with Google or GitHub, please use that method.";
+        return "Incorrect email or password.";
       case "auth/user-not-found":
-        return "No account exists with this email.";
+        return "Incorrect email or password.";
       case "auth/too-many-requests":
         return "Too many failed attempts. Please try again later.";
       case "auth/user-disabled":
         return "This account has been disabled.";
       case "auth/network-request-failed":
-        return "Unable to connect. Please check your internet connection.";
+        return "We couldn't connect to the server. Please try again.";
       case "auth/popup-closed-by-user":
         return "Sign-in popup was closed. Please try again.";
       case "auth/cancelled-popup-request":
         return ""; // User cancelled, no need to show error
       case "auth/account-exists-with-different-credential":
-        return "An account already exists with the same email but a different sign-in method.";
+        return "This email is already registered with Google. Sign in with Google first, then connect GitHub from Settings.";
       default:
         return error?.message || "An unexpected error occurred.";
     }
@@ -140,6 +140,7 @@ function LoginContent() {
                 required
                 disabled={loading}
                 className="h-11 px-4 rounded-md border-slate-300 bg-white text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-colors"
+                suppressHydrationWarning
               />
             </div>
 
@@ -169,12 +170,14 @@ function LoginContent() {
                   required
                   disabled={loading}
                   className="h-11 px-4 pr-10 rounded-md border-slate-300 bg-white text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-colors"
+                  suppressHydrationWarning
                 />
                 <button
                   type="button"
                   aria-label="Toggle password visibility"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none flex items-center justify-center"
+                  suppressHydrationWarning
                 >
                   {showPassword ? (
                     <Eye className="w-5 h-5" />
@@ -190,6 +193,7 @@ function LoginContent() {
               type="submit"
               disabled={loading}
               className="w-full h-11 mt-2 bg-blue-700 text-white text-base font-medium rounded-md hover:bg-blue-800 transition-all focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              suppressHydrationWarning
             >
               {loading ? "Logging in..." : "Log In"}
             </Button>
@@ -211,6 +215,7 @@ function LoginContent() {
               variant="outline"
               onClick={() => handleOAuth("Google")}
               className="flex-1 h-11 gap-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all font-medium rounded-md"
+              suppressHydrationWarning
             >
               <GoogleIcon />
               Google
@@ -220,6 +225,7 @@ function LoginContent() {
               variant="outline"
               onClick={() => handleOAuth("GitHub")}
               className="flex-1 h-11 gap-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all font-medium rounded-md"
+              suppressHydrationWarning
             >
               <GitHubIcon />
               GitHub

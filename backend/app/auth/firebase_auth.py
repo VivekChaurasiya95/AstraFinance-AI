@@ -4,7 +4,7 @@ from firebase_admin import credentials, auth
 from loguru import logger
 from typing import Optional
 
-from app.config.settings import settings
+from ..config.settings import settings
 
 _firebase_app = None
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as THREE from "three";
 import { motion } from "framer-motion";
 import { FileSearch, BarChart3, ShieldAlert, Scale, MessageCircle, FileText, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,129 +18,6 @@ const agents = [
 export function ThreeDScene() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [rotation, setRotation] = useState(0);
-
-  // --- Three.js Background (Rings & Particles) ---
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-    let width = container.clientWidth;
-    let height = container.clientHeight;
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio || 1);
-    
-    // Absolute position underneath the UI
-    renderer.domElement.style.position = "absolute";
-    renderer.domElement.style.top = "0";
-    renderer.domElement.style.left = "0";
-    renderer.domElement.style.zIndex = "0";
-    renderer.domElement.style.pointerEvents = "none";
-    container.appendChild(renderer.domElement);
-
-    // Particles (Glowing Dots)
-    const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 40;
-    const posArray = new Float32Array(particlesCount * 3);
-    const colorsArray = new Float32Array(particlesCount * 3);
-    const palette = [
-      new THREE.Color(0x6366f1), // Indigo
-      new THREE.Color(0x14b8a6), // Teal
-      new THREE.Color(0xf97316), // Orange
-      new THREE.Color(0xa855f7), // Purple
-      new THREE.Color(0x3b82f6), // Blue
-    ];
-
-    for (let i = 0; i < particlesCount * 3; i += 3) {
-      const radius = 2 + Math.random() * 3;
-      const angle = Math.random() * Math.PI * 2;
-      posArray[i] = Math.cos(angle) * radius; // x
-      posArray[i + 1] = (Math.random() - 0.5) * 2; // y
-      posArray[i + 2] = Math.sin(angle) * radius; // z
-
-      const color = palette[Math.floor(Math.random() * palette.length)];
-      colorsArray[i] = color.r;
-      colorsArray[i + 1] = color.g;
-      colorsArray[i + 2] = color.b;
-    }
-    particlesGeometry.setAttribute("position", new THREE.BufferAttribute(posArray, 3));
-    particlesGeometry.setAttribute("color", new THREE.BufferAttribute(colorsArray, 3));
-    
-    const particlesMaterial = new THREE.PointsMaterial({
-      size: 0.08,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.8,
-      blending: THREE.AdditiveBlending,
-    });
-    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-    scene.add(particlesMesh);
-
-    // Orbit Rings
-    const ringGroup = new THREE.Group();
-    for (let i = 0; i < 3; i++) {
-      const ringGeo = new THREE.RingGeometry(2.8 + i * 0.4, 2.82 + i * 0.4, 64);
-      const ringMat = new THREE.MeshBasicMaterial({ 
-        color: 0x818cf8, 
-        transparent: true, 
-        opacity: 0.15 - (i * 0.04),
-        side: THREE.DoubleSide
-      });
-      const ring = new THREE.Mesh(ringGeo, ringMat);
-      ring.rotation.x = Math.PI / 2;
-      
-      // Give rings a slight varied tilt
-      ring.rotation.y = (Math.random() - 0.5) * 0.2;
-      ring.rotation.x += (Math.random() - 0.5) * 0.2;
-      ringGroup.add(ring);
-    }
-    
-    // Tilt the entire ring group slightly
-    ringGroup.rotation.x = 0.2;
-    scene.add(ringGroup);
-
-    camera.position.z = 6;
-    camera.position.y = 1;
-    camera.lookAt(0, 0, 0);
-
-    let animationFrameId: number;
-    function animate(time: number) {
-      animationFrameId = requestAnimationFrame(animate);
-      const t = time * 0.001;
-
-      // Rotate particles and rings
-      particlesMesh.rotation.y = t * 0.1;
-      ringGroup.rotation.y = t * 0.05;
-      
-      // Gentle floating for particles
-      particlesMesh.position.y = Math.sin(t * 0.5) * 0.1;
-
-      renderer.render(scene, camera);
-    }
-    animate(0);
-
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      width = containerRef.current.clientWidth;
-      height = containerRef.current.clientHeight;
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
-    };
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      cancelAnimationFrame(animationFrameId);
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
-      scene.clear();
-    };
-  }, []);
 
   // --- Framer Motion UI Animation ---
   useEffect(() => {

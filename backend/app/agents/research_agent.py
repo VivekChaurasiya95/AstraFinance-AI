@@ -7,9 +7,9 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage
+from ..llm import get_llm_router
 
-from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
@@ -18,7 +18,6 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 records: List[Dict[str, Any]] = []
-_vector_store_retriever = None
 
 def add_record(data: Dict[str, Any]) -> None:
     records.append(data)
@@ -70,21 +69,7 @@ def load_records(source: Any) -> int:
     return count
 
 
-def load_vector_store(index_path: str, embedding_model_name: str):
-    try:
-        if embedding_model_name.startswith("models/"):
-            embeddings = GoogleGenerativeAIEmbeddings(model=embedding_model_name)
-        else:
-            embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name, model_kwargs={"local_files_only": True})
 
-        vector_store = FAISS.load_local(
-            index_path, embeddings, allow_dangerous_deserialization=True
-        )
-        logger.info("FAISS vector store loaded successfully from %s", index_path)
-        return vector_store.as_retriever(search_kwargs={"k": 8})
-    except Exception as e:
-        logger.error("Failed to load FAISS index: %s", e)
-        return None
 
 
 # --- Chunk Ranking & Deduplication Helpers ---
@@ -166,82 +151,60 @@ def _retrieval_queries(company: str, question: str) -> List[str]:
     return queries
 
 
-def call_document_agent(company_name: str, question: str = "", workspace_id: str = None) -> Optional[List[Dict[str, Any]]]:
-    global _vector_store_retriever
-
+def call_document_agent(company_name: str, question: str = "", workspace_id: str | None = None) -> Optional[List[Dict[str, Any]]]:
     results = []
     queries = _retrieval_queries(company_name, question)
     logger.info("Retrieval: %d queries for '%s'", len(queries), company_name)
 
     # 1. Search ChromaDB (primary store for user-uploaded documents)
     try:
-        from app.embeddings.chroma_client import get_document_collection
-        from app.embeddings.embedding_service import get_embeddings_model
+        from ..embeddings.chroma_client import get_collection_for_provider
+        from ..embeddings.embedding_router import embedding_router
 
-        collection = get_document_collection()
-        if collection:
-            embeddings_model = get_embeddings_model()
-            # Batch all query embeddings in one API call for efficiency
-            query_embeddings = embeddings_model.embed_documents(queries)
-            where_filter = {"workspace_id": workspace_id} if workspace_id else None
+        router_results = embedding_router.embed_queries(queries)
+        where_filter = {"workspace_id": workspace_id} if workspace_id else None
 
-            if where_filter:
-                chroma_results = collection.query(
-                    query_embeddings=query_embeddings,
-                    n_results=8,
-                    where=where_filter
-                )
-            else:
-                chroma_results = collection.query(
-                    query_embeddings=query_embeddings,
-                    n_results=8
-                )
-
-            documents = chroma_results.get("documents", [])
-            metadatas = chroma_results.get("metadatas", [])
-
-            for qi in range(len(documents)):
-                for i, text in enumerate(documents[qi]):
-                    meta = metadatas[qi][i] if qi < len(metadatas) and i < len(metadatas[qi]) else {}
-                    results.append(
-                        {
-                            "company_name": meta.get("company_name", company_name),
-                            "content": text,
-                            "source_metadata": {
-                                "document": meta.get("file_name") or meta.get("document", "Uploaded Document"),
-                                "page": meta.get("page_number") or meta.get("page"),
-                                "reference_id": meta.get("chunk_index") or meta.get("chunk_id"),
-                            },
-                        }
+        for provider, config in router_results.items():
+            try:
+                collection = get_collection_for_provider(provider, config["model"])
+                
+                if where_filter:
+                    chroma_results = collection.query(
+                        query_embeddings=config["embeddings"],
+                        n_results=8,
+                        where=where_filter
                     )
-            logger.info("ChromaDB returned %d total chunks across %d queries", len(results), len(queries))
+                else:
+                    chroma_results = collection.query(
+                        query_embeddings=config["embeddings"],
+                        n_results=8
+                    )
+
+                documents = chroma_results.get("documents", [])
+                metadatas = chroma_results.get("metadatas", [])
+
+                for qi in range(len(documents)):
+                    for i, text in enumerate(documents[qi]):
+                        meta = metadatas[qi][i] if qi < len(metadatas) and i < len(metadatas[qi]) else {}
+                        results.append(
+                            {
+                                "company_name": meta.get("company_name", company_name),
+                                "content": text,
+                                "source_metadata": {
+                                    "document": meta.get("file_name") or meta.get("document", "Uploaded Document"),
+                                    "page": meta.get("page_number") or meta.get("page"),
+                                    "reference_id": meta.get("chunk_index") or meta.get("chunk_id"),
+                                },
+                            }
+                        )
+            except Exception as e:
+                logger.warning("ChromaDB retrieval failed for %s: %s", provider, e)
+                
+        logger.info("ChromaDB returned %d total chunks across %d queries", len(results), len(queries))
     except Exception as e:
         logger.warning("ChromaDB retrieval failed or not available: %s", e)
 
-    # 2. Search FAISS (legacy index) with multi-query
-    if _vector_store_retriever is not None:
-        faiss_count = 0
-        for query in queries:
-            try:
-                docs = _vector_store_retriever.invoke(query)
-                for doc in (docs or []):
-                    metadata = doc.metadata or {}
-                    results.append(
-                        {
-                            "company_name": metadata.get("company_name", company_name),
-                            "content": doc.page_content,
-                            "source_metadata": {
-                                "document": metadata.get("source", "FAISS Index"),
-                                "page": metadata.get("page"),
-                                "reference_id": metadata.get("chunk_id"),
-                            },
-                        }
-                    )
-                    faiss_count += 1
-            except Exception as e:
-                logger.warning("FAISS query failed: %s", e)
-        if faiss_count:
-            logger.info("FAISS returned %d total chunks", faiss_count)
+
 
     # Deduplicate, rank, and return top chunks
     if results:
@@ -265,7 +228,7 @@ def call_document_agent(company_name: str, question: str = "", workspace_id: str
 
 
 
-def search_company(company_name: str, question: str, workspace_id: str = None) -> str:
+def search_company(company_name: str, question: str, workspace_id: str | None = None) -> str:
     """Search the vector store for financial information about a company.
 
     Args:
@@ -291,24 +254,7 @@ def search_company(company_name: str, question: str, workspace_id: str = None) -
 
 class ResearchAgent:
     def __init__(self):
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            raise ValueError("GROQ_API_KEY not found. Add it to your .env file.")
-
-        self.llm = ChatGroq(
-            model=os.getenv("MODEL_NAME", "llama-3.3-70b-versatile"),
-            temperature=float(os.getenv("TEMPERATURE", "0")),
-            api_key=api_key,
-        )
-
-        index_path = os.getenv("FAISS_INDEX_PATH", "./faiss_index")
-        embedding_model = os.getenv(
-            "EMBEDDING_MODEL",
-            "sentence-transformers/all-MiniLM-L6-v2"
-        )
-
-        global _vector_store_retriever
-        _vector_store_retriever = load_vector_store(index_path, embedding_model)
+        pass
 
     def _extract_company_names(self, user_query: str) -> List[str]:
         """Use the LLM to extract company names from the user query."""
@@ -323,7 +269,8 @@ class ResearchAgent:
             f'Query: "{user_query}"'
         )
         try:
-            response = self.llm.invoke(prompt)
+            router = get_llm_router()
+            response = router.invoke("research", [HumanMessage(content=prompt)], temperature=0.0)
             content = response.content.strip()
             # Strip markdown fences if present
             if content.startswith("```"):
@@ -432,7 +379,7 @@ class ResearchAgent:
         data["citations"] = final_citations
         return json.dumps(data)
 
-    def analyze(self, user_query: str, workspace_id: str = None) -> str:
+    def analyze(self, user_query: str, workspace_id: str | None = None) -> str:
         start_time = time.time()
         logger.info("=== Research Agent Query: %s ===", user_query)
 
@@ -513,6 +460,7 @@ INSTRUCTIONS:
 2. If the user asks a general conversational question (like "hello", "how are you"), respond politely in the "analysis" field and leave financial arrays empty.
 3. If the user asks for financial data, metrics, or comparisons, extract and populate the "companies" array.
 4. If there is no relevant financial data for the query, just provide your textual answer in the "analysis" field.
+5. IF the user's query contains an "Image description", base your answer about the image ENTIRELY on that description. Do NOT falsely claim the image is a financial report just because financial data was retrieved.
 
 Return a valid JSON object with this structure:
 {{
@@ -576,7 +524,8 @@ Return ONLY the JSON object. No markdown fences."""
 
         llm_start = time.time()
         try:
-            response = self.llm.invoke(analysis_prompt)
+            router = get_llm_router()
+            response = router.invoke("research", [HumanMessage(content=analysis_prompt)], temperature=0.0)
             raw_output = response.content
         except Exception as e:
             logger.error("LLM analysis failed: %s", e)

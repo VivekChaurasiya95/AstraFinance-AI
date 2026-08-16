@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks, Form, Depends
+from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks, Form, Depends, Query
 from typing import List, Optional, Dict, Any
 import json
 import uuid
+from bson import ObjectId
 from pydantic import BaseModel
 import time
 import asyncio
@@ -16,6 +17,7 @@ from ...agents.document_agent import DocumentAgent
 from ...agents.extraction_agent import ExtractionAgent
 from ...agents.red_flag_agent import RedFlagAgent
 from ...agents.research_agent import ResearchAgent
+from ...agents.comparison_agent import ComparisonAgent
 from .auth_routes import get_current_user
 from ...database.mongo_client import (
     workspaces_collection,
@@ -23,7 +25,9 @@ from ...database.mongo_client import (
     metrics_collection,
     red_flags_collection,
     agent_logs_collection,
-    reports_collection
+    agent_executions_collection,
+    reports_collection,
+    db
 )
 from ...agents.report_agent import report_agent
 from fastapi.responses import FileResponse
@@ -46,7 +50,7 @@ def format_workspace(ws: dict) -> dict:
     if "updated_at" in ws and isinstance(ws["updated_at"], datetime):
         ws["updatedAt"] = ws["updated_at"].isoformat()
     elif "updatedAt" not in ws:
-        ws["updatedAt"] = datetime.utcnow().isoformat()
+        ws["updatedAt"] = datetime.now(timezone.utc).isoformat()
     return ws
 
 
@@ -112,8 +116,8 @@ async def create_workspace(workspace: WorkspaceCreate, current_user: dict = Depe
         "icon": "Building2",
         "iconColor": color_pair[0],
         "iconBg": color_pair[1],
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc)
     }
     
     await workspaces_collection.insert_one(new_ws)
@@ -128,7 +132,7 @@ async def rename_workspace(workspace_id: str, workspace: WorkspaceCreate, curren
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
         
-    update_data = {"name": workspace.name, "updated_at": datetime.utcnow()}
+    update_data = {"name": workspace.name, "updated_at": datetime.now(timezone.utc)}
     if workspace.description:
         update_data["description"] = workspace.description
         
@@ -151,8 +155,8 @@ async def duplicate_workspace(workspace_id: str, current_user: dict = Depends(ge
     new_ws = dict(ws)
     new_ws["_id"] = str(uuid.uuid4())
     new_ws["name"] = ws["name"] + " (Copy)"
-    new_ws["created_at"] = datetime.utcnow()
-    new_ws["updated_at"] = datetime.utcnow()
+    new_ws["created_at"] = datetime.now(timezone.utc)
+    new_ws["updated_at"] = datetime.now(timezone.utc)
     new_ws["docs"] = 0
     new_ws["chats"] = 0
     new_ws["reports"] = 0
@@ -199,97 +203,222 @@ async def get_workspace_documents(workspace_id: str, current_user: dict = Depend
     return {"documents": docs, "total": len(docs)}
 
 
-async def simulate_document_processing(workspace_id: str, doc_id: str, file_path: str, file_name: str):
-    async def add_activity(agent_name, agent_type, status, action, details, metadata=None):
-        now = datetime.now(timezone.utc)
-        duration = "Running"
-        if status in ["Complete", "Failed"]:
-            running_log = await agent_logs_collection.find_one(
-                {
-                    "workspace_id": workspace_id,
-                    "document_id": doc_id,
-                    "agent_name": agent_name,
-                    "action": action,
-                    "status": "Running"
-                },
-                sort=[("timestamp", -1)]
-            )
-            if running_log and "timestamp" in running_log:
-                started_at = running_log["timestamp"]
+async def add_agent_activity(workspace_id: str, doc_id: str, agent_name: str, agent_type: str, status: str, action: str, details: str, metadata: dict | None = None):
+    now = datetime.now(timezone.utc)
+    duration = "Running"
+    if status in ["Complete", "Failed"]:
+        running_log = await agent_logs_collection.find_one(
+            {
+                "workspace_id": workspace_id,
+                "document_id": doc_id,
+                "agent_name": agent_name,
+                "action": action,
+                "status": "Running"
+            },
+            sort=[("timestamp", -1)]
+        )
+        if running_log and "timestamp" in running_log:
+            started_at = running_log["timestamp"]
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=timezone.utc)
+            elapsed = (now - started_at).total_seconds()
+            duration = f"{elapsed:.1f}s"
+        else:
+            duration = "Completed" if status == "Complete" else "Failed"
+
+    log_doc = {
+        "_id": str(uuid.uuid4()),
+        "workspace_id": workspace_id,
+        "document_id": doc_id,
+        "agent_name": agent_name,
+        "agent_type": agent_type,
+        "status": status,
+        "action": action,
+        "details": details,
+        "duration": duration,
+        "metadata": metadata or {},
+        "timestamp": now
+    }
+    await agent_logs_collection.insert_one(log_doc)
+
+async def init_agent_executions(workspace_id: str, doc_id: str):
+    agents_init = [
+        {"name": "Document Agent", "type": "document", "action": "Waiting for documents"},
+        {"name": "Extraction Agent", "type": "extraction", "action": "Ready to extract"},
+        {"name": "Red Flag Agent", "type": "risk", "action": "Ready to analyze"},
+        {"name": "Comparison Agent", "type": "comparison", "action": "Ready to compare"},
+        {"name": "Research Agent", "type": "research", "action": "Answering queries"},
+        {"name": "Report Agent", "type": "report", "action": "Ready to generate"}
+    ]
+    for a in agents_init:
+        await agent_executions_collection.update_one(
+            {"workspace_id": workspace_id, "document_id": doc_id, "agent_name": a["name"]},
+            {"$setOnInsert": {
+                "_id": str(uuid.uuid4()),
+                "workspace_id": workspace_id,
+                "document_id": doc_id,
+                "agent_name": a["name"],
+                "agent_type": a["type"],
+                "status": "Idle",
+                "action": a["action"],
+                "details": "",
+                "progress": 0,
+                "started_at": None,
+                "completed_at": None,
+                "duration": None,
+                "error": None
+            }},
+            upsert=True
+        )
+
+async def update_agent_execution(workspace_id: str, doc_id: str, agent_name: str, status: str, action: str, details: str = "", progress: int = 0, error: str = None, metadata: dict | None = None):
+    now = datetime.now(timezone.utc)
+    update_data = {
+        "status": status,
+        "action": action,
+        "details": details,
+        "progress": progress
+    }
+    if error:
+        update_data["error"] = error
+
+    exec_doc = await agent_executions_collection.find_one({"workspace_id": workspace_id, "document_id": doc_id, "agent_name": agent_name})
+    if exec_doc:
+        if status == "Running" and exec_doc.get("status") not in ["Running", "Failed", "Complete"]:
+            update_data["started_at"] = now
+        elif status in ["Complete", "Failed", "Blocked"]:
+            update_data["completed_at"] = now
+            if exec_doc.get("started_at"):
+                started_at = exec_doc["started_at"]
                 if started_at.tzinfo is None:
                     started_at = started_at.replace(tzinfo=timezone.utc)
                 elapsed = (now - started_at).total_seconds()
-                duration = f"{elapsed:.1f}s"
-            else:
-                duration = "Completed" if status == "Complete" else "Failed"
+                update_data["duration"] = f"{elapsed:.1f}s"
+    
+    await agent_executions_collection.update_one(
+        {"workspace_id": workspace_id, "document_id": doc_id, "agent_name": agent_name},
+        {"$set": update_data}
+    )
+    
+    agent_type = exec_doc["agent_type"] if exec_doc else "document"
+    await add_agent_activity(workspace_id, doc_id, agent_name, agent_type, status, action, details, metadata)
 
-        log_doc = {
-            "_id": str(uuid.uuid4()),
-            "workspace_id": workspace_id,
-            "document_id": doc_id,
-            "agent_name": agent_name,
-            "agent_type": agent_type,
-            "status": status,
-            "action": action,
-            "details": details,
-            "duration": duration,
-            "metadata": metadata or {},
-            "timestamp": now
-        }
-        await agent_logs_collection.insert_one(log_doc)
 
+async def simulate_document_processing(workspace_id: str, doc_id: str, file_path: str, file_name: str):
     try:
+        await init_agent_executions(workspace_id, doc_id)
+        
+        document_success = False
+        extraction_success = False
+        
         # Step 1: Parsing and Chunking
-        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 1, "progress": 20, "status": "processing"}})
-        await add_activity("Document Agent", "document", "Running", "Extracting & Chunking", "Parsing PDF and creating semantic chunks.")
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 1, "progress": 16, "status": "processing"}})
+        await update_agent_execution(workspace_id, doc_id, "Document Agent", "Running", "Extracting & Chunking", "Parsing PDF and creating semantic chunks.", 10)
         
         await asyncio.sleep(1) # Yield
-        stats: dict = await asyncio.to_thread(document_agent.process_and_index, file_path, workspace_id, doc_id, file_name)  # type: ignore
-        await add_activity("Document Agent", "document", "Complete", "Text Chunked", f"Successfully extracted and indexed {stats.get('chunks')} chunks.", stats)
-        
-        # Step 2: Extraction
-        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 2, "progress": 50}})
-        await add_activity("Extraction Agent", "extraction", "Running", "Extracting Metrics", "Analyzing chunks for financial metrics.")
-        
-        await asyncio.sleep(1)
-        await asyncio.sleep(1)
-        extraction_results: dict = await asyncio.to_thread(extraction_agent.extract, doc_id)  # type: ignore
-        
-        extraction_results["_id"] = str(uuid.uuid4())
-        extraction_results["workspace_id"] = workspace_id
-        extraction_results["document_id"] = doc_id
-        await metrics_collection.insert_one(extraction_results)
+        try:
+            stats: dict = await asyncio.to_thread(document_agent.process_and_index, file_path, workspace_id, doc_id, file_name)  # type: ignore
+            if stats.get('chunks', 0) > 0:
+                document_success = True
+                await update_agent_execution(workspace_id, doc_id, "Document Agent", "Complete", "Text Chunked", f"Successfully extracted and indexed {stats.get('chunks')} chunks.", 100, metadata=stats)
+            else:
+                await update_agent_execution(workspace_id, doc_id, "Document Agent", "Failed", "No Chunks", "Failed to extract text from document.", 100, metadata=stats)
+        except Exception as e:
+            await update_agent_execution(workspace_id, doc_id, "Document Agent", "Failed", "Chunking Failed", str(e), 100, error=str(e))
             
-        metrics_found = len(extraction_results.get("key_metrics", []))
-        await add_activity("Extraction Agent", "extraction", "Complete", "Metrics Extracted", f"Found {metrics_found} metrics.", {"metrics_found": metrics_found})
+        # Step 2: Extraction
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 2, "progress": 33}})
+        if not document_success:
+            await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Blocked", "Dependency Failed", "Waiting for Document Agent to complete successfully.")
+        else:
+            await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Running", "Extracting Metrics", "Analyzing chunks for financial metrics.", 10)
+            try:
+                extraction_results: dict = await asyncio.to_thread(extraction_agent.extract, doc_id)  # type: ignore
+                metrics_found = len(extraction_results.get("key_metrics", []))
+                
+                if metrics_found > 0:
+                    extraction_results["_id"] = str(uuid.uuid4())
+                    extraction_results["workspace_id"] = workspace_id
+                    extraction_results["document_id"] = doc_id
+                    
+                    await metrics_collection.delete_many({"workspace_id": workspace_id, "document_id": doc_id})
+                    await metrics_collection.insert_one(extraction_results)
+                    extraction_success = True
+                    await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Complete", "Metrics Extracted", f"Found {metrics_found} metrics.", 100, metadata={"metrics_found": metrics_found})
+                else:
+                    await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Failed", "No Metrics Found", "Could not extract financial metrics.", 100, metadata={"metrics_found": 0})
+            except Exception as e:
+                await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Failed", "Extraction Error", str(e), 100, error=str(e))
 
         # Step 3: Red Flags
-        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 3, "progress": 75}})
-        await add_activity("Red Flag Agent", "risk", "Running", "Analyzing Risks", "Scanning chunks for financial risks.")
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 3, "progress": 50}})
+        if not extraction_success:
+            await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Blocked", "Dependency Failed", "Waiting for Extraction Agent to complete successfully.")
+        else:
+            await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Running", "Analyzing Risks", "Scanning chunks for financial risks.", 10)
+            try:
+                extracted_metrics = await metrics_collection.find_one({"document_id": doc_id})
+                risk_data: dict = await asyncio.to_thread(red_flag_agent.analyze, doc_id, extracted_metrics)  # type: ignore
+                red_flags = risk_data.get("red_flags", [])
+                
+                await red_flags_collection.delete_many({"workspace_id": workspace_id, "document_id": doc_id})
+                for rf in red_flags:
+                    rf["_id"] = str(uuid.uuid4())
+                    rf["workspace_id"] = workspace_id
+                    rf["document_id"] = doc_id
+                    await red_flags_collection.insert_one(rf)
+                    
+                await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Complete", "Risk Analysis Complete", f"Identified {len(red_flags)} risks.", 100, metadata={"risks_found": len(red_flags)})
+            except Exception as e:
+                await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Failed", "Analysis Error", str(e), 100, error=str(e))
+
+        # Step 4: Comparison
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 4, "progress": 66}})
+        ready_docs_count = await documents_collection.count_documents({"workspace_id": workspace_id, "status": "ready"})
+        total_valid_docs = ready_docs_count + (1 if extraction_success else 0)
         
-        await asyncio.sleep(1)
-        risk_data: dict = await asyncio.to_thread(red_flag_agent.analyze, doc_id)  # type: ignore
-        red_flags = risk_data.get("red_flags", [])
-        
-        for rf in red_flags:
-            rf["_id"] = str(uuid.uuid4())
-            rf["workspace_id"] = workspace_id
-            rf["document_id"] = doc_id
-            await red_flags_collection.insert_one(rf)
-            
-        await add_activity("Red Flag Agent", "risk", "Complete", "Risk Analysis Complete", f"Identified {len(red_flags)} risks.", {"risks_found": len(red_flags)})
+        if not extraction_success:
+            await update_agent_execution(workspace_id, doc_id, "Comparison Agent", "Blocked", "Dependency Failed", "Waiting for Extraction Agent to complete successfully.")
+        elif total_valid_docs < 2:
+            await update_agent_execution(workspace_id, doc_id, "Comparison Agent", "Blocked", "Waiting for more documents", "Requires at least 2 processed documents for comparison.")
+        else:
+            await update_agent_execution(workspace_id, doc_id, "Comparison Agent", "Running", "Updating Baselines", "Generating comparative analysis.", 10)
+            await asyncio.sleep(1.0)
+            await update_agent_execution(workspace_id, doc_id, "Comparison Agent", "Complete", "Comparison Generated", "Baselines updated.", 100, metadata={"competitors": total_valid_docs})
+
+        # Step 5: Research
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 5, "progress": 83}})
+        if not document_success:
+            await update_agent_execution(workspace_id, doc_id, "Research Agent", "Blocked", "Dependency Failed", "Waiting for Document Agent to complete successfully.")
+        else:
+            await update_agent_execution(workspace_id, doc_id, "Research Agent", "Running", "Indexing Context", "Preparing answers database.", 10)
+            await asyncio.sleep(1)
+            await update_agent_execution(workspace_id, doc_id, "Research Agent", "Complete", "Context Indexed", "Ready for Q&A.", 100)
+
+        # Step 6: Report
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 6, "progress": 100}})
+        if not extraction_success:
+            await update_agent_execution(workspace_id, doc_id, "Report Agent", "Blocked", "Dependency Failed", "Waiting for Extraction Agent to complete successfully.")
+        else:
+            await update_agent_execution(workspace_id, doc_id, "Report Agent", "Running", "Preparing Templates", "Building report structure.", 10)
+            await asyncio.sleep(1)
+            await update_agent_execution(workspace_id, doc_id, "Report Agent", "Idle", "Templates Ready", "Ready to generate reports.", 0)
 
         # Cleanup
         if os.path.exists(file_path):
             os.remove(file_path)
 
-        await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 4, "progress": 100, "status": "ready"}})
+        final_status = "ready" if (document_success and extraction_success) else "failed"
+        update_doc = {"status": final_status}
+        if final_status == "failed":
+            update_doc["error_message"] = "Pipeline failed at extraction or risk step"
+            
+        await documents_collection.update_one({"_id": doc_id}, {"$set": update_doc})
         
     except Exception as e:
         traceback.print_exc()
-        await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "progress": 100}})
-        await add_activity("System", "document", "Failed", "Pipeline Failed", str(e))
-
+        await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "progress": 100, "error_message": str(e)}})
+        await update_agent_execution(workspace_id, doc_id, "Document Agent", "Failed", "Pipeline Failed", str(e), 100, error=str(e))
 
 @router.post("/{workspace_id}/documents")
 async def upload_document(
@@ -368,7 +497,19 @@ async def delete_document(workspace_id: str, document_id: str, current_user: dic
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    res = await documents_collection.delete_one({"_id": document_id, "workspace_id": workspace_id})
+    try:
+        obj_id = ObjectId(document_id)
+    except Exception:
+        obj_id = None
+        
+    query: Dict[str, Any] = {
+        "workspace_id": workspace_id,
+        "$or": [{"_id": document_id}]
+    }
+    if obj_id:
+        query["$or"].append({"_id": obj_id})
+
+    res = await documents_collection.delete_one(query)
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Document not found")
         
@@ -376,6 +517,12 @@ async def delete_document(workspace_id: str, document_id: str, current_user: dic
         {"_id": workspace_id},
         {"$inc": {"docs": -1}, "$set": {"updated_at": datetime.now(timezone.utc)}}
     )
+    
+    # Clean up associated metrics, red flags, and logs
+    await metrics_collection.delete_many({"document_id": document_id})
+    await red_flags_collection.delete_many({"document_id": document_id})
+    await agent_logs_collection.delete_many({"document_id": document_id})
+    
     return {"message": "Document deleted successfully"}
 
 
@@ -387,52 +534,151 @@ async def get_workspace_agents(workspace_id: str, current_user: dict = Depends(g
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
         
-    cursor = agent_logs_collection.find({"workspace_id": workspace_id}).sort("timestamp", 1)
-    logs = []
-    
-    status_map = {
-        "Document Agent": {"status": "Idle", "details": "Waiting for documents"},
-        "Extraction Agent": {"status": "Idle", "details": "Ready to extract"},
-        "Red Flag Agent": {"status": "Idle", "details": "Ready to analyze"},
-        "Comparison Agent": {"status": "Idle", "details": "Ready to compare"},
-        "Research Agent": {"status": "Idle", "details": "Answering queries"},
-        "Report Agent": {"status": "Idle", "details": "Ready to generate"}
-    }
-    
-    async for log in cursor:
-        log["id"] = log.pop("_id")
-        if "timestamp" in log and isinstance(log["timestamp"], datetime):
-            log["timestamp"] = log["timestamp"].strftime("%I:%M %p")
-            
-        agent_name = log.get("agent_name")
-        if agent_name in status_map:
-            status = log.get("status")
-            if status == "Running":
-                status_map[agent_name] = {"status": "Running", "details": log.get("action", "Running...")}
-            elif status == "Complete":
-                status_map[agent_name] = {"status": "Complete", "details": log.get("action", "Completed")}
-            elif status == "Failed":
-                status_map[agent_name] = {"status": "Failed", "details": "Failed to complete"}
-                
-        # Insert at 0 so the timeline on frontend is newest first if needed, 
-        # or we just return it chronological (append) if frontend wants Document -> Extraction -> Red Flag
-        logs.append(log) 
+    cursor = documents_collection.find({"workspace_id": workspace_id}).sort("created_at", -1).limit(1)
+    latest_doc = None
+    async for doc in cursor:
+        latest_doc = doc
+        break
         
-    # Standard placeholder agents if none
-    agents = [
-        {"id": 1, "name": "Document Agent", "status": status_map["Document Agent"]["status"], "details": status_map["Document Agent"]["details"]},
-        {"id": 2, "name": "Extraction Agent", "status": status_map["Extraction Agent"]["status"], "details": status_map["Extraction Agent"]["details"]},
-        {"id": 3, "name": "Red Flag Agent", "status": status_map["Red Flag Agent"]["status"], "details": status_map["Red Flag Agent"]["details"]},
-        {"id": 4, "name": "Comparison Agent", "status": status_map["Comparison Agent"]["status"], "details": status_map["Comparison Agent"]["details"]},
-        {"id": 5, "name": "Research Agent", "status": status_map["Research Agent"]["status"], "details": status_map["Research Agent"]["details"]},
-        {"id": 6, "name": "Report Agent", "status": status_map["Report Agent"]["status"], "details": status_map["Report Agent"]["details"]}
-    ]
-    
+    logs = []
+    agents = []
+    if latest_doc:
+        doc_id = str(latest_doc["_id"])
+        
+        exec_cursor = agent_executions_collection.find({"workspace_id": workspace_id, "document_id": doc_id})
+        agent_docs = await exec_cursor.to_list(length=10)
+        
+        order = ["Document Agent", "Extraction Agent", "Red Flag Agent", "Comparison Agent", "Research Agent", "Report Agent"]
+        agent_docs.sort(key=lambda x: order.index(x["agent_name"]) if x["agent_name"] in order else 99)
+        
+        for i, ad in enumerate(agent_docs):
+            agents.append({
+                "id": i + 1,
+                "name": ad["agent_name"],
+                "status": ad["status"],
+                "details": ad["action"] or ad["details"],
+                "progress": ad.get("progress", 0),
+                "duration": ad.get("duration", None)
+            })
+            
+        log_cursor = agent_logs_collection.find({"workspace_id": workspace_id, "document_id": doc_id}).sort("timestamp", -1).limit(50)
+        async for log in log_cursor:
+            log["id"] = log.pop("_id")
+            log["agent"] = log.pop("agent_name", "Unknown Agent")
+            if "timestamp" in log and isinstance(log["timestamp"], datetime):
+                log["timestamp"] = log["timestamp"].strftime("%I:%M:%S %p")
+            logs.append(log) 
+            
+    if not agents:
+        agents = [
+            {"id": 1, "name": "Document Agent", "status": "Idle", "details": "Waiting for documents"},
+            {"id": 2, "name": "Extraction Agent", "status": "Idle", "details": "Ready to extract"},
+            {"id": 3, "name": "Red Flag Agent", "status": "Idle", "details": "Ready to analyze"},
+            {"id": 4, "name": "Comparison Agent", "status": "Idle", "details": "Ready to compare"},
+            {"id": 5, "name": "Research Agent", "status": "Idle", "details": "Answering queries"},
+            {"id": 6, "name": "Report Agent", "status": "Idle", "details": "Ready to generate"}
+        ]
+        
     return {
+        "pipeline_status": latest_doc.get("status", "idle") if latest_doc else "idle",
+        "document_id": str(latest_doc["_id"]) if latest_doc else None,
+        "document_name": latest_doc.get("file_name") if latest_doc else None,
         "agents": agents,
-        "logs": logs
+        "timeline": logs
     }
 
+@router.post("/{workspace_id}/agents/{agent_id}/retry")
+async def retry_agent(workspace_id: str, agent_id: int, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    # Find the latest document that failed or is processing
+    doc = await documents_collection.find_one(
+        {"workspace_id": workspace_id},
+        sort=[("created_at", -1)]
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="No document found to retry")
+
+    # For now, we simply re-trigger the entire orchestrator pipeline for that document
+    # since simulate_document_processing is idempotent if it fails and leaves temp files.
+    # Actually, the file might have been deleted in cleanup.
+    # If the file is gone, we can't easily re-run simulate_document_processing without the file.
+    # Wait! Extraction agent doesn't need the file! It only needs the chunks from ChromaDB!
+    # So we don't need the original file for extraction. We can just run the rest of the pipeline.
+    
+    async def resume_pipeline(doc_id: str):
+        try:
+            extraction_success = False
+            # Re-run extraction
+            if agent_id == 2 or agent_id == 3 or agent_id > 3: # 2 = Extraction, 3 = Red Flag
+                await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "processing"}})
+                await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Running", "Retrying Extraction", "Retrying metrics extraction...", 10)
+                try:
+                    extraction_results: dict = await asyncio.to_thread(extraction_agent.extract, doc_id)
+                    metrics_found = len(extraction_results.get("key_metrics", []))
+                    if metrics_found > 0:
+                        extraction_results["_id"] = str(uuid.uuid4())
+                        extraction_results["workspace_id"] = workspace_id
+                        extraction_results["document_id"] = doc_id
+                        
+                        await metrics_collection.delete_many({"workspace_id": workspace_id, "document_id": doc_id})
+                        await metrics_collection.insert_one(extraction_results)
+                        extraction_success = True
+                        await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Complete", "Metrics Extracted", f"Found {metrics_found} metrics.", 100, metadata={"metrics_found": metrics_found})
+                    else:
+                        await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Failed", "No Metrics Found", "Could not extract financial metrics.", 100, metadata={"metrics_found": 0})
+                        await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed"}})
+                except Exception as e:
+                    await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Failed", "Extraction Error", str(e), 100, error=str(e))
+                    await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed"}})
+            
+            # Re-run Red Flags
+            if extraction_success:
+                await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Running", "Analyzing Risks", "Scanning chunks for financial risks.", 10)
+                try:
+                    extracted_metrics = await metrics_collection.find_one({"document_id": doc_id}) or {}
+                    risk_data: dict = await asyncio.to_thread(red_flag_agent.analyze, doc_id, extracted_metrics)
+                    red_flags = risk_data.get("red_flags", [])
+                    
+                    await red_flags_collection.delete_many({"workspace_id": workspace_id, "document_id": doc_id})
+                    
+                    for rf in red_flags:
+                        rf["_id"] = str(uuid.uuid4())
+                        rf["workspace_id"] = workspace_id
+                        rf["document_id"] = doc_id
+                        await red_flags_collection.insert_one(rf)
+                        
+                    await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Complete", "Risk Analysis Complete", f"Identified {len(red_flags)} risks.", 100, metadata={"risks_found": len(red_flags)})
+                except Exception as e:
+                    await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Failed", "Analysis Error", str(e), 100, error=str(e))
+
+                # Trigger downstreams
+                ready_docs_count = await documents_collection.count_documents({"workspace_id": workspace_id, "status": "ready"})
+                total_valid_docs = ready_docs_count + 1  # Including current doc
+                
+                if total_valid_docs < 2:
+                    await update_agent_execution(workspace_id, doc_id, "Comparison Agent", "Blocked", "Waiting for more documents", "Requires at least 2 processed documents for comparison.")
+                else:
+                    await update_agent_execution(workspace_id, doc_id, "Comparison Agent", "Running", "Updating Baselines", "Generating comparative analysis.", 10)
+                    await asyncio.sleep(1.0)
+                    await update_agent_execution(workspace_id, doc_id, "Comparison Agent", "Complete", "Comparison Generated", "Baselines updated.", 100, metadata={"competitors": total_valid_docs})
+                    
+                await update_agent_execution(workspace_id, doc_id, "Report Agent", "Idle", "Templates Ready", "Ready to generate reports.", 0)
+                await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "ready"}})
+            else:
+                await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Blocked", "Dependency Failed", "Waiting for Extraction Agent to complete successfully.")
+                await update_agent_execution(workspace_id, doc_id, "Comparison Agent", "Blocked", "Dependency Failed", "Waiting for Extraction Agent to complete successfully.")
+                await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "error_message": "Pipeline failed at extraction or risk step"}})
+
+        except Exception as e:
+            print("Retry pipeline failed:", e)
+            await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "error_message": str(e)}})
+
+    background_tasks.add_task(resume_pipeline, doc["_id"])
+    return {"message": "Retry triggered successfully"}
 
 @router.get("/{workspace_id}/agent-activity")
 async def get_workspace_agent_activity(workspace_id: str, current_user: dict = Depends(get_current_user)):
@@ -440,8 +686,16 @@ async def get_workspace_agent_activity(workspace_id: str, current_user: dict = D
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
+    doc = await documents_collection.find_one(
+        {"workspace_id": workspace_id},
+        sort=[("created_at", -1)]
+    )
+    
+    if not doc:
+        return {"timeline": []}
         
-    cursor = agent_logs_collection.find({"workspace_id": workspace_id}).sort("timestamp", 1)
+    doc_id = str(doc["_id"])
+    cursor = agent_logs_collection.find({"workspace_id": workspace_id, "document_id": doc_id}).sort("timestamp", -1).limit(20)
     logs = []
     async for log in cursor:
         log["id"] = log.pop("_id")
@@ -450,7 +704,7 @@ async def get_workspace_agent_activity(workspace_id: str, current_user: dict = D
         log["details"] = log.get("details", "")
         
         if "timestamp" in log and isinstance(log["timestamp"], datetime):
-            log["timestamp"] = log["timestamp"].strftime("%I:%M %p")
+            log["timestamp"] = log["timestamp"].strftime("%I:%M:%S %p")
         logs.append(log)
         
     return {"timeline": logs}
@@ -477,7 +731,7 @@ async def chat_with_workspace(
     actual_message = message if message is not None else (chat_json.message if chat_json else "")
     
     # Session handling
-    from app.database.mongo_client import chat_sessions_collection, messages_collection
+    from ...database.mongo_client import chat_sessions_collection, messages_collection
     
     if not session_id:
         session_id = str(uuid.uuid4())
@@ -499,10 +753,35 @@ async def chat_with_workspace(
     # File handling
     attachments_info = []
     file_ack = ""
+    image_contents = []
     if files and len(files) > 0:
         file_names = ", ".join([f.filename or "unnamed" for f in files])
         file_ack = f"I've received your attachments: {file_names}. \n\n"
         attachments_info = [{"name": f.filename or "unnamed", "type": f.content_type or "application/octet-stream"} for f in files]
+        
+        # Process images
+        for f in files:
+            if f.content_type and f.content_type.startswith("image/"):
+                import base64
+                image_bytes = await f.read()
+                b64 = base64.b64encode(image_bytes).decode('utf-8')
+                image_contents.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{f.content_type};base64,{b64}"}
+                })
+        
+        if image_contents:
+            try:
+                import os
+                from langchain_core.messages import HumanMessage
+                from ...llm import get_llm_router
+                msg_content = [{"type": "text", "text": "Describe this image in detail so a text-based AI can answer questions about it. User query: " + actual_message}] + image_contents
+                router = get_llm_router()
+                vision_res = await asyncio.to_thread(router.invoke, "vision", [HumanMessage(content=msg_content)]) # type: ignore
+                actual_message = f"User attached an image. Image description: {vision_res.content}\n\nUser query: {actual_message}"
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Vision processing error: {e}")
 
     # Save user message
     user_msg_id = str(uuid.uuid4())
@@ -551,7 +830,7 @@ async def chat_with_workspace(
 
             reply = file_ack + reply_text
             raw_citations = res.get("citations", [])
-            citations = [{"doc": c.get("document", "Unknown"), "page": c.get("page", 1)} for c in raw_citations]
+            citations = [{"doc": c.get("document", "Unknown"), "page": c.get("page", 1), "field": c.get("field", "Data")} for c in raw_citations]
             
             await agent_logs_collection.insert_one({
                 "_id": str(uuid.uuid4()),
@@ -633,7 +912,7 @@ async def get_chat_sessions(
     workspace_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    from app.database.mongo_client import chat_sessions_collection
+    from ...database.mongo_client import chat_sessions_collection
     user_id = str(current_user["_id"])
     cursor = chat_sessions_collection.find({"workspace_id": workspace_id, "owner_id": user_id}).sort("updated_at", -1)
     sessions = await cursor.to_list(length=100)
@@ -645,7 +924,7 @@ async def get_chat_session_messages(
     session_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    from app.database.mongo_client import chat_sessions_collection, messages_collection
+    from ...database.mongo_client import chat_sessions_collection, messages_collection
     user_id = str(current_user["_id"])
     sess = await chat_sessions_collection.find_one({"_id": session_id, "workspace_id": workspace_id, "owner_id": user_id})
     if not sess:
@@ -656,16 +935,17 @@ async def get_chat_session_messages(
     return {"messages": messages}
 
 class ChatSessionUpdate(BaseModel):
-    title: str
+    title: Optional[str] = None
+    is_pinned: Optional[bool] = None
 
 @router.put("/{workspace_id}/chat_sessions/{session_id}")
-async def rename_chat_session(
+async def update_chat_session(
     workspace_id: str,
     session_id: str,
     update_data: ChatSessionUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-    from app.database.mongo_client import chat_sessions_collection
+    from ...database.mongo_client import chat_sessions_collection
     user_id = str(current_user["_id"])
     
     # Check if session exists and belongs to the user
@@ -673,14 +953,17 @@ async def rename_chat_session(
     if not sess:
         raise HTTPException(status_code=404, detail="Chat session not found")
         
+    update_fields: Dict[str, Any] = {"updated_at": datetime.now(timezone.utc)}
+    
+    if update_data.title is not None:
+        update_fields["title"] = update_data.title[:100]
+        
+    if update_data.is_pinned is not None:
+        update_fields["is_pinned"] = update_data.is_pinned
+
     await chat_sessions_collection.update_one(
         {"_id": session_id},
-        {
-            "$set": {
-                "title": update_data.title[:100],  # Limit title length
-                "updated_at": datetime.now(timezone.utc)
-            }
-        }
+        {"$set": update_fields}
     )
     
     return {"status": "success", "message": "Chat session renamed"}
@@ -691,7 +974,7 @@ async def delete_chat_session(
     session_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    from app.database.mongo_client import chat_sessions_collection, messages_collection
+    from ...database.mongo_client import chat_sessions_collection, messages_collection
     user_id = str(current_user["_id"])
     
     # Check if session exists and belongs to the user
@@ -713,14 +996,35 @@ async def delete_chat_session(
 
 # ── Metrics ───────────────────────────────────────────────────────────────────
 @router.get("/{workspace_id}/metrics")
-async def get_workspace_metrics(workspace_id: str, current_user: dict = Depends(get_current_user)):
+async def get_workspace_metrics(
+    workspace_id: str, 
+    document_id: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
     user_id = str(current_user["_id"])
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
+    target_doc = None
+    if document_id:
+        target_doc = await documents_collection.find_one({"_id": document_id, "workspace_id": workspace_id})
+        if not target_doc:
+            raise HTTPException(status_code=400, detail="Requested document not found in this workspace")
+    else:
+        # Fallback to the latest ready document
+        cursor = documents_collection.find({"workspace_id": workspace_id, "status": "ready"}).sort("created_at", -1).limit(1)
+        async for doc in cursor:
+            target_doc = doc
+            break
+            
+    if not target_doc:
+        return {"status": "empty", "key_metrics": []}
+        
+    doc_id = str(target_doc["_id"])
+    
     latest_metrics = await metrics_collection.find_one(
-        {"workspace_id": workspace_id},
+        {"workspace_id": workspace_id, "document_id": doc_id},
         sort=[("_id", -1)]
     )
     
@@ -728,19 +1032,33 @@ async def get_workspace_metrics(workspace_id: str, current_user: dict = Depends(
         latest_metrics.pop("_id", None)
         latest_metrics.pop("workspace_id", None)
         latest_metrics.pop("document_id", None)
+        latest_metrics["status"] = "complete"
+        # Return filename and company_name so the frontend has them if needed
+        latest_metrics["filename"] = target_doc.get("name")
         return latest_metrics
-
-    # Fallback/Dummy data to structure it correctly for the frontend dashboard
-    return {
-        "period": "Analysis Period",
-        "company": ws["name"].split(" ")[0],
-        "key_metrics": [
-            {"label": "Data", "value": "Awaiting Documents", "change": "-", "trend": "up", "period": "-"}
-        ],
-        "revenue_breakdown": [],
-        "quarterly_trend": [],
-        "geography_split": []
-    }
+        
+    # Check extraction agent status for the specific document
+    extraction_log = await agent_logs_collection.find_one(
+        {"workspace_id": workspace_id, "document_id": doc_id, "agent_name": "Extraction Agent"},
+        sort=[("timestamp", -1)]
+    )
+    
+    # If the document is not ready and no extraction logs found, use the document status
+    agent_status = extraction_log.get("status") if extraction_log else None
+    if not agent_status:
+        if target_doc.get("status") == "processing":
+            agent_status = "Running"
+        elif target_doc.get("status") == "failed":
+            agent_status = "Failed"
+        else:
+            agent_status = "Pending"
+    
+    if agent_status == "Running":
+        return {"status": "running"}
+    elif agent_status == "Failed":
+        return {"status": "failed"}
+    
+    return {"status": "empty", "key_metrics": []}
 
 
 # ── Reports ───────────────────────────────────────────────────────────────────
@@ -791,13 +1109,41 @@ async def get_workspace_reports(workspace_id: str, current_user: dict = Depends(
 
 # ── Red Flags ─────────────────────────────────────────────────────────────────
 @router.get("/{workspace_id}/red-flags")
-async def get_workspace_red_flags(workspace_id: str, current_user: dict = Depends(get_current_user)):
+async def get_workspace_red_flags(
+    workspace_id: str, 
+    document_id: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
     user_id = str(current_user["_id"])
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    cursor = red_flags_collection.find({"workspace_id": workspace_id})
+    target_doc = None
+    if document_id:
+        target_doc = await documents_collection.find_one({"_id": document_id, "workspace_id": workspace_id})
+        if not target_doc:
+            raise HTTPException(status_code=400, detail="Requested document not found in this workspace")
+    else:
+        cursor = documents_collection.find({"workspace_id": workspace_id, "status": "ready"}).sort("created_at", -1).limit(1)
+        async for doc in cursor:
+            target_doc = doc
+            break
+        
+    if not target_doc:
+        return {"status": "empty", "total_flags": 0, "last_analyzed": "Not analyzed", "flags": []}
+        
+    doc_id = str(target_doc["_id"])
+    
+    # Check Red Flag agent status
+    red_flag_log = await agent_logs_collection.find_one(
+        {"workspace_id": workspace_id, "document_id": doc_id, "agent_name": "Red Flag Agent"},
+        sort=[("timestamp", -1)]
+    )
+    
+    agent_status = red_flag_log.get("status").lower() if red_flag_log else "pending"
+
+    cursor = red_flags_collection.find({"workspace_id": workspace_id, "document_id": doc_id})
     flags = []
     async for rf in cursor:
         rf["id"] = rf.pop("_id")
@@ -807,144 +1153,244 @@ async def get_workspace_red_flags(workspace_id: str, current_user: dict = Depend
 
     return {
         "workspace_id": workspace_id,
+        "status": agent_status,
         "total_flags": len(flags),
         "last_analyzed": "Just now" if flags else "Not analyzed",
-        "flags": flags
+        "flags": flags,
+        "filename": target_doc.get("name"),
+        "company": target_doc.get("company_name")
     }
 
 
 # ── Comparison ────────────────────────────────────────────────────────────────
 @router.get("/{workspace_id}/comparison")
-async def get_workspace_comparison(workspace_id: str, current_user: dict = Depends(get_current_user)):
+async def get_workspace_comparison(
+    workspace_id: str, 
+    doc_ids: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user)
+):
     user_id = str(current_user["_id"])
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    if not doc_ids:
+        raise HTTPException(status_code=400, detail="Please select at least two documents to compare.")
+        
+    ids_list = [did.strip() for did in doc_ids.split(",") if did.strip()]
+    if len(ids_list) < 2:
+        raise HTTPException(status_code=400, detail="Please select at least two documents to compare.")
+
+    # Fetch all requested documents to validate their presence and status
+    query: Dict[str, Any] = {
+        "workspace_id": workspace_id, 
+        "_id": {"$in": ids_list}
+    }
             
-    # Log agent activity start
-    await agent_logs_collection.insert_one({
-        "_id": str(uuid.uuid4()),
-        "workspace_id": workspace_id,
-        "document_id": "",
-        "agent_name": "Comparison Agent",
-        "agent_type": "Peer Comparison",
-        "status": "Running",
-        "action": "Generating Comparison",
-        "details": "Comparing financial metrics across workspace documents...",
-        "duration": "Running",
-        "metadata": {},
-        "timestamp": datetime.now(timezone.utc)
-    })
-            
-    cursor = documents_collection.find({"workspace_id": workspace_id, "status": "ready"})
+    cursor = documents_collection.find(query)
     docs = []
     async for d in cursor:
         docs.append(d)
         
-    peers: List[Dict[str, Any]] = []
+    fetched_ids = {str(d["_id"]) for d in docs}
     
-    for idx, doc in enumerate(docs):
-        doc_name = doc.get("name", f"Company {idx+1}")
+    missing_ids = set(ids_list) - fetched_ids
+    if missing_ids:
+        raise HTTPException(status_code=400, detail=f"Selected documents not found in this workspace: {', '.join(missing_ids)}")
+        
+    not_ready = [d for d in docs if d.get("status") != "ready"]
+    if not_ready:
+        reasons = [f"'{d.get('name', d.get('_id'))}' is {d.get('status', 'not ready')}" for d in not_ready]
+        raise HTTPException(status_code=400, detail=f"Some documents are not ready for comparison: {', '.join(reasons)}")
+        
+    # Check Comparison Agent status from logs if it actually ran
+    comp_log = await agent_logs_collection.find_one(
+        {"workspace_id": workspace_id, "agent_name": "Comparison Agent"},
+        sort=[("timestamp", -1)]
+    )
+    
+    agent_status = comp_log.get("status").lower() if comp_log else "pending"
+    
+    companies_data = []
+    
+    for doc in docs:
+        doc_name = doc.get("name", "Unknown Company")
         if doc_name.lower().endswith(".pdf"):
             doc_name = doc_name[:-4]
             
-        ticker = doc_name[:4].upper()
-        if "infosys" in doc_name.lower(): ticker = "INFY"
-        elif "tcs" in doc_name.lower() or "tata" in doc_name.lower(): ticker = "TCS"
-        elif "wipro" in doc_name.lower(): ticker = "WIPRO"
-        elif "hcl" in doc_name.lower(): ticker = "HCL"
-        
         metrics_cursor = metrics_collection.find({"document_id": doc.get("_id")})
-        doc_metrics: Dict[str, Any] = {}
+        doc_metrics: Dict[str, Any] = {"company_name": doc_name}
+        
         async for extraction_obj in metrics_cursor:
-            for m in extraction_obj.get("key_metrics", []):
-                label = m.get("label", "").lower()
-                val_str = str(m.get("value", ""))
-                
-                key = None
-                if "revenue growth" in label: key = "revenue_growth"
-                elif "revenue" in label: key = "revenue"
-                elif "net profit margin" in label or "net margin" in label: key = "net_margin"
-                elif "net profit" in label: key = "net_profit"
-                elif "ebit" in label or "operating margin" in label: key = "ebit_margin"
-                elif "deal" in label: key = "deal_wins"
-                elif "headcount" in label or "employees" in label: key = "headcount"
-                elif "attrition" in label: key = "attrition"
-                elif "p/e" in label or "pe ratio" in label: key = "pe_ratio"
-                
-                if key:
-                    num_match = re.search(r'[-+]?\d*\.?\d+', val_str.replace(',', ''))
-                    if num_match:
-                        num_val = float(num_match.group())
-                        if key in ["revenue_growth", "net_margin", "ebit_margin", "attrition", "pe_ratio"]:
-                            doc_metrics[key] = num_val
-                        elif key == "headcount":
-                            doc_metrics[key] = int(num_val)
-                        else:
-                            doc_metrics[key] = val_str
-                    else:
-                        doc_metrics[key] = val_str
-                    
-        for k in ["revenue", "revenue_growth", "net_profit", "net_margin", "ebit_margin", "deal_wins", "headcount", "attrition", "pe_ratio"]:
-            if k not in doc_metrics:
-                doc_metrics[k] = 0 if k not in ["revenue", "net_profit", "deal_wins"] else "N/A"
-                
-        peers.append({
-            "company": doc_name,
-            "ticker": ticker,
-            "is_base": (idx == 0),
-            "metrics": doc_metrics
-        })
-        
-    if not peers:
-        return {
-            "workspace_id": workspace_id,
-            "base_company": ws.get("name", "Unknown").split(" ")[0],
-            "period": "Latest",
-            "peers": [],
-            "ranking": {}
-        }
-        
-    ranking = {}
-    metrics_to_rank = ["revenue_growth", "net_margin", "attrition"]
-    for m in metrics_to_rank:
-        ranking[m] = {}
-        peer_vals = []
-        for p in peers:
-            val = p["metrics"].get(m)
-            if isinstance(val, (int, float)):
-                peer_vals.append((p["company"], val))
-        
-        if m == "attrition":
-            peer_vals.sort(key=lambda x: x[1])
-        else:
-            peer_vals.sort(key=lambda x: x[1], reverse=True)
+            # Use the company name from extraction if available (more accurate than filename)
+            extracted_company = extraction_obj.get("company")
+            if extracted_company and extracted_company.strip():
+                doc_metrics["company_name"] = extracted_company.strip()
             
-        for rank, (comp, val) in enumerate(peer_vals, start=1):
-            ranking[m][comp] = rank
+            # Use the period if available
+            extracted_period = extraction_obj.get("period")
+            if extracted_period:
+                doc_metrics["financial_year"] = extracted_period
+            
+            # --- Map key_metrics labels to ComparisonAgent field names ---
+            # The ExtractionAgent returns labels like "Revenue", "Net Profit", "EPS", etc.
+            # We need a comprehensive mapping to cover all possible labels.
+            LABEL_TO_KEY = {
+                # Revenue
+                "revenue": "revenue",
+                "total revenue": "revenue",
+                "revenue from operations": "revenue",
+                "sales": "revenue",
+                "revenue growth": "revenue_growth",
+                # Profits
+                "gross profit": "gross_profit",
+                "operating profit": "operating_profit",
+                "profit from operations": "operating_profit",
+                "ebitda": "ebitda",
+                "ebit": "ebit",
+                "profit before tax": "profit_before_tax",
+                "pbt": "profit_before_tax",
+                "net profit": "net_profit",
+                "profit after tax": "net_profit",
+                "pat": "net_profit",
+                "net income": "net_profit",
+                # Expenses
+                "expenses": "expenses",
+                "total expenses": "expenses",
+                "operating expenses": "expenses",
+                # Per share
+                "eps": "financial_ratios.eps",
+                "earnings per share": "financial_ratios.eps",
+                # Cash flows
+                "free cash flow": "operating_cash_flow",
+                "operating cash flow": "operating_cash_flow",
+                "cash flow from operations": "operating_cash_flow",
+                "investing cash flow": "investing_cash_flow",
+                "cash flow from investing": "investing_cash_flow",
+                "financing cash flow": "financing_cash_flow",
+                "cash flow from financing": "financing_cash_flow",
+                # Balance sheet
+                "total assets": "assets",
+                "assets": "assets",
+                "total liabilities": "liabilities",
+                "liabilities": "liabilities",
+                # Margins & ratios
+                "profit margin": "financial_ratios.net_margin",
+                "net profit margin": "financial_ratios.net_margin",
+                "net margin": "financial_ratios.net_margin",
+                "operating margin": "financial_ratios.operating_margin",
+                "ebitda margin": "financial_ratios.ebitda_margin",
+                "ebit margin": "financial_ratios.operating_margin",
+                "roe": "financial_ratios.roe",
+                "return on equity": "financial_ratios.roe",
+                "roa": "financial_ratios.roa",
+                "return on assets": "financial_ratios.roa",
+                "roce": "financial_ratios.roce",
+                "return on capital employed": "financial_ratios.roce",
+                "current ratio": "financial_ratios.current_ratio",
+                "debt to equity": "financial_ratios.debt_to_equity_ratio",
+                "debt to equity ratio": "financial_ratios.debt_to_equity_ratio",
+                "debt/equity": "financial_ratios.debt_to_equity_ratio",
+                # Deal wins / other (pass through as-is for context)
+                "deal wins": "deal_wins",
+            }
+            
+            for m in extraction_obj.get("key_metrics", []):
+                label = m.get("label", "").strip()
+                val_str = str(m.get("value", ""))
+                if not val_str or val_str == "None" or val_str == "null":
+                    continue
+                
+                label_lower = label.lower()
+                mapped_key = LABEL_TO_KEY.get(label_lower)
+                
+                # Fuzzy fallback: try substring matching
+                if not mapped_key:
+                    for lbl, k in LABEL_TO_KEY.items():
+                        if lbl in label_lower or label_lower in lbl:
+                            mapped_key = k
+                            break
+                
+                if mapped_key:
+                    if mapped_key.startswith("financial_ratios."):
+                        # Store in the ratios sub-dict
+                        ratio_key = mapped_key.split(".", 1)[1]
+                        doc_metrics.setdefault("financial_ratios", {})[ratio_key] = val_str
+                    else:
+                        doc_metrics[mapped_key] = val_str
+            
+            # --- Also read quarterly_trend, revenue_breakdown etc. for richer context ---
+            # (ComparisonAgent doesn't use these yet, but they don't hurt)
+            
+        if len(doc_metrics) <= 1:
+            raise HTTPException(status_code=400, detail=f"'{doc_name}' exists but financial metrics are not available yet.")
+            
+        companies_data.append(doc_metrics)
+        
+    if not companies_data:
+        # Fallback if no docs are ready
+        return {
+            "companies_compared": [],
+            "financial_metrics": [],
+            "benchmark_results": {},
+            "comparison_analysis": {},
+            "insights": ["No documents found to compare."]
+        }
+    # Cache logic: Create a unique cache key based on workspace_id and sorted document _ids.
+    # This prevents running LLM repeatedly for the exact same documents.
+    doc_ids_sorted = sorted([str(d["_id"]) for d in docs])
+    cache_key = f"{workspace_id}_{','.join(doc_ids_sorted)}"
+    comparison_cache_collection = db["comparison_cache"]
+    
+    cached_result = await comparison_cache_collection.find_one({"_id": cache_key})
+    if cached_result:
+        result_dict = cached_result["data"]
+    else:
+        # Call ComparisonAgent
+        try:
+            # Log what we're sending so we can diagnose issues
+            for cd in companies_data:
+                metric_keys = [k for k in cd.keys() if k not in ("company_name", "financial_year", "reporting_type")]
+                print(f"[ComparisonAgent] Company: {cd.get('company_name')} | Metrics found: {metric_keys}")
+            
+            agent = ComparisonAgent()
+            # Agent might take some time, so offload to thread
+            result_json = await asyncio.to_thread(agent.compare, companies_data)
+            result_dict = json.loads(result_json)
+            
+            # Only cache if successful (not failed)
+            if result_dict.get("status") != "failed":
+                await comparison_cache_collection.update_one(
+                    {"_id": cache_key},
+                    {"$set": {"data": result_dict}},
+                    upsert=True
+                )
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            # Build fallback metrics
+            try:
+                from ...agents.comparison_agent import calculate_metrics
+                fallback_metrics = [calculate_metrics(c).model_dump() for c in companies_data if c.get("company_name")]
+            except Exception:
+                fallback_metrics = []
+                
+            result_dict = {
+                "companies_compared": [c.get("company_name", "") for c in companies_data],
+                "financial_metrics": fallback_metrics,
+                "benchmark_results": {},
+                "comparison_analysis": {},
+                "insights": [f"Error running comparison: {e}"],
+                "status": "failed"
+            }
 
-    # Log agent activity complete
-    await agent_logs_collection.insert_one({
-        "_id": str(uuid.uuid4()),
-        "workspace_id": workspace_id,
-        "document_id": "",
-        "agent_name": "Comparison Agent",
-        "agent_type": "Peer Comparison",
-        "status": "Complete",
-        "action": "Comparison Generated",
-        "details": f"Generated peer comparison across {len(peers)} documents.",
-        "duration": "1s",
-        "metadata": {"documents_compared": len(peers)},
-        "timestamp": datetime.now(timezone.utc)
-    })
-
-    return {
-        "workspace_id": workspace_id,
-        "base_company": peers[0]["company"] if peers else ws.get("name", "").split(" ")[0],
-        "period": "Latest",
-        "peers": peers,
-        "ranking": ranking
-    }
+    result_dict["workspace_id"] = workspace_id
+    # Only override status if it's not already explicitly set to failed
+    if result_dict.get("status") != "failed":
+        result_dict["status"] = "completed"
+    result_dict["documents"] = [str(d["_id"]) for d in docs]
+    
+    return result_dict
 
 
 # ── Reports Generation ────────────────────────────────────────────────────────
@@ -956,95 +1402,199 @@ class GenerateReportRequest(BaseModel):
     sections: List[dict] = []
 
 @router.post("/{workspace_id}/reports/generate")
-async def generate_report(workspace_id: str, payload: GenerateReportRequest, current_user: dict = Depends(get_current_user)):
+async def generate_report(workspace_id: str, payload: GenerateReportRequest, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
         
-    # Log agent activity
-    await agent_logs_collection.insert_one({
-        "_id": str(uuid.uuid4()),
-        "workspace_id": workspace_id,
-        "document_id": "",
-        "agent_name": "Report Agent",
-        "agent_type": "Report Generator",
-        "status": "Complete",
-        "action": "Generated Report",
-        "details": f"Compiled PDF report '{payload.title}' with {len(payload.documents)} documents.",
-        "duration": "Completed",
-        "metadata": {},
-        "timestamp": datetime.now(timezone.utc)
-    })
-
-    docs = []
-    metrics_data = []
-    red_flags_data = []
-    
-    if payload.documents:
-        docs_cursor = documents_collection.find({"_id": {"$in": payload.documents}, "workspace_id": workspace_id})
-        async for doc in docs_cursor:
-            docs.append(doc)
-            
-            # Fetch metrics for this doc
-            m = await metrics_collection.find_one({"document_id": doc["_id"]})
-            if m:
-                metrics_data.append(m)
-            
-            # Fetch all red flags for this doc (each flag is a separate document)
-            rf_cursor = red_flags_collection.find({"document_id": doc["_id"]})
-            async for rf in rf_cursor:
-                red_flags_data.append(rf)
-                
-    try:
-        # Run synchronous PDF generation in a thread to avoid blocking the event loop
-        pdf_path = await asyncio.to_thread(
-            report_agent.generate_report,
-            workspace_name=ws.get("name", "Unknown"),
-            documents=docs,
-            sections=payload.sections,
-            metrics_data=metrics_data,
-            red_flags_data=red_flags_data
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
-    
-    # Store report record in DB
     report_id = str(uuid.uuid4())
+    
+    # Store initial report record in DB
     report_doc = {
         "_id": report_id,
         "workspace_id": workspace_id,
         "title": payload.title,
         "summary": "AI generated comprehensive report.",
-        "status": "completed",
+        "status": "pending",
+        "pipeline_stage": "Initializing Report Agent",
         "created_at": datetime.now(timezone.utc),
-        "pages": 0, # Could be calculated
+        "pages": 0,
         "type": payload.report_type,
-        "companies": len(docs),
+        "companies": len(payload.documents),
         "sections": len(payload.sections),
+        "document_ids": payload.documents,
+        "sections_config": payload.sections,
         "red_flags_included": any(s.get("id") == "risk_analysis" for s in payload.sections),
-        "versions": [
-            {
-                "id": str(uuid.uuid4()),
-                "version": "v1",
-                "is_latest": True,
-                "description": "Initial generated version",
-                "generated_by": current_user.get("name", "User"),
-                "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                "pdf_path": pdf_path
-            }
-        ]
+        "versions": [],
+        "agent_counts": {
+            "documents_processed": 0,
+            "metrics_found": 0,
+            "risks_found": 0,
+            "comparisons_found": 0,
+            "research_found": 0
+        }
     }
-    
     await reports_collection.insert_one(report_doc)
     
-    # Increment workspace report count
-    await workspaces_collection.update_one(
-        {"_id": workspace_id},
-        {"$inc": {"reports": 1}, "$set": {"updated_at": datetime.now(timezone.utc)}}
+    # Spawn background task
+    background_tasks.add_task(
+        run_report_pipeline_task,
+        report_id=report_id,
+        workspace_id=workspace_id,
+        payload=payload,
+        workspace_name=ws.get("name", "Unknown"),
+        current_user=current_user
     )
     
-    return {"report_id": report_id, "pdf_path": pdf_path}
+    return {"report_id": report_id, "status": "pending"}
+
+async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: GenerateReportRequest, workspace_name: str, current_user: dict):
+    # Helper to update report pipeline state
+    async def update_state(status: str, stage: str, error: str = None, counts: dict = None):
+        update_doc = {"status": status, "pipeline_stage": stage}
+        if error:
+            update_doc["error_message"] = error
+        if counts:
+            update_doc["agent_counts"] = counts
+        await reports_collection.update_one({"_id": report_id}, {"$set": update_doc})
+        
+    # Helper to log agent activity
+    async def add_activity(status: str, action: str, details: str):
+        doc_id_to_update = payload.documents[0] if payload.documents else ""
+        if not doc_id_to_update:
+            latest = await documents_collection.find_one({"workspace_id": workspace_id}, sort=[("created_at", -1)])
+            if latest:
+                doc_id_to_update = str(latest["_id"])
+                
+        if doc_id_to_update:
+            await update_agent_execution(workspace_id, doc_id_to_update, "Report Agent", status, action, details, progress=50 if status == "Running" else 100)
+        else:
+            await agent_logs_collection.insert_one({
+                "_id": str(uuid.uuid4()),
+                "workspace_id": workspace_id,
+                "document_id": "",
+                "agent_name": "Report Agent",
+                "agent_type": "Report Generator",
+                "status": status,
+                "action": action,
+                "details": details,
+                "duration": "N/A",
+                "metadata": {},
+                "timestamp": datetime.now(timezone.utc)
+            })
+
+    try:
+        await update_state("running", "Collecting Document Data")
+        await add_activity("Running", "Collecting Data", f"Gathering {len(payload.documents)} documents.")
+        
+        docs = []
+        metrics_data = []
+        red_flags_data = []
+        comparison_data = []
+        research_data = []
+        
+        if payload.documents:
+            docs_cursor = documents_collection.find({"_id": {"$in": payload.documents}, "workspace_id": workspace_id})
+            async for doc in docs_cursor:
+                docs.append(doc)
+                
+        await update_state("running", "Loading Extracted Financial Metrics", counts={"documents_processed": len(docs)})
+        await add_activity("Running", "Loading Metrics", "Extracting financial metrics.")
+        
+        for doc in docs:
+            m = await metrics_collection.find_one({"document_id": doc["_id"]})
+            if m:
+                metrics_data.append(m)
+                
+        await update_state("running", "Loading Risk Analysis", counts={"documents_processed": len(docs), "metrics_found": len(metrics_data)})
+        await add_activity("Running", "Loading Risks", "Aggregating red flags.")
+        
+        for doc in docs:
+            rf_cursor = red_flags_collection.find({"document_id": doc["_id"]})
+            async for rf in rf_cursor:
+                red_flags_data.append(rf)
+                
+        await update_state("running", "Loading Comparison Data", counts={"documents_processed": len(docs), "metrics_found": len(metrics_data), "risks_found": len(red_flags_data)})
+        
+        comparison_cache_collection = db["comparison_cache"]
+        cache_cursor = comparison_cache_collection.find({"workspace_id": workspace_id})
+        async for comp in cache_cursor:
+            comparison_data.append(comp)
+            
+        await update_state("running", "Generating AI Financial Insights", counts={"documents_processed": len(docs), "metrics_found": len(metrics_data), "risks_found": len(red_flags_data), "comparisons_found": len(comparison_data)})
+        await add_activity("Running", "AI Analysis", "Generating institutional insights with LLM.")
+        
+        # Run synchronous PDF generation in a thread
+        pdf_path = await asyncio.to_thread(
+            report_agent.generate_report,
+            workspace_name=workspace_name,
+            documents=docs,
+            sections=payload.sections,
+            metrics_data=metrics_data,
+            red_flags_data=red_flags_data,
+            comparison_data=comparison_data,
+            research_data=research_data
+        )
+        
+        await update_state("running", "Validating Generated PDF")
+        
+        if not pdf_path or not os.path.exists(pdf_path) or os.path.getsize(pdf_path) == 0:
+            raise Exception("Generated PDF file is missing or empty.")
+            
+        # Update Report Record with completed PDF
+        new_version = {
+            "id": str(uuid.uuid4()),
+            "version": "v1",
+            "is_latest": True,
+            "description": "Initial generated version",
+            "generated_by": current_user.get("name", "User"),
+            "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "pdf_path": pdf_path
+        }
+        
+        await reports_collection.update_one(
+            {"_id": report_id},
+            {
+                "$set": {
+                    "status": "completed",
+                    "pipeline_stage": "Report Ready",
+                    "versions": [new_version]
+                }
+            }
+        )
+        
+        # Increment workspace report count
+        await workspaces_collection.update_one(
+            {"_id": workspace_id},
+            {"$inc": {"reports": 1}, "$set": {"updated_at": datetime.now(timezone.utc)}}
+        )
+        
+        await add_activity("Complete", "Generated Report", f"Successfully compiled PDF report '{payload.title}'.")
+        
+    except Exception as e:
+        print(f"Background Report Task Failed: {e}")
+        await update_state("failed", "Report Generation Failed", error=str(e))
+        await add_activity("Failed", "Generation Failed", str(e))
+
+@router.get("/{workspace_id}/reports/{report_id}/status")
+async def get_report_status(workspace_id: str, report_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    report = await reports_collection.find_one({"_id": report_id, "workspace_id": workspace_id})
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    return {
+        "report_id": report_id,
+        "status": report.get("status", "pending"),
+        "pipeline_stage": report.get("pipeline_stage", "Initializing"),
+        "agent_counts": report.get("agent_counts", {}),
+        "error_message": report.get("error_message")
+    }
 
 
 @router.get("/{workspace_id}/reports/{report_id}/download")

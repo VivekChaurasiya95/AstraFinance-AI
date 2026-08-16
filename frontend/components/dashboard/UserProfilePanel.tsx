@@ -12,7 +12,7 @@ interface UserProfilePanelProps {
 }
 
 export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) {
-  const { user: firebaseUser, dbUser } = useAuth();
+  const { user: firebaseUser, dbUser, updateDbUser } = useAuth();
   
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(dbUser?.name || firebaseUser?.displayName || "");
@@ -36,7 +36,7 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
         method: "PUT",
         body: JSON.stringify({ name })
       });
-      // Not updating NextAuth session anymore
+      updateDbUser({ name });
       toast?.success && toast.success("Name updated successfully");
       setIsEditing(false);
     } catch (error: any) {
@@ -50,6 +50,12 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast?.error && toast.error("Image must be under 5MB");
+      return;
+    }
+
     // Convert to base64
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -60,6 +66,7 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
           method: "PUT",
           body: JSON.stringify({ photo_base64: base64 })
         });
+        updateDbUser({ profile_picture: base64 });
         toast?.success && toast.success("Profile photo updated");
       } catch (error: any) {
         toast?.error && toast.error("Failed to upload photo");
@@ -75,6 +82,7 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
       await fetcher("/auth/profile/photo", {
         method: "DELETE"
       });
+      updateDbUser({ profile_picture: null });
       toast?.success && toast.success("Profile photo removed");
     } catch (error: any) {
       toast?.error && toast.error("Failed to remove photo");

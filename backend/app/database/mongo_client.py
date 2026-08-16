@@ -1,8 +1,16 @@
+import certifi
 from motor.motor_asyncio import AsyncIOMotorClient
 from loguru import logger
-from app.config.settings import settings
+from ..config.settings import settings
 
-client = AsyncIOMotorClient(settings.MONGODB_URI)
+client = AsyncIOMotorClient(
+    settings.MONGODB_URI, 
+    tlsCAFile=certifi.where(),
+    tlsAllowInvalidCertificates=True,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=10000,
+    socketTimeoutMS=10000
+)
 db = client[settings.DATABASE_NAME]
 
 # Collections
@@ -15,3 +23,6 @@ messages_collection = db["messages"]
 metrics_collection = db["metrics"]
 red_flags_collection = db["red_flags"]
 agent_logs_collection = db["agent_logs"]
+agent_executions_collection = db["agent_executions"]
+settings_collection = db["user_settings"]
+sessions_collection = db["sessions"]

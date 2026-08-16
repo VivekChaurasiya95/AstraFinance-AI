@@ -1,8 +1,15 @@
 import { auth } from "./firebase";
 import { getIdToken } from "firebase/auth";
 
-// Hardcoding 127.0.0.1 to avoid localhost IPv6 resolution issues on Windows
-export const API_BASE_URL = "http://127.0.0.1:8000/api/v1";
+// Default fallback for SSR or if window is undefined
+let baseUrl = "http://127.0.0.1:8000/api/v1";
+if (typeof window !== "undefined") {
+  // If the frontend is accessed via a LAN IP (e.g. 10.23.69.37), use that same IP for the backend API
+  baseUrl = `${window.location.protocol}//${window.location.hostname}:8000/api/v1`;
+}
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.includes("127.0.0.1") && typeof window !== "undefined"
+  ? baseUrl 
+  : (process.env.NEXT_PUBLIC_API_URL || baseUrl);
 
 export async function fetcher<T>(
   endpoint: string,
@@ -14,6 +21,7 @@ export async function fetcher<T>(
 
   if (typeof window !== "undefined") {
     try {
+      await auth.authStateReady();
       const user = auth.currentUser;
       if (user) {
         token = await getIdToken(user);
@@ -61,6 +69,7 @@ export async function uploadMultipart<T>(
 
   if (typeof window !== "undefined") {
     try {
+      await auth.authStateReady();
       const user = auth.currentUser;
       if (user) {
         token = await getIdToken(user);

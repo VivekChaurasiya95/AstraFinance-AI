@@ -1,7 +1,7 @@
 from typing import Optional
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from app.auth.firebase_auth import verify_firebase_token
+from .firebase_auth import verify_firebase_token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

@@ -7,17 +7,20 @@ import "./globals.css";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  preload: false,
 });
 
 const ibmPlexMono = IBM_Plex_Mono({
   variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700"],
+  preload: false,
 });
 
 const lora = Lora({
   variable: "--font-lora",
   subsets: ["latin"],
+  preload: false,
 });
 
 export const metadata: Metadata = {

@@ -2,7 +2,8 @@ from pypdf import PdfReader
 from loguru import logger
 import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from app.embeddings.embedding_service import get_embeddings_model
+from ..embeddings.embedding_service import get_embeddings_model
+from ..llm.model_router import LLMRouter
 
 class DocumentAgent:
     def __init__(self):
@@ -11,13 +12,6 @@ class DocumentAgent:
             chunk_overlap=150,
             separators=["\n\n", "\n", ".", " ", ""]
         )
-        try:
-            from app.embeddings.chroma_client import get_document_collection
-            self.collection = get_document_collection()
-        except Exception as e:
-            logger.error(f"ChromaDB collection unavailable: {e}")
-            self.collection = None
-        self.embeddings = get_embeddings_model()
 
     def process_and_index(self, file_path: str, workspace_id: str, document_id: str, file_name: str) -> dict:
         """
@@ -33,7 +27,7 @@ class DocumentAgent:
             chunk_index = 0
             for page_num, page in enumerate(reader.pages):
                 extracted = page.extract_text()
-                if extracted:
+                if extracted and extracted.strip():
                     page_chunks = self.chunker.split_text(extracted)
                     for i, text in enumerate(page_chunks):
                         chunks.append(text)
@@ -43,51 +37,41 @@ class DocumentAgent:
                             "document_id": document_id,
                             "file_name": file_name,
                             "page_number": page_num + 1,
-                            "chunk_index": chunk_index
+                            "chunk_index": chunk_index,
+                            "source": file_name,
+                            "section": "unknown"
                         }
                         metadata_list.append(meta)
                         ids.append(f"{document_id}_{chunk_index}")
                         chunk_index += 1
             
             if not chunks:
-                logger.warning(f"No text extracted from {file_name}")
-                return {"chunks": 0}
+                logger.error(f"No text extracted from {file_name}")
+                raise ValueError(f"No parseable text could be extracted from the document: {file_name}. Ensure it is a valid text-based PDF.")
 
-            import time
-            # Embed and insert into ChromaDB
-            # Process in smaller batches with delays to respect Gemini free tier limits (15 RPM)
-            batch_size = 20
-            embeddings_list = []
+            from ..embeddings.embedding_router import embedding_router
+            from ..embeddings.chroma_client import get_collection_for_provider
+            from typing import Any, cast
             
-            for i in range(0, len(chunks), batch_size):
-                batch_chunks = chunks[i:i + batch_size]
-                
-                # Retry logic for 429 Resource Exhausted
-                max_retries = 5
-                for attempt in range(max_retries):
-                    try:
-                        batch_embeddings = self.embeddings.embed_documents(batch_chunks)
-                        embeddings_list.extend(batch_embeddings)
-                        break
-                    except Exception as e:
-                        if "429" in str(e) and attempt < max_retries - 1:
-                            logger.warning(f"Rate limit hit during embedding. Sleeping for 25s... (Attempt {attempt+1}/{max_retries})")
-                            time.sleep(25)
-                        else:
-                            raise e
-                
-                # Sleep between batches to avoid hitting the RPM limit
-                if i + batch_size < len(chunks):
-                    time.sleep(2)
+            # Generate embeddings via the resilient router
+            embeddings_list, provider, model_name, dimension = embedding_router.embed_documents(chunks)
             
-            self.collection.add(
+            # Add embedding metadata to all chunks
+            for meta in metadata_list:
+                meta["embedding_provider"] = provider
+                meta["embedding_model"] = model_name
+                meta["embedding_dimension"] = dimension
+            
+            collection = get_collection_for_provider(provider, model_name)
+            
+            collection.upsert(
                 ids=ids,
                 documents=chunks,
-                metadatas=metadata_list,
-                embeddings=embeddings_list
+                metadatas=cast(Any, metadata_list),
+                embeddings=cast(Any, embeddings_list)
             )
             
-            logger.info(f"Indexed {len(chunks)} chunks for document {document_id}")
+            logger.info(f"Indexed {len(chunks)} chunks for document {document_id} using {provider} ({model_name})")
             return {"chunks": len(chunks)}
             
         except Exception as e:

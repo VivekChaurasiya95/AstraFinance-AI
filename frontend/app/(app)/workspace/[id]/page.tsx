@@ -2,15 +2,20 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Bot, MessageSquare, Paperclip, Send, Layers, ShieldAlert, Loader2, FileText, TrendingUp, GitCompareArrows, FileBarChart2, X, Search, Plus, Pencil, Trash2, Check } from "lucide-react";
+import { 
+  Bot, MessageSquare, Paperclip, Send, Layers, ShieldAlert, Loader2, FileText, 
+  TrendingUp, GitCompareArrows, FileBarChart2, X, Search, Plus, Pencil, Trash2, 
+  Check, Edit, PanelLeftClose, PanelLeftOpen, Book, Folder, Clock, Blocks, Code, MoreHorizontal, 
+  Pin, Store, ChevronDown, Mic, ArrowUp, Copy, RotateCcw, CheckCheck
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetcher, API_BASE_URL, uploadMultipart } from "@/lib/api";
 import { useAuth } from "@/components/providers/AuthProvider";
 
 interface ChatMsg {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "model";
   content: string;
-  citations?: { doc: string; page: number }[];
+  citations?: { doc: string; page: number; field?: string }[];
   attachments?: { name: string; type: string }[];
 }
 
@@ -19,38 +24,8 @@ interface ChatSession {
   title: string;
   message_count: number;
   updated_at: string;
+  is_pinned?: boolean;
 }
-
-const QUICK_ACTIONS = [
-  {
-    icon: TrendingUp,
-    color: "bg-blue-50 text-blue-500",
-    title: "Financial Overview",
-    desc: "Give me a summary of the uploaded document's performance.",
-    prompt: "Give me a financial overview and summary of performance.",
-  },
-  {
-    icon: GitCompareArrows,
-    color: "bg-emerald-50 text-emerald-500",
-    title: "Compare Metrics",
-    desc: "Compare revenue and profit with other workspaces.",
-    prompt: "Compare the key financial metrics across available documents.",
-  },
-  {
-    icon: ShieldAlert,
-    color: "bg-orange-50 text-orange-500",
-    title: "Identify Risks",
-    desc: "What are the key risks mentioned in the reports?",
-    prompt: "What are the key risks and red flags mentioned in the reports?",
-  },
-  {
-    icon: FileBarChart2,
-    color: "bg-violet-50 text-violet-500",
-    title: "Generate Report",
-    desc: "Create a comprehensive report for this workspace.",
-    prompt: "Generate a comprehensive financial report for this workspace.",
-  },
-];
 
 export default function ChatPage() {
   const params = useParams();
@@ -72,6 +47,12 @@ export default function ChatPage() {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  
+  const [editingMessageIndex, setEditingMessageIndex] = useState<number | null>(null);
+  const [editMessageText, setEditMessageText] = useState("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -89,10 +70,86 @@ export default function ChatPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleCopy = (text: string, index: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  const handleRetry = (index: number) => {
+    let lastUserMsg = "";
+    for (let i = index; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        lastUserMsg = messages[i].content;
+        break;
+      }
+    }
+    if (lastUserMsg && !sending) {
+      sendMessage(lastUserMsg);
+    }
+  };
+
+  const handleEditMessage = (index: number) => {
+    setEditingMessageIndex(index);
+    setEditMessageText(messages[index].content);
+  };
+
+  const submitEditMessage = (index: number) => {
+    if (!editMessageText.trim() || sending) return;
+    
+    // To cleanly retry from this point, we truncate the history at this message
+    const newMessages = messages.slice(0, index);
+    setMessages(newMessages);
+    setEditingMessageIndex(null);
+    sendMessage(editMessageText.trim());
+  };
+
+  const cancelEditMessage = () => {
+    setEditingMessageIndex(null);
+  };
+
   const loadSessions = () => {
     fetcher<{ sessions: ChatSession[] }>(`/workspaces/${workspaceId}/chat_sessions`)
       .then((data) => setSessions(data.sessions))
       .catch(console.error);
+  };
+
+  const handleVoiceInput = () => {
+    // @ts-ignore
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+    
+    if (isRecording) {
+      return; // It handles its own stop
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    
+    recognition.onstart = () => setIsRecording(true);
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((result: any) => result[0])
+        .map(result => result.transcript)
+        .join("");
+      
+      setInput(transcript);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + "px";
+      }
+    };
+    recognition.onerror = (e: any) => {
+      console.error(e);
+      setIsRecording(false);
+    };
+    recognition.onend = () => setIsRecording(false);
+    
+    recognition.start();
   };
 
   const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
@@ -105,6 +162,20 @@ export default function ChatPage() {
       if (activeSessionId === sessionId) setActiveSessionId(null);
     } catch (error) {
       console.error("Failed to delete session", error);
+    }
+  };
+
+  const handleTogglePin = async (sessionId: string, currentPinned: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await fetcher(`/workspaces/${workspaceId}/chat_sessions/${sessionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_pinned: !currentPinned })
+      });
+      setSessions(prev => prev.map(s => s._id === sessionId ? { ...s, is_pinned: !currentPinned } : s));
+    } catch (error) {
+      console.error("Failed to toggle pin", error);
     }
   };
 
@@ -160,18 +231,36 @@ export default function ChatPage() {
     setSending(true);
     
     try {
+      if (filesToSend.length > 0) {
+        // Only upload PDFs to the document library
+        const pdfFiles = filesToSend.filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"));
+        if (pdfFiles.length > 0) {
+          const docFormData = new FormData();
+          pdfFiles.forEach(file => {
+            docFormData.append("files", file);
+          });
+          try {
+            await uploadMultipart(`/workspaces/${workspaceId}/documents`, docFormData);
+          } catch (e) {
+            console.error("Failed to upload PDFs to document library", e);
+          }
+        }
+      }
+
+      const finalMessage = text.trim() || (filesToSend.length > 0 ? "I have just uploaded new files. Please acknowledge them." : "");
+      
       const formData = new FormData();
-      formData.append("message", text.trim());
+      formData.append("message", finalMessage);
       if (activeSessionId) {
         formData.append("session_id", activeSessionId);
       }
-      if (filesToSend.length > 0) {
-        filesToSend.forEach(file => {
-          formData.append("files", file);
-        });
-      }
       
-      const data = await uploadMultipart<{ reply: string; citations: { doc: string; page: number }[]; session_id?: string }>(`/workspaces/${workspaceId}/chat`, formData);
+      // Append all files to the chat endpoint (for image processing and acknowledgment)
+      filesToSend.forEach(file => {
+        formData.append("files", file);
+      });
+      
+      const data = await uploadMultipart<{ reply: string; citations: { doc: string; page: number; field?: string }[]; session_id?: string }>(`/workspaces/${workspaceId}/chat`, formData);
 
       setMessages((prev) => [
         ...prev,
@@ -195,143 +284,369 @@ export default function ChatPage() {
   };
 
   const filteredSessions = sessions.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()));
+  const pinnedSessions = filteredSessions.filter(s => s.is_pinned);
+  const recentSessions = filteredSessions.filter(s => !s.is_pinned);
 
-  const groupSessions = (sessionsList: ChatSession[]) => {
-    const today: ChatSession[] = [];
-    const yesterday: ChatSession[] = [];
-    const last7Days: ChatSession[] = [];
-    const earlier: ChatSession[] = [];
-
-    const now = new Date();
-    const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const yesterdayDate = todayDate - 86400000;
-    const last7DaysDate = todayDate - 7 * 86400000;
-
-    sessionsList.forEach(s => {
-      const date = new Date(s.updated_at).getTime();
-      if (date >= todayDate) today.push(s);
-      else if (date >= yesterdayDate) yesterday.push(s);
-      else if (date >= last7DaysDate) last7Days.push(s);
-      else earlier.push(s);
-    });
-
-    return { today, yesterday, last7Days, earlier };
+  // Render a chat session item (used in Recents)
+  const renderSessionItem = (s: ChatSession) => {
+    return (
+      <div
+        key={s._id}
+        onClick={() => {
+          setActiveSessionId(s._id);
+          if(window.innerWidth < 1024) setIsHistoryOpen(false);
+        }}
+        className={cn(
+          "w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left transition-colors group cursor-pointer text-sm",
+          activeSessionId === s._id
+            ? "bg-slate-200 text-slate-900"
+            : "hover:bg-slate-200/50 text-slate-700"
+        )}
+      >
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          {editingSessionId === s._id ? (
+            <div className="flex items-center gap-1 w-full" onClick={e => e.stopPropagation()}>
+              <input
+                type="text"
+                autoFocus
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") handleRenameSession(s._id);
+                  if (e.key === "Escape") setEditingSessionId(null);
+                }}
+                className="flex-1 bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-800 outline-none focus:ring-1 focus:ring-blue-500 w-full"
+              />
+              <button onClick={() => handleRenameSession(s._id)} className="p-1 text-green-600 hover:bg-green-50 rounded shrink-0">
+                <Check className="w-3 h-3" />
+              </button>
+              <button onClick={() => setEditingSessionId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded shrink-0">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <p className="font-medium truncate">{s.title || "New Conversation"}</p>
+          )}
+        </div>
+        
+        {/* Action icons shown on hover */}
+        {editingSessionId !== s._id && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingSessionId(s._id);
+                setEditTitle(s.title || "New Conversation");
+              }}
+              className="p-1 text-slate-400 hover:text-slate-800 rounded"
+              title="Rename"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+            <button 
+              onClick={(e) => handleTogglePin(s._id, !!s.is_pinned, e)}
+              className={cn("p-1 rounded", s.is_pinned ? "text-blue-600 hover:text-blue-700 hover:bg-blue-50" : "text-slate-400 hover:text-slate-800 hover:bg-slate-200")}
+              title={s.is_pinned ? "Unpin" : "Pin"}
+            >
+              <Pin className="w-3.5 h-3.5" />
+            </button>
+            <button 
+              onClick={(e) => handleDeleteSession(s._id, e)}
+              className="p-1 text-slate-400 hover:text-red-600 rounded"
+              title="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
-  const grouped = groupSessions(filteredSessions);
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setAttachedFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)]);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+      e.preventDefault();
+      setAttachedFiles(prev => [...prev, ...Array.from(e.clipboardData.files)]);
+    }
+  };
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-white">
+    <div 
+      className="flex h-screen bg-[#f9f9f9]"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      
+      {/* Drag Overlay */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center transition-all">
+          <div className="bg-white rounded-3xl p-10 flex flex-col items-center shadow-2xl transform scale-105 transition-transform">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-6 text-slate-500">
+              <Plus className="w-10 h-10" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-800">Drop files here</h3>
+            <p className="text-slate-500 mt-2 text-center max-w-sm">
+              Your files will be uploaded and attached to the current chat session.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Sidebar (Chat History) */}
+      {isHistoryOpen && (
+        <div className="w-[260px] shrink-0 bg-[#f9f9f9] border-r border-slate-200 flex flex-col h-full transition-all">
+          
+          {/* Top Sidebar Header */}
+          <div className="p-3 flex items-center justify-between">
+            <button
+              onClick={() => {
+                setActiveSessionId(null);
+                if(window.innerWidth < 1024) setIsHistoryOpen(false);
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-200/50 rounded-lg transition-colors font-medium text-sm flex-1"
+            >
+              <div className="bg-slate-200 rounded-full p-1"><Edit className="w-3.5 h-3.5" /></div>
+              New chat
+            </button>
+            <button
+              onClick={() => setIsHistoryOpen(false)}
+              className="p-2 text-slate-500 hover:bg-slate-200/50 rounded-lg transition-colors ml-1"
+              title="Close sidebar"
+            >
+              <PanelLeftClose className="w-5 h-5" />
+            </button>
+          </div>
+
+
+
+          {/* History Sections */}
+          <div className="flex-1 overflow-y-auto px-3 space-y-6 pb-4">
+            
+            {/* Pinned Section */}
+            {pinnedSessions.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-500 px-3 mb-2">Pinned</h4>
+                <div className="space-y-0.5">
+                  {pinnedSessions.map(renderSessionItem)}
+                </div>
+              </div>
+            )}
+
+            {/* Recents Section */}
+            <div>
+              <h4 className="text-xs font-semibold text-slate-500 px-3 mb-2">Recents</h4>
+              <div className="space-y-0.5">
+                {recentSessions.length > 0 ? (
+                  recentSessions.map(renderSessionItem)
+                ) : (
+                  <div className="px-3 py-2 text-xs text-slate-400">No recent chats</div>
+                )}
+              </div>
+            </div>
+
+          </div>
+
+          {/* User Profile Footer */}
+          <div className="p-3 border-t border-slate-200 flex items-center justify-between">
+            <button className="flex items-center gap-2 hover:bg-slate-200/50 px-2 py-1.5 rounded-lg transition-colors min-w-0">
+              <div className="w-7 h-7 rounded-full bg-orange-200 text-orange-800 flex items-center justify-center text-xs font-bold shrink-0">
+                {firstName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex flex-col items-start min-w-0">
+                <span className="text-sm font-semibold text-slate-800 truncate">{userName}</span>
+                <span className="text-[10px] text-slate-500 truncate">Go</span>
+              </div>
+            </button>
+            <button className="p-1.5 text-slate-500 hover:bg-slate-200/50 rounded-lg">
+              <Store className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Chat Area */}
-      <div className="flex flex-col h-full flex-1 relative min-w-0">
+      <div className="flex flex-col h-full flex-1 relative min-w-0 bg-white">
         
-        {/* Mobile Sidebar Toggle Header (visible only on small screens) */}
-        {!isHistoryOpen && (
-           <div className="lg:hidden absolute top-4 right-4 z-10">
-             <button onClick={() => setIsHistoryOpen(true)} className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm text-slate-500 hover:text-slate-800">
-               <MessageSquare className="w-5 h-5" />
-             </button>
-           </div>
-        )}
+        {/* Top Header */}
+        <div className="h-14 flex items-center justify-between px-4">
+          <div className="flex items-center gap-2">
+            {!isHistoryOpen && (
+              <button onClick={() => setIsHistoryOpen(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+                <PanelLeftOpen className="w-5 h-5" />
+              </button>
+            )}
+            <div className="flex items-center px-3 py-1.5">
+              <span className="font-semibold text-slate-800 text-lg">FinanceGPT</span>
+            </div>
+          </div>
+        </div>
 
         {loadingMessages ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <Loader2 className="w-8 h-8 text-slate-400 animate-spin" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center pb-8 px-6 gap-8 overflow-y-auto">
-            <div className="text-center mt-8">
-              <h2 className="text-3xl font-bold text-slate-800 mb-2">
-                Hello, {firstName}! 👋
-              </h2>
-              <p className="text-slate-500 text-base">
-                How can I help you analyze your financial reports today?
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-              {QUICK_ACTIONS.map((qa) => {
-                const Icon = qa.icon;
-                return (
-                  <button
-                    key={qa.title}
-                    onClick={() => sendMessage(qa.prompt)}
-                    className="text-left p-4 rounded-2xl border border-slate-200 bg-white hover:shadow-md hover:border-blue-200 transition-all group"
-                  >
-                    <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center mb-3", qa.color)}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <p className="font-semibold text-slate-800 text-sm mb-1 group-hover:text-blue-700 transition-colors">
-                      {qa.title}
-                    </p>
-                    <p className="text-xs text-slate-400 leading-relaxed">{qa.desc}</p>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-y-auto">
+            <h2 className="text-3xl font-semibold text-slate-800 mb-12">
+              What's on your mind today?
+            </h2>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
             {messages.map((msg, i) => (
               <div
                 key={i}
                 className={cn(
-                  "flex gap-3 max-w-3xl",
-                  msg.role === "user" ? "ml-auto flex-row-reverse" : ""
+                  "flex gap-4 max-w-3xl mx-auto w-full group",
+                  msg.role === "user" ? "flex-row-reverse" : ""
                 )}
               >
+                {/* Avatar */}
                 <div
                   className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                    msg.role === "user"
-                      ? "bg-slate-800 text-white"
-                      : "bg-blue-100 text-blue-600"
+                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-1",
+                    msg.role === "user" ? "hidden" : "bg-white border border-slate-200 text-slate-600"
                   )}
                 >
-                  {msg.role === "user" ? firstName.charAt(0).toUpperCase() : <Bot className="w-4 h-4" />}
+                  {msg.role !== "user" && <Bot className="w-5 h-5" />}
                 </div>
+                
+                {/* Bubble */}
                 <div
                   className={cn(
-                    "rounded-2xl px-4 py-3 text-sm leading-relaxed max-w-[80%]",
+                    "px-4 py-2.5 text-[15px] leading-relaxed max-w-[85%]",
                     msg.role === "user"
-                      ? "bg-blue-600 text-white rounded-tr-sm"
-                      : "bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm"
+                      ? "bg-slate-100 text-slate-800 rounded-3xl"
+                      : "bg-transparent text-slate-800"
                   )}
                 >
                   {msg.attachments && msg.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {msg.attachments.map((file, idx) => (
-                        <div key={idx} className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs", msg.role === "user" ? "bg-blue-500 text-blue-50" : "bg-slate-100 text-slate-700")}>
+                        <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs bg-slate-200 text-slate-700">
                           <Paperclip className="w-3 h-3" />
                           <span className="truncate max-w-[120px]">{file.name}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                  {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
-                  {msg.citations && msg.citations.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-slate-200">
-                      <p className="text-[11px] text-slate-400 font-medium mb-1">Sources:</p>
-                      {msg.citations.map((c, ci) => (
-                        <span
-                          key={ci}
-                          className="inline-flex items-center gap-1 text-[11px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mr-1 mb-1"
+                  {/* Bubble Content */}
+                  {editingMessageIndex === i ? (
+                    <div className="flex flex-col gap-2 w-full min-w-[300px]">
+                      <textarea
+                        value={editMessageText}
+                        onChange={(e) => setEditMessageText(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[100px]"
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={cancelEditMessage} className="px-4 py-1.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors">Cancel</button>
+                        <button onClick={() => submitEditMessage(i)} className="px-4 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-full transition-colors">Send</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
+                      {msg.citations && msg.citations.length > 0 && (
+                        <div className="mt-4 flex flex-col gap-2">
+                          {msg.citations.map((c, ci) => {
+                            const colors = [
+                              "bg-blue-50 border-blue-200 text-blue-700",
+                              "bg-purple-50 border-purple-200 text-purple-700",
+                              "bg-emerald-50 border-emerald-200 text-emerald-700",
+                              "bg-amber-50 border-amber-200 text-amber-700",
+                              "bg-rose-50 border-rose-200 text-rose-700"
+                            ];
+                            const colorClass = colors[ci % colors.length];
+                            return (
+                              <div
+                                key={ci}
+                                className={`flex items-center justify-between gap-3 text-[12px] border px-3 py-2 rounded-xl transition-all hover:shadow-sm ${colorClass}`}
+                              >
+                                <div className="flex items-center gap-2 overflow-hidden flex-1">
+                                  <FileText className="w-4 h-4 shrink-0 opacity-75" />
+                                  <span className="font-medium truncate">{c.doc}</span>
+                                  {c.field && (
+                                    <span className="opacity-80 italic truncate text-[11px] ml-1 shrink-0 bg-black/5 px-1.5 py-0.5 rounded">
+                                      {c.field.replace(/_/g, ' ')}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="shrink-0 opacity-80 text-[11px] font-bold bg-black/5 px-2 py-0.5 rounded-md">
+                                  Page {c.page}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Message Actions */}
+                  {editingMessageIndex !== i && (
+                    <div className={cn(
+                      "mt-2 flex items-center gap-1 transition-opacity opacity-100",
+                      msg.role === "user" ? "justify-end" : "justify-start"
+                    )}>
+                      {msg.role === "user" && (
+                        <button
+                          onClick={() => handleEditMessage(i)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded transition-colors"
+                          title="Edit"
                         >
-                          <FileText className="w-3 h-3" />
-                          {c.doc} · p.{c.page}
-                        </span>
-                      ))}
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => handleCopy(msg.content, i)}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded transition-colors"
+                        title="Copy"
+                      >
+                        {copiedIndex === i ? <CheckCheck className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                      
+                      {msg.role !== "user" && (
+                        <button
+                          onClick={() => handleRetry(i)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 rounded transition-colors"
+                          title="Retry"
+                          disabled={sending}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
             ))}
             {sending && (
-              <div className="flex gap-3 max-w-3xl">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <Bot className="w-4 h-4" />
+              <div className="flex gap-4 max-w-3xl mx-auto w-full">
+                <div className="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-600 flex items-center justify-center mt-1">
+                  <Bot className="w-5 h-5" />
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                <div className="bg-transparent px-4 py-3">
                   <div className="flex gap-1.5 items-center h-5">
                     <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:0ms]" />
                     <span className="w-2 h-2 bg-slate-300 rounded-full animate-bounce [animation-delay:150ms]" />
@@ -344,23 +659,59 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Input Area */}
-        <div className="px-6 pb-6 pt-3 bg-white border-t border-slate-100">
-          <div className="max-w-3xl mx-auto">
+        {/* Floating Input Area */}
+        <div className="px-4 pb-6 pt-2 w-full flex justify-center">
+          <div className="w-full max-w-[48rem]">
             {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex flex-wrap gap-2 mb-3 px-2">
                 {attachedFiles.map((file, idx) => (
-                  <div key={idx} className="flex items-center gap-2 bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium">
-                    <Paperclip className="w-3.5 h-3.5 text-slate-500" />
-                    <span className="truncate max-w-[150px]">{file.name}</span>
-                    <button onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))} className="text-slate-400 hover:text-red-500 transition-colors ml-1">
+                  <div key={idx} className="group relative flex items-center gap-3 bg-[#202123] text-white pr-4 pl-2 py-2 rounded-2xl w-fit shadow-sm border border-slate-700">
+                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5 text-red-500 fill-red-500/20" />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                      <span className="truncate max-w-[140px] text-sm font-medium leading-tight">{file.name}</span>
+                      <span className="text-[11px] text-slate-400 font-medium uppercase mt-0.5">
+                        {file.name.split('.').pop() || "FILE"}
+                      </span>
+                    </div>
+                    <button 
+                      onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))} 
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-slate-600 hover:bg-slate-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                    >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
               </div>
             )}
-            <div className="relative flex items-end gap-2 border border-slate-300 rounded-2xl bg-white shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all px-4 py-3">
+            
+            <div className="relative flex items-center gap-2 border border-slate-300 rounded-[26px] bg-slate-50 shadow-sm focus-within:bg-white focus-within:ring-1 focus-within:ring-slate-400 focus-within:border-slate-400 transition-all px-2.5 py-2.5">
+              
+              <input
+                type="file"
+                multiple
+                ref={fileInputRef}
+                onClick={(e) => {
+                  e.currentTarget.value = "";
+                }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setAttachedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                  }
+                }}
+                className="hidden"
+              />
+              
+              <button 
+                type="button"
+                onClick={() => fileInputRef.current?.click()} 
+                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded-full transition-colors shrink-0" 
+                title="Attach file"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+              
               <textarea
                 ref={textareaRef}
                 rows={1}
@@ -368,7 +719,7 @@ export default function ChatPage() {
                 onChange={(e) => {
                   setInput(e.target.value);
                   e.target.style.height = "auto";
-                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 200) + "px";
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -376,220 +727,42 @@ export default function ChatPage() {
                     sendMessage(input);
                   }
                 }}
-                placeholder="Ask anything about your documents..."
-                className="flex-1 bg-transparent resize-none outline-none text-sm text-slate-800 placeholder:text-slate-400 min-h-[24px] max-h-[120px] leading-relaxed"
+                onPaste={handlePaste}
+                placeholder="Ask anything (or paste an image)"
+                className="flex-1 bg-transparent resize-none outline-none text-[15px] text-slate-800 placeholder:text-slate-500 min-h-[24px] max-h-[200px] py-1 self-center"
               />
-              <div className="flex items-center gap-2 shrink-0">
-                <input
-                  type="file"
-                  multiple
-                  ref={fileInputRef}
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      setAttachedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
-                    }
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                  className="hidden"
-                />
-                <button onClick={() => fileInputRef.current?.click()} className="text-slate-400 hover:text-slate-600 transition-colors" title="Attach file">
-                  <Paperclip className="w-4 h-4" />
-                </button>
-                <button className="text-slate-400 hover:text-slate-600 transition-colors text-xs flex items-center gap-1" title="Add context">
-                  <Layers className="w-4 h-4" /> Add Context
-                </button>
-                <span className="text-xs text-slate-300 hidden sm:block">Press ⌘ + Enter to send</span>
+              
+              {(!input.trim() && attachedFiles.length === 0) ? (
                 <button
-                  disabled={(!input.trim() && attachedFiles.length === 0) || sending}
-                  onClick={() => sendMessage(input)}
-                  className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  onClick={handleVoiceInput}
+                  disabled={sending}
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0 self-end transition-all",
+                    isRecording 
+                      ? "bg-red-500 text-white animate-pulse shadow-md" 
+                      : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+                  )}
+                  title="Voice input"
                 >
-                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  <Mic className="w-4 h-4" />
                 </button>
-              </div>
+              ) : (
+                <button
+                  disabled={sending}
+                  onClick={() => sendMessage(input)}
+                  className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center hover:bg-slate-800 disabled:opacity-40 transition-all shrink-0 self-end shadow-sm"
+                >
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUp className="w-4 h-4" />}
+                </button>
+              )}
             </div>
-            <p className="text-center text-[11px] text-slate-400 mt-2 flex items-center justify-center gap-1">
-              <ShieldAlert className="w-3 h-3" />
+            
+            <p className="text-center text-[11px] text-slate-400 mt-2">
               All answers are based strictly on your uploaded documents with verifiable citations.
             </p>
           </div>
         </div>
       </div>
-
-      {/* Right Sidebar for Chat History */}
-      {isHistoryOpen && (
-        <div className="w-80 shrink-0 border-l border-slate-100 bg-white flex flex-col h-full transition-all">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-blue-500" />
-              Chat History
-            </h3>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => {
-                  setActiveSessionId(null);
-                  if(window.innerWidth < 1024) setIsHistoryOpen(false);
-                }}
-                className="p-1.5 text-slate-400 hover:bg-slate-50 hover:text-blue-600 rounded-lg transition-colors"
-                title="New Chat"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setIsHistoryOpen(false)}
-                className="p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-700 rounded-lg transition-colors"
-                title="Close sidebar"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-4 border-b border-slate-100">
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 pl-9 pr-3 text-xs outline-none focus:border-blue-500 transition-colors placeholder:text-slate-400"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
-                <span className="text-[10px] text-slate-400 bg-white border border-slate-200 px-1 rounded">⌘</span>
-                <span className="text-[10px] text-slate-400 bg-white border border-slate-200 px-1 rounded">K</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3 space-y-4">
-            {Object.entries(grouped).map(([group, list]) => {
-              if (list.length === 0) return null;
-              
-              const groupLabels: Record<string, string> = {
-                today: "Today",
-                yesterday: "Yesterday",
-                last7Days: "Last 7 days",
-                earlier: "Earlier"
-              };
-
-              return (
-                <div key={group} className="space-y-1">
-                  <h4 className="text-[11px] font-semibold text-slate-400 px-2 mb-2 uppercase tracking-wider">
-                    {groupLabels[group]}
-                  </h4>
-                  {list.map((s) => (
-                    <div
-                      key={s._id}
-                      onClick={() => {
-                        setActiveSessionId(s._id);
-                        if(window.innerWidth < 1024) setIsHistoryOpen(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-start gap-3 p-2 rounded-lg text-left transition-colors group cursor-pointer",
-                        activeSessionId === s._id
-                          ? "bg-blue-50/60 text-blue-700"
-                          : "hover:bg-slate-50 text-slate-700"
-                      )}
-                    >
-                      <MessageSquare className={cn("w-3.5 h-3.5 mt-0.5 shrink-0", activeSessionId === s._id ? "text-blue-500" : "text-slate-400 group-hover:text-blue-500")} />
-                      <div className="flex-1 min-w-0">
-                        {editingSessionId === s._id ? (
-                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                            <input
-                              type="text"
-                              autoFocus
-                              value={editTitle}
-                              onChange={e => setEditTitle(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === "Enter") handleRenameSession(s._id);
-                                if (e.key === "Escape") setEditingSessionId(null);
-                              }}
-                              className="flex-1 bg-white border border-blue-300 rounded px-1.5 py-0.5 text-xs text-slate-800 outline-none focus:ring-1 focus:ring-blue-500"
-                            />
-                            <button onClick={() => handleRenameSession(s._id)} className="p-1 text-green-600 hover:bg-green-50 rounded">
-                              <Check className="w-3 h-3" />
-                            </button>
-                            <button onClick={() => setEditingSessionId(null)} className="p-1 text-slate-400 hover:bg-slate-100 rounded">
-                              <X className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <p className="text-xs font-medium truncate pr-4">{s.title || "New Conversation"}</p>
-                        )}
-                        
-                        <div className="flex items-center justify-between mt-1 h-4 relative">
-                          {/* Timestamps and badges normally visible */}
-                          <div className={cn("flex items-center justify-between w-full transition-opacity", 
-                            editingSessionId !== s._id ? "group-hover:opacity-0" : ""
-                          )}>
-                            <span className="text-[10px] text-slate-400">
-                              {new Date(s.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {s.message_count > 0 && (
-                              <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 rounded-full font-medium">
-                                {s.message_count}
-                              </span>
-                            )}
-                          </div>
-                          
-                          {/* Action icons shown on hover */}
-                          {editingSessionId !== s._id && (
-                            <div className="absolute inset-0 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-slate-50 via-slate-50 to-transparent pl-4">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingSessionId(s._id);
-                                  setEditTitle(s.title || "New Conversation");
-                                }}
-                                className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
-                                title="Rename"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </button>
-                              <button 
-                                onClick={(e) => handleDeleteSession(s._id, e)}
-                                className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-
-            {sessions.length === 0 && (
-              <div className="text-center py-8 text-slate-400">
-                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                <p className="text-xs">No conversations yet</p>
-              </div>
-            )}
-            
-            {filteredSessions.length === 0 && sessions.length > 0 && (
-              <div className="text-center py-8 text-slate-400">
-                <p className="text-xs">No results found</p>
-              </div>
-            )}
-          </div>
-
-          <div className="p-4 border-t border-slate-100 flex items-center justify-between">
-            <button
-              onClick={() => setSearchQuery("")}
-              className="text-xs font-medium text-slate-500 hover:text-slate-800 flex items-center gap-1.5"
-            >
-              <X className="w-3 h-3" /> Clear search
-            </button>
-            <span className="text-xs text-slate-400">{filteredSessions.length} conversations</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

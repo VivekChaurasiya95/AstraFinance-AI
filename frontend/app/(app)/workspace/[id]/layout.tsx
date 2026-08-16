@@ -1,8 +1,10 @@
 "use client";
+import { uploadMultipart } from "@/lib/api";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   ChevronRight,
   Upload,
@@ -40,15 +42,9 @@ interface Workspace {
   updatedAt: string;
 }
 
-interface Agent {
-  id: number;
-  name: string;
-  status: "Complete" | "Running" | "Idle" | "Failed";
-  details: string;
-}
 
 // ── Agent Sidebar Components ──────────────────────────────────────────────────
-const AGENT_ICONS: Record<string, React.ElementType> = {
+const AGENT_ICONS: Record<string, any> = {
   "Document Agent": FileStack,
   "Extraction Agent": TrendingUp,
   "Red Flag Agent": ShieldAlert,
@@ -85,12 +81,20 @@ function StatusBadge({ status }: { status: string }) {
         <X className="w-3 h-3" /> Failed
       </span>
     );
+  if (status === "Blocked")
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+        <ShieldAlert className="w-3 h-3" /> Blocked
+      </span>
+    );
   return (
     <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
       Idle
     </span>
   );
 }
+
+import { useAgentOrchestration } from "@/hooks/useAgentOrchestration";
 
 function AgentSidebar({
   workspaceId,
@@ -101,42 +105,14 @@ function AgentSidebar({
   collapsed: boolean;
   onToggle: () => void;
 }) {
-  const { user, loading: authLoading } = useAuth();
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadAgents = useCallback(async () => {
-    if (authLoading || !user) return;
-    try {
-      const data = await fetcher<{ agents: Agent[] }>(`/workspaces/${workspaceId}/agents`);
-      setAgents(data.agents);
-    } catch (e) {
-      console.error("Failed to load agents:", e);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId, authLoading, user]);
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      loadAgents();
-      const interval = setInterval(loadAgents, 15000);
-      return () => clearInterval(interval);
-    }
-  }, [loadAgents, authLoading, user]);
+  const { agents, loading, retryAgent } = useAgentOrchestration(workspaceId);
 
   const handleRetry = async (agentId: number) => {
-    setAgents((prev) =>
-      prev.map((a) => (a.id === agentId ? { ...a, status: "Running" } : a))
-    );
-    await new Promise((r) => setTimeout(r, 2500));
-    setAgents((prev) =>
-      prev.map((a) =>
-        a.id === agentId
-          ? { ...a, status: "Complete", details: "Report generated\nJust now" }
-          : a
-      )
-    );
+    try {
+      await retryAgent(agentId);
+    } catch (e: any) {
+      console.error("Retry failed:", e);
+    }
   };
 
   if (collapsed) {
@@ -194,12 +170,27 @@ function AgentSidebar({
             ))
           : agents.map((agent) => {
               const Icon = AGENT_ICONS[agent.name] || Bot;
+              const isRunning = agent.status === "Running";
+              const isComplete = agent.status === "Complete";
+              const isFailed = agent.status === "Failed";
+              const isBlocked = agent.status === "Blocked";
               const colorClass = AGENT_COLORS[agent.name] || "bg-slate-100 text-slate-500";
               const detailLines = agent.details.split("\n");
               return (
-                <div key={agent.id} className="px-4 py-3 flex items-start gap-3 hover:bg-slate-50 transition-colors">
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5", colorClass)}>
+                <div 
+                  key={agent.id} 
+                  className={cn(
+                    "px-4 py-3 flex items-start gap-3 transition-colors relative border-l-2",
+                    isRunning ? "bg-blue-50/30 border-blue-500" :
+                    isComplete ? "hover:bg-slate-50 border-transparent" :
+                    isFailed ? "bg-red-50/30 border-red-500" :
+                    isBlocked ? "bg-amber-50/30 border-amber-500" :
+                    "hover:bg-slate-50 border-transparent"
+                  )}
+                >
+                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 relative", colorClass)}>
                     <Icon className="w-4 h-4" />
+                    {isComplete && <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
@@ -217,7 +208,7 @@ function AgentSidebar({
                     {detailLines[1] && (
                       <p className="text-[11px] text-slate-400">{detailLines[1]}</p>
                     )}
-                    {agent.status === "Failed" && (
+                    {isFailed && (
                       <button
                         onClick={() => handleRetry(agent.id)}
                         className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-red-500 hover:text-red-700 transition-colors"
@@ -226,6 +217,11 @@ function AgentSidebar({
                       </button>
                     )}
                   </div>
+                  {isRunning && (
+                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-100 overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-r-full w-full origin-left animate-pulse" />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -245,7 +241,7 @@ function AgentSidebar({
 
 type Tab = "Chat" | "Documents" | "Metrics" | "Comparison" | "Red Flags" | "Agent Activity" | "Reports";
 
-const TABS: { id: Tab, label: string, path: string, icon: React.ElementType }[] = [
+const TABS: { id: Tab, label: string, path: string, icon: any }[] = [
   { id: "Chat", label: "Chat", path: "", icon: MessageSquare },
   { id: "Documents", label: "Documents", path: "/documents", icon: FileText },
   { id: "Metrics", label: "Metrics", path: "/metrics", icon: BarChart2 },
@@ -306,10 +302,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
     const formData = new FormData();
     pdfs.forEach((f) => formData.append("files", f));
     try {
-      await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/documents`, {
-        method: "POST",
-        body: formData,
-      });
+      await uploadMultipart(`/workspaces/${workspaceId}/documents`, formData);
       await loadWorkspace();
       router.push(`/workspace/${workspaceId}/documents`);
     } catch (e) {
@@ -404,7 +397,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-0 mt-4 -mb-4 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1 mt-5 -mb-4 overflow-x-auto scrollbar-none relative px-2">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTabId === tab.id;
@@ -413,13 +406,23 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
                 key={tab.id}
                 href={`/workspace/${workspaceId}${tab.path}`}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors",
+                  "relative flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors z-10",
                   active
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+                    ? "text-blue-700"
+                    : "text-slate-500 hover:text-slate-900"
                 )}
               >
-                <Icon className="w-4 h-4 shrink-0" />
+                {active && (
+                  <motion.div
+                    layoutId="workspaceActiveTab"
+                    className="absolute inset-0 bg-blue-50/80 border-b-2 border-blue-600 rounded-t-lg -z-10"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                {!active && (
+                  <div className="absolute inset-0 bg-slate-50/50 opacity-0 hover:opacity-100 rounded-t-lg -z-10 transition-opacity" />
+                )}
+                <Icon className={cn("w-[15px] h-[15px] shrink-0 transition-colors", active ? "text-blue-600" : "text-slate-400")} />
                 {tab.label}
               </Link>
             );

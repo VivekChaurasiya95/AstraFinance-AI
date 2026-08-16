@@ -70,3 +70,16 @@ __pycache__/
 # Local vector db & outputs
 backend/chroma_db/
 backend/reports_output/
+backend/faiss_index/
+
+# Scratch / debug / temp files
+backend/scratch_*.py
+backend/check_*.py
+backend/dummy.pdf
+backend/dummy.py
+backend/app/dummy.py
+backend/extraction_debug.txt
+backend/red_flag_debug.txt
+backend/scripts/
+scratch_*.py
+frontend/scratch/
