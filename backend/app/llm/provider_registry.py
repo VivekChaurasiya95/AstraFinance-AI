@@ -17,4 +17,10 @@ class ProviderRegistry:
                 raise ValueError(f"Unknown LLM provider: {name}")
         return self._providers[name]
 
+    def test_provider(self, name: str, model: str) -> bool:
+        provider = self.get_provider(name)
+        if hasattr(provider, "test_connection"):
+            return provider.test_connection(model)
+        return False
+
 registry = ProviderRegistry()

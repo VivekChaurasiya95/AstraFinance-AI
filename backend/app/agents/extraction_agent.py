@@ -68,7 +68,7 @@ CRITICAL INSTRUCTIONS:
             ("human", "Context chunks:\n{context}")
         ])
 
-    def extract(self, document_id: str):
+    def extract(self, document_id: str, user_settings: dict = None):
         queries = _retrieval_queries("", "")
         raw_chunks = []
         
@@ -124,6 +124,6 @@ CRITICAL INSTRUCTIONS:
         
         messages = self.prompt.format_messages(context=context)
         router = get_llm_router()
-        result = router.invoke_structured("extraction", messages, ExtractionSchema, temperature=0.0)
+        result = router.invoke_structured("extraction", messages, ExtractionSchema, user_settings=user_settings, temperature=0.0)
         return result.model_dump()
 

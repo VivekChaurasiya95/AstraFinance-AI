@@ -16,7 +16,7 @@ class ReportAgent:
             os.makedirs(self.output_dir)
         self.router = get_llm_router()
 
-    def generate_report(self, workspace_name: str, documents: list, sections: list, metrics_data: list, red_flags_data: list, comparison_data: list | None = None, research_data: list | None = None) -> str:
+    def generate_report(self, workspace_name: str, documents: list, sections: list, metrics_data: list, red_flags_data: list, comparison_data: list | None = None, research_data: list | None = None, user_settings: dict = None) -> str:
         logger.info(f"ReportAgent: Compiling report for workspace '{workspace_name}'...")
         
         # 1. Build Context
@@ -79,7 +79,8 @@ class ReportAgent:
                     SystemMessage(content=system_prompt),
                     HumanMessage(content=human_prompt)
                 ],
-                schema=ReportOutput
+                schema=ReportOutput,
+                user_settings=user_settings
             )
             logger.info("ReportAgent: Successfully generated structured report from LLM.")
         except Exception as e:

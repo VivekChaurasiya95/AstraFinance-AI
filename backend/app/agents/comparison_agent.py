@@ -339,12 +339,12 @@ class ComparisonAgent:
     def __init__(self):
         pass
 
-    def _get_llm_analysis(self, computed_metrics_json: str) -> Dict[str, Any]:
+    def _get_llm_analysis(self, computed_metrics_json: str, user_settings: dict = None) -> Dict[str, Any]:
         content = ""
         try:
             messages = COMPARISON_PROMPT.format_messages(computed_metrics=computed_metrics_json)
             router = get_llm_router()
-            response = router.invoke("comparison", messages, temperature=0.1)
+            response = router.invoke("comparison", messages, user_settings=user_settings, temperature=0.1)
             content = response.content.strip()
             if content.startswith("```"):
                 lines = content.split("\n")
@@ -357,7 +357,7 @@ class ComparisonAgent:
             logger.error("LLM analysis parsing failed: %s. Raw: %s", e, content)
             raise RuntimeError(f"LLM analysis failed: {e}")
 
-    def compare(self, companies_data: List[Dict[str, Any]]) -> str:
+    def compare(self, companies_data: List[Dict[str, Any]], user_settings: dict = None) -> str:
         logger.info("Starting comparison for %d companies.", len(companies_data))
         start_time = time.time()
 
@@ -400,7 +400,7 @@ class ComparisonAgent:
         llm_json = json.dumps(llm_input, indent=2)
 
         try:
-            llm_output = self._get_llm_analysis(llm_json)
+            llm_output = self._get_llm_analysis(llm_json, user_settings=user_settings)
         except RuntimeError as e:
             return json.dumps({
                 "status": "failed",

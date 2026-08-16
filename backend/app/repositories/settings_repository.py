@@ -9,12 +9,18 @@ from ..database.mongo_client import settings_collection
 DEFAULT_SETTINGS = {
     "ai_configuration": {
         "primary_provider": "Groq",
+        "primary_model": "llama-3.1-8b-instant",
         "fallback_provider": "Gemini",
+        "fallback_model": "gemini-1.5-flash",
         "auto_fallback": True,
         "reasoning_mode": "Balanced",
         "response_style": "Professional",
         "enforce_citations": True,
         "risk_warnings": True,
+        "temperature_mode": "Conservative",
+        "analysis_depth": "Standard",
+        "report_intelligence": True,
+        "strict_financial_mode": True,
     },
     "notifications": {
         "reports": True,

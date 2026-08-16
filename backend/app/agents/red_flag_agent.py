@@ -47,7 +47,7 @@ CRITICAL INSTRUCTIONS:
             ("human", "Context chunks:\n{context}")
         ])
 
-    def analyze(self, document_id: str, extracted_metrics: dict | None = None):
+    def analyze(self, document_id: str, extracted_metrics: dict | None = None, user_settings: dict = None):
         queries = ["risk bankruptcy auditor warning debt liability lawsuit regulation downgrade"]
         context_parts = []
         
@@ -98,7 +98,7 @@ CRITICAL INSTRUCTIONS:
         messages = self.prompt.format_messages(context=context)
         router = get_llm_router()
         try:
-            result = router.invoke_structured("red_flag", messages, RedFlagSchema, temperature=0.0)
+            result = router.invoke_structured("red_flag", messages, RedFlagSchema, user_settings=user_settings, temperature=0.0)
             if not result:
                 logger.warning(f"RedFlagAgent returned empty result for {document_id}")
                 return {"risk_level": "Low", "red_flags": []}

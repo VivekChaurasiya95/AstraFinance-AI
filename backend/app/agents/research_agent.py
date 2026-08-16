@@ -256,7 +256,7 @@ class ResearchAgent:
     def __init__(self):
         pass
 
-    def _extract_company_names(self, user_query: str) -> List[str]:
+    def _extract_company_names(self, user_query: str, user_settings: dict = None) -> List[str]:
         """Use the LLM to extract company names from the user query."""
         prompt = (
             "Extract all company names from the following user query. "
@@ -270,7 +270,7 @@ class ResearchAgent:
         )
         try:
             router = get_llm_router()
-            response = router.invoke("research", [HumanMessage(content=prompt)], temperature=0.0)
+            response = router.invoke("research", [HumanMessage(content=prompt)], user_settings=user_settings, temperature=0.0)
             content = response.content.strip()
             # Strip markdown fences if present
             if content.startswith("```"):
@@ -379,12 +379,12 @@ class ResearchAgent:
         data["citations"] = final_citations
         return json.dumps(data)
 
-    def analyze(self, user_query: str, workspace_id: str | None = None) -> str:
+    def analyze(self, user_query: str, workspace_id: str | None = None, user_settings: dict = None) -> str:
         start_time = time.time()
         logger.info("=== Research Agent Query: %s ===", user_query)
 
         # Step 1: Extract company names from the query
-        company_names = self._extract_company_names(user_query)
+        company_names = self._extract_company_names(user_query, user_settings=user_settings)
         logger.info("Detected companies: %s", company_names)
 
         if not company_names and not workspace_id:
@@ -525,7 +525,7 @@ Return ONLY the JSON object. No markdown fences."""
         llm_start = time.time()
         try:
             router = get_llm_router()
-            response = router.invoke("research", [HumanMessage(content=analysis_prompt)], temperature=0.0)
+            response = router.invoke("research", [HumanMessage(content=analysis_prompt)], user_settings=user_settings, temperature=0.0)
             raw_output = response.content
         except Exception as e:
             logger.error("LLM analysis failed: %s", e)

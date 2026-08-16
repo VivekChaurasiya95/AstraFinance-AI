@@ -63,3 +63,45 @@ async def update_settings(
         del settings["_id"]
         
     return settings
+
+class TestProviderRequest(BaseModel):
+    provider: str
+    model: str
+
+@router.get("/ai/providers")
+async def get_providers(current_user: dict = Depends(get_current_user)):
+    from ...llm.config import GROQ_MODELS, GEMINI_MODELS
+    return {
+        "providers": [
+            {
+                "id": "Groq",
+                "name": "Groq",
+                "models": GROQ_MODELS
+            },
+            {
+                "id": "Gemini",
+                "name": "Google Gemini",
+                "models": GEMINI_MODELS
+            }
+        ]
+    }
+
+@router.post("/ai/test-provider")
+async def test_provider(request: TestProviderRequest, current_user: dict = Depends(get_current_user)):
+    from ...llm.provider_registry import registry
+    import time
+    
+    provider_name = request.provider.lower()
+    model_name = request.model
+    
+    start_time = time.time()
+    try:
+        success = registry.test_provider(provider_name, model_name)
+        latency_ms = int((time.time() - start_time) * 1000)
+        
+        if success:
+            return {"connected": True, "latency_ms": latency_ms}
+        else:
+            return {"connected": False, "error": "Provider returned failure"}
+    except Exception as e:
+        return {"connected": False, "error": str(e)}

@@ -90,9 +90,7 @@ class LLMRouter:
                 time.sleep(wait_time)
                 attempt += 1
 
-    def _route_request(self, agent_name: str, method: str, messages: List[BaseMessage], schema: Optional[Type[BaseModel]] = None, **kwargs) -> Any:
-        config = get_agent_config(agent_name)
-        
+    def _route_with_config(self, config: AgentModelConfig, agent_name: str, method: str, messages: List[BaseMessage], schema: Optional[Type[BaseModel]] = None, **kwargs) -> Any:
         # Try primary
         try:
             return self._attempt_call(config.primary_provider, config.primary_model, method, messages, schema, **kwargs)
@@ -104,7 +102,7 @@ class LLMRouter:
             if not config.fallback_provider or not config.fallback_model:
                 raise LLMError(f"Primary provider failed and no fallback configured for agent {agent_name}: {e}")
                 
-            logger.warning(f"[LLM_ROUTER] FALLBACK TRIGGERED for {agent_name} -> {config.fallback_provider}/{config.fallback_model}")
+            logger.warning(f"[LLM_ROUTER] FALLBACK TRIGGERED for {agent_name} -> {config.fallback_provider}/{config.fallback_model} Reason: {e}")
             
             # Try fallback
             try:
@@ -113,19 +111,35 @@ class LLMRouter:
                 # Tag result as using fallback
                 if isinstance(result, BaseModel) and hasattr(result, "_llm_metadata"):
                     result._llm_metadata["fallback_used"] = True
+                    result._llm_metadata["fallback_reason"] = str(e)
+                    result._llm_metadata["requested_provider"] = config.primary_provider
+                    result._llm_metadata["actual_provider"] = config.fallback_provider
                 elif hasattr(result, "response_metadata") and "router" in result.response_metadata:
                     result.response_metadata["router"]["fallback_used"] = True
+                    result.response_metadata["router"]["fallback_reason"] = str(e)
+                    result.response_metadata["router"]["requested_provider"] = config.primary_provider
+                    result.response_metadata["router"]["actual_provider"] = config.fallback_provider
                     
                 return result
             except Exception as fallback_err:
                 logger.error(f"[LLM_ROUTER] ALL PROVIDERS FAILED for {agent_name}. Primary: {e}. Fallback: {fallback_err}")
                 raise LLMError(f"All LLM providers failed for agent {agent_name}. Last error: {fallback_err}")
 
-    def invoke(self, agent_name: str, messages: List[BaseMessage], **kwargs) -> Any:
-        return self._route_request(agent_name, "plain", messages, None, **kwargs)
+    def invoke(self, agent_name: str, messages: List[BaseMessage], user_settings: dict = None, **kwargs) -> Any:
+        from .config import get_user_agent_config
+        config = get_user_agent_config(user_settings, agent_name)
+        return self._route_with_config(config, agent_name, "plain", messages, None, **kwargs)
 
-    def invoke_structured(self, agent_name: str, messages: List[BaseMessage], schema: Type[BaseModel], **kwargs) -> BaseModel:
-        return self._route_request(agent_name, "structured", messages, schema, **kwargs)
+    def invoke_structured(self, agent_name: str, messages: List[BaseMessage], schema: Type[BaseModel], user_settings: dict = None, **kwargs) -> BaseModel:
+        from .config import get_user_agent_config
+        config = get_user_agent_config(user_settings, agent_name)
+        return self._route_with_config(config, agent_name, "structured", messages, schema, **kwargs)
+
+    def invoke_with_config(self, config: AgentModelConfig, agent_name: str, messages: List[BaseMessage], **kwargs) -> Any:
+        return self._route_with_config(config, agent_name, "plain", messages, None, **kwargs)
+
+    def invoke_structured_with_config(self, config: AgentModelConfig, agent_name: str, messages: List[BaseMessage], schema: Type[BaseModel], **kwargs) -> BaseModel:
+        return self._route_with_config(config, agent_name, "structured", messages, schema, **kwargs)
 
 router = LLMRouter()
 

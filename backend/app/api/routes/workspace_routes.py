@@ -304,7 +304,7 @@ async def update_agent_execution(workspace_id: str, doc_id: str, agent_name: str
     await add_agent_activity(workspace_id, doc_id, agent_name, agent_type, status, action, details, metadata)
 
 
-async def simulate_document_processing(workspace_id: str, doc_id: str, file_path: str, file_name: str):
+async def simulate_document_processing(workspace_id: str, doc_id: str, file_path: str, file_name: str, user_settings: dict = None):
     try:
         await init_agent_executions(workspace_id, doc_id)
         
@@ -333,7 +333,7 @@ async def simulate_document_processing(workspace_id: str, doc_id: str, file_path
         else:
             await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Running", "Extracting Metrics", "Analyzing chunks for financial metrics.", 10)
             try:
-                extraction_results: dict = await asyncio.to_thread(extraction_agent.extract, doc_id)  # type: ignore
+                extraction_results: dict = await asyncio.to_thread(extraction_agent.extract, doc_id, user_settings)  # type: ignore
                 metrics_found = len(extraction_results.get("key_metrics", []))
                 
                 if metrics_found > 0:
@@ -358,7 +358,7 @@ async def simulate_document_processing(workspace_id: str, doc_id: str, file_path
             await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Running", "Analyzing Risks", "Scanning chunks for financial risks.", 10)
             try:
                 extracted_metrics = await metrics_collection.find_one({"document_id": doc_id})
-                risk_data: dict = await asyncio.to_thread(red_flag_agent.analyze, doc_id, extracted_metrics)  # type: ignore
+                risk_data: dict = await asyncio.to_thread(red_flag_agent.analyze, doc_id, extracted_metrics, user_settings)  # type: ignore
                 red_flags = risk_data.get("red_flags", [])
                 
                 await red_flags_collection.delete_many({"workspace_id": workspace_id, "document_id": doc_id})
@@ -478,7 +478,8 @@ async def upload_document(
         uploaded.append(ret_doc)
         
         # Queue processing task
-        background_tasks.add_task(simulate_document_processing, workspace_id, doc_id, file_path, filename)
+        user_settings = await settings_repository.get_user_settings(user_id)
+        background_tasks.add_task(simulate_document_processing, workspace_id, doc_id, file_path, filename, user_settings)
         
         # Update workspace docs count
         await workspaces_collection.update_one(
@@ -609,7 +610,7 @@ async def retry_agent(workspace_id: str, agent_id: int, background_tasks: Backgr
     # Wait! Extraction agent doesn't need the file! It only needs the chunks from ChromaDB!
     # So we don't need the original file for extraction. We can just run the rest of the pipeline.
     
-    async def resume_pipeline(doc_id: str):
+    async def resume_pipeline(doc_id: str, user_settings: dict):
         try:
             extraction_success = False
             # Re-run extraction
@@ -617,7 +618,7 @@ async def retry_agent(workspace_id: str, agent_id: int, background_tasks: Backgr
                 await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "processing"}})
                 await update_agent_execution(workspace_id, doc_id, "Extraction Agent", "Running", "Retrying Extraction", "Retrying metrics extraction...", 10)
                 try:
-                    extraction_results: dict = await asyncio.to_thread(extraction_agent.extract, doc_id)
+                    extraction_results: dict = await asyncio.to_thread(extraction_agent.extract, doc_id, user_settings)
                     metrics_found = len(extraction_results.get("key_metrics", []))
                     if metrics_found > 0:
                         extraction_results["_id"] = str(uuid.uuid4())
@@ -640,7 +641,7 @@ async def retry_agent(workspace_id: str, agent_id: int, background_tasks: Backgr
                 await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Running", "Analyzing Risks", "Scanning chunks for financial risks.", 10)
                 try:
                     extracted_metrics = await metrics_collection.find_one({"document_id": doc_id}) or {}
-                    risk_data: dict = await asyncio.to_thread(red_flag_agent.analyze, doc_id, extracted_metrics)
+                    risk_data: dict = await asyncio.to_thread(red_flag_agent.analyze, doc_id, extracted_metrics, user_settings)
                     red_flags = risk_data.get("red_flags", [])
                     
                     await red_flags_collection.delete_many({"workspace_id": workspace_id, "document_id": doc_id})
@@ -677,7 +678,8 @@ async def retry_agent(workspace_id: str, agent_id: int, background_tasks: Backgr
             print("Retry pipeline failed:", e)
             await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "error_message": str(e)}})
 
-    background_tasks.add_task(resume_pipeline, doc["_id"])
+    user_settings = await settings_repository.get_user_settings(user_id)
+    background_tasks.add_task(resume_pipeline, doc["_id"], user_settings)
     return {"message": "Retry triggered successfully"}
 
 @router.get("/{workspace_id}/agent-activity")
@@ -813,7 +815,8 @@ async def chat_with_workspace(
         })
 
         if research_agent:
-            res_json = await asyncio.to_thread(research_agent.analyze, actual_message, workspace_id)
+            user_settings = await settings_repository.get_user_settings(str(current_user["_id"]))
+            res_json = await asyncio.to_thread(research_agent.analyze, actual_message, workspace_id, user_settings)
             res = json.loads(res_json)
 
             reply_text = res.get("analysis", "")
@@ -1355,7 +1358,8 @@ async def get_workspace_comparison(
             
             agent = ComparisonAgent()
             # Agent might take some time, so offload to thread
-            result_json = await asyncio.to_thread(agent.compare, companies_data)
+            user_settings = await settings_repository.get_user_settings(user_id)
+            result_json = await asyncio.to_thread(agent.compare, companies_data, user_settings)
             result_dict = json.loads(result_json)
             
             # Only cache if successful (not failed)
@@ -1438,18 +1442,20 @@ async def generate_report(workspace_id: str, payload: GenerateReportRequest, bac
     await reports_collection.insert_one(report_doc)
     
     # Spawn background task
+    user_settings = await settings_repository.get_user_settings(str(current_user["_id"]))
     background_tasks.add_task(
         run_report_pipeline_task,
         report_id=report_id,
         workspace_id=workspace_id,
         payload=payload,
         workspace_name=ws.get("name", "Unknown"),
-        current_user=current_user
+        current_user=current_user,
+        user_settings=user_settings
     )
     
     return {"report_id": report_id, "status": "pending"}
 
-async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: GenerateReportRequest, workspace_name: str, current_user: dict):
+async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: GenerateReportRequest, workspace_name: str, current_user: dict, user_settings: dict = None):
     # Helper to update report pipeline state
     async def update_state(status: str, stage: str, error: str = None, counts: dict = None):
         update_doc = {"status": status, "pipeline_stage": stage}
@@ -1534,7 +1540,8 @@ async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: G
             metrics_data=metrics_data,
             red_flags_data=red_flags_data,
             comparison_data=comparison_data,
-            research_data=research_data
+            research_data=research_data,
+            user_settings=user_settings
         )
         
         await update_state("running", "Validating Generated PDF")

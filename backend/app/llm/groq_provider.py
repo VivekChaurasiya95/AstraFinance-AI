@@ -82,3 +82,12 @@ class GroqProvider:
             return result
         except Exception as e:
             raise self._map_error(e)
+
+    def test_connection(self, model: str) -> bool:
+        try:
+            client = self._get_client(model, 0.1)
+            from langchain_core.messages import HumanMessage
+            client.invoke([HumanMessage(content="hi")])
+            return True
+        except Exception:
+            return False
