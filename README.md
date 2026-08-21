@@ -1,353 +1,387 @@
-# AstraFinance-AI
+<div align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=3b82f6&height=200&section=header&text=AstraFinance-AI&fontSize=50&fontAlignY=35&fontColor=ffffff&desc=Multi-Agent%20Financial%20Research%20System&descAlignY=55&descAlign=50" alt="Header animation" width="100%"/>
 
-<p align="center">
-	<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=28&pause=1000&center=true&vCenter=true&width=1100&lines=Multi-Agent+Financial+Research+System;Upload+documents,+ask+questions,+get+cited+answers;Built+for+financial+research,+comparison,+and+risk+analysis" alt="AstraFinance-AI animated title" />
-</p>
+  <a href="https://github.com/VivekChaurasiya95/AstraFinance-AI">
+    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=24&pause=1000&color=22C55E&center=true&vCenter=true&width=800&lines=Upload+documents,+ask+questions,+get+cited+answers;Built+for+financial+research,+comparison,+and+risk+analysis;Powered+by+specialized+AI+Agents" alt="AstraFinance-AI animated subtitle" />
+  </a>
 
-<p align="center">
-	A documentation-first, multi-agent financial research platform that turns uploaded reports into searchable knowledge, cited answers, comparison outputs, red-flag insights, and polished reports.
-</p>
+  <p align="center">
+    <a href="https://github.com/VivekChaurasiya95/AstraFinance-AI/stargazers"><img src="https://img.shields.io/github/stars/VivekChaurasiya95/AstraFinance-AI?style=for-the-badge&color=eab308&logo=github&logoColor=white&labelColor=27272a" alt="Stars Badge"/></a>
+    <a href="https://github.com/VivekChaurasiya95/AstraFinance-AI/forks"><img src="https://img.shields.io/github/forks/VivekChaurasiya95/AstraFinance-AI?style=for-the-badge&color=3b82f6&logo=github&logoColor=white&labelColor=27272a" alt="Forks Badge"/></a>
+    <a href="https://github.com/VivekChaurasiya95/AstraFinance-AI/issues"><img src="https://img.shields.io/github/issues/VivekChaurasiya95/AstraFinance-AI?style=for-the-badge&color=ef4444&logo=github&logoColor=white&labelColor=27272a" alt="Issues Badge"/></a>
+    <a href="https://github.com/VivekChaurasiya95/AstraFinance-AI/pulls"><img src="https://img.shields.io/github/issues-pr/VivekChaurasiya95/AstraFinance-AI?style=for-the-badge&color=22c55e&logo=github&logoColor=white&labelColor=27272a" alt="Pull Requests Badge"/></a>
+  </p>
 
-<p align="center">
-	<a href="#architecture">Architecture</a> ·
-	<a href="#agent-system">Agents</a> ·
-	<a href="#workflow">Workflow</a> ·
-	<a href="#documentation-index">Documentation Index</a> ·
-	<a href="#project-structure">Project Structure</a>
-</p>
+  <h3>
+    <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Magnifying%20Glass%20Tilted%20Right.png" alt="Magnifying Glass" width="30" height="30" />
+    A documentation-first, multi-agent financial research platform that turns uploaded reports into searchable knowledge, cited answers, comparison outputs, red-flag insights, and polished reports.
+  </h3>
+</div>
 
----
+<br/>
 
-## What This Project Is
-
-AstraFinance-AI is designed as a multi-agent financial research workspace for analysts, students, and teams who need to ingest large financial documents and interrogate them with confidence.
-
-The system is centered around three principles:
-
-1. Ground every answer in source evidence.
-2. Split work across specialized agents instead of one monolithic assistant.
-3. Make long-running document, embedding, and reporting pipelines visible to the user.
-
-> 🧠 **Note for AI Contributors**: Please refer to [MEMORY.md](MEMORY.md) for a detailed, persistent track record of what has been implemented so far to avoid analyzing the entire codebase from scratch.
-
-The repository currently combines:
-
-- A backend application scaffold under `backend/app/`
-- A frontend workspace scaffold under `frontend/`
-- Documented architecture, flow, and design artifacts under `docs/`
-- Scripts for ingestion, indexing, and seeding under `scripts/`
-- Output and working folders such as `uploads/` and `reports/`
+<div align="center">
+  <img src="https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=white" alt="Firebase" />
+</div>
 
 ---
 
-## Product Vision
+<details open>
+<summary><h2 style="display:inline-block">📑 Table of Contents</h2></summary>
 
-The product is meant to answer financial research questions such as:
+1. [🚀 Project Overview](#-project-overview)
+2. [✨ Core Features & Capabilities](#-core-features--capabilities)
+3. [🤖 The Agent Ecosystem](#-the-agent-ecosystem)
+4. [🔄 System Architecture & Workflow](#-system-architecture--workflow)
+5. [🛠️ Tech Stack](#️-tech-stack)
+6. [💻 Installation & Setup Guide](#-installation--setup-guide)
+7. [📂 Project Structure](#-project-structure)
+8. [📚 Documentation Index](#-documentation-index)
+9. [🤝 Contributing](#-contributing)
 
-- What changed in this company’s annual report compared with last year?
-- Which risks are new, unusually severe, or underexplained?
-- What do the extracted financial metrics suggest about performance?
-- Where in the source document is the evidence for this conclusion?
-
-Instead of returning a single chatbot response, the platform decomposes the job into document ingestion, text normalization, chunking, retrieval, extraction, comparison, red-flag analysis, and report generation.
+</details>
 
 ---
 
-## Architecture
+## 🚀 Project Overview
+
+<div align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Inter&weight=500&size=20&pause=1000&color=10B981&vCenter=true&width=800&lines=Empowering+Analysts+with+AI;Transforming+Unstructured+Financial+Data;Data-Driven,+Evidence-Backed+Insights" alt="Animated Subtitle" />
+</div>
+
+**AstraFinance-AI** is a robust, production-ready **multi-agent financial research workspace** tailored for financial analysts, researchers, students, and institutional teams. It allows users to upload massive, complex financial documents (like 10-Ks, Annual Reports, and Earnings Transcripts) and interrogate them with high confidence.
+
+### 🎯 Core Principles
+
+| Principle | Description |
+| :--- | :--- |
+| 🛡️ **Evidence Grounding** | Every generated answer, metric, and insight is strictly grounded in source evidence with precise citations pointing back to the original documents. |
+| 🧠 **Multi-Agent Delegation** | Work is intelligently split across specialized, fine-tuned agents (e.g., Extraction, Comparison, Red Flag) rather than relying on a single, hallucination-prone monolithic AI. |
+| 👁️ **Pipeline Transparency** | Long-running tasks like document OCR, text chunking, embedding generation, and report building are fully visible to the user via real-time UI updates. |
+
+---
+
+## ✨ Core Features & Capabilities
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Glowing%20Star.png" alt="Star" width="40" height="40" />
+</div>
+
+### 🤖 1. Multi-Agent Reasoning Engine
+The system distributes analytical workloads across specialized AI agents. This allows each agent to utilize a narrower, highly-optimized prompt and context window, drastically reducing hallucinations and improving analytical rigor.
+
+### 📄 2. Advanced Document Pipeline
+Financial PDFs aren't just read—they are deeply parsed. The system handles **OCR**, noise cleaning, intelligent semantic chunking, and high-dimensional vector embeddings, making unstructured data perfectly searchable.
+
+### ⚖️ 3. Cross-Entity Comparison
+Compare multiple companies, different fiscal years, or competing report versions side-by-side. The comparison agent generates tabular and narrative outputs highlighting key variances with evidence backing.
+
+### 🚩 4. Red Flag & Risk Detection
+Automatically surface anomalies, omitted risk factors, aggressive accounting practices, and suspicious patterns that a human analyst might miss during a manual review.
+
+### 💬 5. Conversational Research Assistant
+A ChatGPT-like interface supercharged with **RAG (Retrieval-Augmented Generation)**. Ask complex questions and get answers complete with direct citations. **Multi-Modal Support:** Attach images and new files directly within the chat for dynamic context injection.
+
+### 📑 6. Automated Report Generation
+Package all your findings (metrics, flags, comparisons) into a polished, structured deliverable complete with auto-generated charts, executive summaries, and citation references. Exportable to PDF.
+
+### 🗂️ 7. Secure Workspace Isolation
+Users operate within dedicated Workspaces. Each workspace acts as a secure boundary grouping specific documents, chat histories, extracted metrics, and reports, ensuring data context is never crossed.
+
+---
+
+## 🤖 The Agent Ecosystem
+
+<div align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=20&pause=1000&color=8B5CF6&center=true&vCenter=true&width=800&lines=Document+Agent+→+Ingests+&+Indexes;Extraction+Agent+→+Finds+Metrics;Research+Agent+→+Answers+Queries;Comparison+Agent+→+Evaluates+Differences;Red+Flag+Agent+→+Detects+Risks;Report+Agent+→+Builds+Artifacts" alt="Agent Roles" />
+</div>
+
+```mermaid
+flowchart LR
+    subgraph Data Layer
+        D[Document Agent]
+    end
+    subgraph Analysis Layer
+        E[Extraction Agent]
+        R[Research Agent]
+        C[Comparison Agent]
+        F[Red Flag Agent]
+    end
+    subgraph Presentation Layer
+        P[Report Agent]
+    end
+
+    D --> E
+    D --> R
+    D --> C
+    D --> F
+    
+    E -.-> R
+    R -.-> C
+    R -.-> F
+    
+    E --> P
+    C --> P
+    F --> P
+    R --> P
+
+    style D fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
+    style E fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    style R fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    style C fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    style F fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    style P fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+```
+
+- 📂 **Document Agent:** The gatekeeper. Handles ingestion, parsing, normalization, and semantic indexing tasks.
+- 📊 **Extraction Agent:** A precision tool that extracts structured financial metrics, tables, and specific named entities from dense text.
+- 🔍 **Research Agent:** The core RAG engine. Answers unstructured research questions using semantic retrieval and strict citation grounding.
+- ⚖️ **Comparison Agent:** Evaluates qualitative and quantitative differences between entities or timeframes.
+- 🚨 **Red Flag Agent:** An auditor in a box. Detects anomalies, risks, inconsistencies, and regulatory disclosure issues.
+- 📝 **Report Agent:** The synthesizer. Composes the final report artifact from the findings of all other agents.
+
+---
+
+## 🔄 System Architecture & Workflow
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Gear.png" alt="Gears" width="40" height="40" />
+</div>
 
 ```mermaid
 flowchart TB
-	U[User] --> F[Frontend Workspace]
-	F --> A[Auth Layer\nGoogle OAuth · GitHub OAuth · JWT · Sessions]
-	F --> B[Backend App]
+	U[User / Analyst] --> F[Frontend Workspace\nNext.js + Tailwind + Spline3D]
+	F --> A[Auth Layer\nFirebase: Google OAuth · GitHub OAuth · JWT]
+	F --> B[Backend API\nFastAPI (Python)]
 
-	B --> C[Document Processing\nParse · OCR · Clean · Chunk]
-	B --> D[Embeddings and Vector Store]
-	B --> E[RAG and Retrieval]
-	B --> G[Financial Agents\nExtraction · Comparison · Red Flags · Research · Report]
-	B --> H[Reporting Layer\nCharts · PDF Builder · Templates]
+	subgraph Backend Core
+		B --> C[Document Processing\nParse · OCR · Clean · Chunk]
+		B --> D[Embeddings & Vector Store\nFAISS / ChromaDB]
+		B --> E[RAG & Retrieval\nSemantic Search & Reranking]
+		B --> G[Financial Agents\nLLM Orchestration Layer]
+		B --> H[Reporting Layer\nCharts · PDF Builder · Templates]
+		
+		C --> D
+		D --> E
+		E --> G
+		G --> H
+	end
 
-	C --> D
-	D --> E
-	E --> G
-	G --> H
-
-	B --> M[(MongoDB)]
-	B --> V[(Chroma / Vector Store)]
-	B --> L[(LLM Provider)]
-	H --> R[(Reports Output)]
+	subgraph Storage & External Services
+		B --> M[(MongoDB\nPersistent State)]
+		B --> V[(Vector Store\nKnowledge Base)]
+		B --> L[(LLM Provider\nOpenAI / Anthropic)]
+		H --> R[(Reports Output\nPDF / HTML)]
+	end
 
 	D --> V
 	G --> L
 	A --> M
 ```
 
-### Architecture Highlights
+### 📈 Typical User Workflow
 
-- Frontend focuses on the research workspace, onboarding, upload flows, and reporting surfaces.
-- Backend is organized by feature area: auth, agents, API routes, document processing, embeddings, RAG, reporting, repositories, schemas, and services.
-- Document ingestion is a first-class pipeline, not a hidden preprocessing step.
-- Retrieval is citation-aware so responses can point back to the original source material.
-- Reporting is treated as an output product, not just a downloaded artifact.
-
----
-
-## Core Capabilities
-
-### 1. Multi-Agent Research
-
-The system distributes work across specialized agents so the model can focus on one type of reasoning at a time.
-
-### 2. Document Understanding
-
-Financial PDFs are parsed, cleaned, chunked, and embedded so they can be searched and reasoned over efficiently.
-
-### 3. Company Comparison
-
-The comparison flow is meant to show differences across companies, periods, or report versions with evidence-backed output.
-
-### 4. Red Flag Detection
-
-The risk workflow surfaces anomalies, omissions, and suspicious patterns that deserve closer inspection.
-
-### 5. Research Assistant Experience
-
-The research flow combines retrieval, prompt orchestration, and citations so the user can ask questions conversationally without losing traceability. Users can also directly attach files and images within the chat for dynamic multi-modal context.
-
-### 6. Report Generation
-
-Generated reports package findings into structured deliverables with charts, sections, and citation references.
-
-### 7. Workspace-Based Organization
-
-Users work inside dedicated workspaces that group documents, chats, metrics, comparisons, flags, and reports.
+1. 👤 **Upload:** User uploads a financial document (e.g., 2024 Apple 10-K) into a newly created Workspace.
+2. ⚙️ **Process:** The **Document Agent** parses, cleans, and semantically chunks the text.
+3. 🧠 **Embed:** Chunks are vectorized and stored for high-speed similarity search.
+4. 💬 **Query:** The user asks the **Research Agent**: *"What are the primary supply chain risks mentioned?"*
+5. 🔍 **Retrieve & Reason:** The system retrieves the most relevant chunks, and the LLM synthesizes an answer.
+6. 🎯 **Respond:** The UI displays the answer with exact citations highlighting the source document.
+7. 📑 **Report:** The user triggers the **Report Agent** to generate a comprehensive risk analysis PDF based on the findings.
 
 ---
 
-## Agent System
+## 🛠️ Tech Stack
 
-```mermaid
-flowchart LR
-	D[Document Agent] --> E[Extraction Agent]
-	D --> R[Research Agent]
-	D --> C[Comparison Agent]
-	D --> F[Red Flag Agent]
-	D --> P[Report Agent]
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Desktop%20Computer.png" alt="Computer" width="40" height="40" />
+</div>
 
-	E --> R
-	R --> C
-	R --> F
-	C --> P
-	F --> P
+### Frontend (User Interface)
+- **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
+- **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
+- **Animations:** [Framer Motion](https://www.framer.com/motion/) & [GSAP](https://gsap.com/) & [Spline 3D](https://spline.design/)
+- **State Management:** [Zustand](https://github.com/pmndrs/zustand)
+- **Charts:** [Chart.js](https://www.chartjs.org/) & [Recharts](https://recharts.org/)
+- **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
+
+### Backend (API & AI Orchestration)
+- **Framework:** [FastAPI](https://fastapi.tiangolo.com/) (Python)
+- **Database:** [MongoDB](https://www.mongodb.com/) (Motor Async Driver)
+- **Vector Store:** FAISS / ChromaDB (Configurable)
+- **AI/LLM:** LangChain / OpenAI / Anthropic integrations
+- **Document Parsing:** PyMuPDF, OCR integrations
+
+### Infrastructure & Security
+- **Authentication:** [Firebase Auth](https://firebase.google.com/) (Email, Google, GitHub)
+- **Security:** JWT Tokens, Rate Limiting, CORS, Pydantic Schema Validation
+
+---
+
+## 💻 Installation & Setup Guide
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Wrench.png" alt="Wrench" width="40" height="40" />
+</div>
+
+Follow these steps to get a local development environment running.
+
+### 📋 Prerequisites
+- **Node.js** (v20+ recommended)
+- **Python** (v3.10+ recommended)
+- **MongoDB** (Local instance or MongoDB Atlas cluster)
+- **Firebase Project** (For authentication credentials)
+- **OpenAI API Key** (or equivalent LLM provider key)
+
+### 1️⃣ Clone the Repository
+```bash
+git clone https://github.com/VivekChaurasiya95/AstraFinance-AI.git
+cd AstraFinance-AI
 ```
 
-### Agent Roles
+### 2️⃣ Backend Setup
+```bash
+# Navigate to the backend directory
+cd backend
 
-- Document Agent: handles ingestion, parsing, normalization, and indexing tasks.
-- Extraction Agent: extracts structured financial metrics and entities from source material.
-- Research Agent: answers research questions using retrieval and citation grounding.
-- Comparison Agent: evaluates differences between companies, documents, or time periods.
-- Red Flag Agent: detects anomalies, risks, inconsistencies, and disclosure issues.
-- Report Agent: composes the final report artifact from the produced findings.
+# Create a virtual environment
+python -m venv venv
 
-This division is important because each agent can use a narrower prompt, a narrower retrieval context, and a narrower output format.
+# Activate the virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
 
----
+# Install dependencies
+pip install -r requirements.txt
 
-## Workflow
+# Create your environment variables file
+cp .env.example .env
+# Edit .env and add your MONGODB_URL, LLM API keys, and JWT secrets
 
-```mermaid
-sequenceDiagram
-	participant User
-	participant Frontend
-	participant Backend
-	participant Processor as Document Processor
-	participant Store as Vector Store
-	participant LLM as LLM Provider
-	participant Reporter as Report Builder
-
-	User->>Frontend: Upload a financial document
-	Frontend->>Backend: Send document metadata and file
-	Backend->>Processor: Parse, clean, chunk, extract metadata
-	Processor->>Store: Embed and index chunks
-	Backend->>LLM: Run research, extraction, comparison, or red-flag reasoning
-	Backend->>Reporter: Build charts, sections, and report output
-	Reporter-->>Frontend: Return final report and references
+# Start the FastAPI server
+uvicorn app.main:app --reload --port 8000
 ```
+*The backend API will be available at `http://localhost:8000`. You can view the Swagger UI at `http://localhost:8000/docs`.*
 
-### Document Pipeline
+### 3️⃣ Frontend Setup
+```bash
+# Open a new terminal and navigate to the frontend directory
+cd frontend
 
-1. Upload file into a workspace.
-2. Parse the document content.
-3. Clean and normalize text.
-4. Chunk the content into retrieval-ready segments.
-5. Embed and store the chunks.
-6. Run research, extraction, comparison, or red-flag workflows.
-7. Build a report or answer with citations.
+# Install dependencies
+npm install
+# or yarn install / pnpm install
 
----
+# Create your environment variables file
+cp .env.example .env.local
+# Edit .env.local with your Firebase config and backend API URL
+# NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
-## User Experience Surface
-
-The documented product experience spans:
-
-- Landing page and onboarding
-- Secure Authentication via Firebase (Email/Password, Google OAuth, GitHub OAuth)
-- Dashboard and workspace overview
-- Workspace list and creation
-- Upload and document processing screens
-- Chat, documents, metrics, comparison, red flags, agent activity, and reports tabs
-
-The UI spec emphasizes:
-
-- Trust-first messaging
-- Clear status visibility for agent execution
-- Transparent processing states for uploads and indexing
-- Strong workspace boundaries for research context
+# Start the Next.js development server
+npm run dev
+```
+*The frontend application will be available at `http://localhost:3000`.*
 
 ---
 
-## Documentation Index
+## 📂 Project Structure
 
-The repository includes a broad documentation set split into dedicated folders under `docs/`. Use the links below as the central map for the project.
-
-### Product and Requirements
-
-- [PRD](docs/prd/)
-- [Multiagent SRS](docs/diagrams/Mutiagent%20SRS.pdf)
-
-### Architecture Folders
-
-- [System Architecture](docs/architecture/) - System Architecture Diagram MultiAgent FRS.pdf
-- [High Level Design](docs/HLD/) - High Level Diagram MultiAgent FRS.pdf
-- [Low Level Design](docs/LLD/) - Low Level Design MultiAgent FRS.pdf
-- [API Flow](docs/api/) - API flow Diagram.pdf
-- [Database Architecture](docs/Database%20Architecture/) - Database Architecture Diagram.pdf
-- [Multi-Agent Architecture](docs/Multiagent%20Architecture/) - Multi-Agent Architecture Diagram.pdf
-
-### Supporting Workspaces
-
-- [Setup Notes](docs/setup/) - currently empty placeholder folder
-- [Design and documentation gallery](docs/diagrams/)
-
-### Diagram Gallery
-
-- [Authentication Flow Diagram](docs/diagrams/Authentication%20Flow%20Diagram.pdf)
-- [Authentication Sequence Diagram - Google and GitHub OAuth to JWT to Session](docs/diagrams/Authentication%20Sequence%20Diagram%20%28GoogleGitHub%20OAuth%20%E2%86%92%20JWT%20%E2%86%92%20Session%29.pdf)
-- [Company Comparison Sequence Diagram](docs/diagrams/Company%20Comparison%20Sequence%20Diagram.pdf)
-- [Component Diagram - MultiAgent Financial Research System](docs/diagrams/Component%20Diagram%20%E2%80%93%20MultiAgent%20Financial%20Research%20System.pdf)
-- [Database Architecture Diagram](docs/diagrams/Database%20Architecture%20Diagram.pdf)
-- [Deployment Diagram](docs/diagrams/Deployment%20Diagram.pdf)
-- [Design Document Volume 1](docs/diagrams/Design%20Document%20Volume%201.pdf)
-- [Design Document Volume 2](docs/diagrams/Design%20Document%20Volume%202.pdf)
-- [Design Document Volume 3](docs/diagrams/Design%20Document%20Volume%203.pdf)
-- [Design Document Volume 4](docs/diagrams/Design%20Document%20Volume%204.pdf)
-- [DFD Level 0 Diagram](docs/diagrams/DFD%20Level%200%20Diagram%20.png)
-- [DFD Level 1 Diagram](docs/diagrams/DFD%20Level%201%20Diagram%20.png)
-- [DFD Level 2 - Company Comparison](docs/diagrams/DFD%20Level%202%20%E2%80%94%20Company%20Comparison.png)
-- [DFD Level 2 - Document Processing Pipeline](docs/diagrams/DFD%20Level%202%20%E2%80%94%20Document%20Processing%20Pipeline.png)
-- [DFD Level 2 - Financial Extraction](docs/diagrams/DFD%20Level%202%20%E2%80%94%20Financial%20Extraction.png)
-- [DFD Level 2 - Multi-Agent Processing](docs/diagrams/DFD%20Level%202%20%E2%80%94%20Multi-Agent%20Processing.png)
-- [DFD Level 2 - RAG Pipeline](docs/diagrams/DFD%20Level%202%20%E2%80%94%20RAG%20Pipeline.png)
-- [DFD Level 2 - Red Flag Detection](docs/diagrams/DFD%20Level%202%20%E2%80%94%20Red%20Flag%20Detection.png)
-- [Document Upload and Indexing Sequence Diagram](docs/diagrams/Document%20Upload%20%26%20Indexing%20Sequence%20Diagram.pdf)
-- [Level 2 Authentication Module](docs/diagrams/level%202%20Authentication%20Module.png)
-- [RAG Pipeline Architecture - Production Level](docs/diagrams/RAG%20Pipeline%20Architecture%20%28Production-Level%29%20Diagram.pdf)
-- [Red Flag Detection Sequence Diagram](docs/diagrams/Red%20Flag%20Detection%20Sequence%20Diagram.pdf)
-- [Report Generation Flow Diagram](docs/diagrams/Report%20Generation%20Flow%20Diagram.pdf)
-- [Report Generation Sequence Diagram](docs/diagrams/Report%20Generation%20Sequence%20Diagram.pdf)
-- [Research Query Sequence Diagram - RAG Workflow](docs/diagrams/Research%20Query%20Sequence%20Diagram%20%28RAG%20Workflow%29.pdf)
-- [Sequence Diagram - Document Upload and AI Research Workflow](docs/diagrams/Sequence%20Diagram%20%E2%80%93%20Document%20Upload%20%26%20AI%20Research%20Workflow.pdf)
-
-### Additional Notes
-
-- [Volume 2 Authentication, Dashboard, Workspace, and Document Management Notes](docs/diagrams/Volume-2-Auth-Dashboard-Workspace-Documents.md)
-- The docs folder is organized by topic so each major system area can be reviewed in isolation.
-
----
-
-## Project Structure
+A high-level overview of the monorepo architecture:
 
 ```text
 AstraFinance-AI/
-├── backend/
-│   └── app/
-│       ├── agent_memory/
-│       ├── agents/
-│       ├── api/
-│       ├── auth/
-│       ├── config/
-│       ├── database/
-│       ├── document_processing/
-│       ├── embeddings/
-│       ├── llm/
-│       ├── middleware/
-│       ├── models/
-│       ├── rag/
-│       ├── report/
-│       ├── repositories/
-│       ├── schemas/
-│       ├── services/
-│       └── utils/
-├── frontend/
+├── backend/                 # 🐍 Python FastAPI Server
 │   ├── app/
-│   ├── components/
-│   ├── lib/
-│   └── public/
-├── scripts/
-├── docs/
-├── datasets/
-├── reports/
-├── uploads/
-└── tests/
+│   │   ├── agent_memory/    # Shared state & conversation memory
+│   │   ├── agents/          # Core AI agent logic (Extraction, Research, etc.)
+│   │   ├── api/             # RESTful route definitions
+│   │   ├── auth/            # JWT & Session validation handlers
+│   │   ├── document_processing/ # PDF Parsing, OCR, Chunking
+│   │   ├── embeddings/      # Vectorization services
+│   │   ├── rag/             # Retrieval logic & Citation generation
+│   │   ├── report/          # PDF & HTML Report builders
+│   │   ├── repositories/    # MongoDB data access layer
+│   │   └── models/          # Pydantic & DB schemas
+│   ├── tests/               # Backend unit & integration tests
+│   └── requirements.txt     # Python dependencies
+│
+├── frontend/                # ⚛️ Next.js Web Application
+│   ├── app/                 # Next.js App Router pages (Dashboard, Workspace, Settings)
+│   ├── components/          # Reusable UI (Features, Layouts, Dashboard Widgets)
+│   ├── hooks/               # Custom React hooks (Settings, Agent Orchestration)
+│   ├── lib/                 # Utility functions & API clients
+│   └── public/              # Static assets (Images, SVGs, Models)
+│
+├── docs/                    # 📚 Extensive Architectural Documentation (DFDs, Sequence diagrams)
+├── scripts/                 # 🛠️ Utility scripts for DB seeding & testing
+├── datasets/                # 📊 Sample financial reports for testing
+└── uploads/                 # 📁 Local storage for processed documents (Dev mode)
 ```
 
-### Backend Domain Map
+---
 
-- `agent_memory/`: shared state, conversation context, and memory coordination.
-- `agents/`: specialized AI agent implementations.
-- `api/`: route definitions for auth, comparison, research, report, upload, workspace, and related services.
-- `auth/`: OAuth, JWT, and session handling.
-- `database/`: collection definitions, indexes, seeding, and client setup.
-- `document_processing/`: parsing, OCR, metadata extraction, chunking, and table extraction.
-- `embeddings/`: embedding generation and vector-store integration.
-- `llm/`: model access, provider orchestration, and prompt templates.
-- `rag/`: retrieval, reranking, prompt building, citation generation, and response formatting.
-- `report/`: charts, PDFs, report templates, and report services.
-- `repositories/`: persistence abstraction layer.
-- `schemas/`: request and response shapes.
-- `services/`: business logic orchestration.
-- `utils/`: reusable helpers, validation, logging, security, and shared constants.
+## 📚 Documentation Index
+
+Our `docs/` folder contains extensive architectural blueprints. If you are contributing to the core logic, please review these first!
+
+<details>
+<summary><b>Click to expand Documentation Links</b></summary>
+<br>
+
+### 📄 Product Requirements
+- [Product Requirements Document (PRD)](docs/prd/)
+- [Multiagent System Requirements Specification (SRS)](docs/diagrams/Mutiagent%20SRS.pdf)
+
+### 📐 System Design & Architecture
+- [System Architecture Overview](docs/architecture/)
+- [High Level Design (HLD)](docs/HLD/)
+- [Low Level Design (LLD)](docs/LLD/)
+- [API Flow Definitions](docs/api/)
+- [Database Architecture](docs/Database%20Architecture/)
+- [Multi-Agent Architecture Blueprint](docs/Multiagent%20Architecture/)
+
+### 🖼️ Diagram Gallery
+- [Authentication Flow Diagram](docs/diagrams/Authentication%20Flow%20Diagram.pdf)
+- [Company Comparison Sequence Diagram](docs/diagrams/Company%20Comparison%20Sequence%20Diagram.pdf)
+- [System Component Diagram](docs/diagrams/Component%20Diagram%20%E2%80%93%20MultiAgent%20Financial%20Research%20System.pdf)
+- [DFD Level 0 Diagram](docs/diagrams/DFD%20Level%200%20Diagram%20.png)
+- [RAG Pipeline Architecture (Production)](docs/diagrams/RAG%20Pipeline%20Architecture%20%28Production-Level%29%20Diagram.pdf)
+- [Document Upload & Indexing Sequence](docs/diagrams/Document%20Upload%20%26%20Indexing%20Sequence%20Diagram.pdf)
+- *...and [many more in the docs/diagrams/ folder](docs/diagrams/)*
+
+</details>
 
 ---
 
-## Status & Progress
+## 🤝 Contributing
 
-This repository is actively being developed. Here is a summary of what has been achieved so far:
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Handshake.png" alt="Handshake" width="40" height="40" />
+</div>
 
-- **Frontend Foundation**: Fully functional Next.js App Router scaffold featuring a modern, Tailwind-based UI for dashboard and workspaces.
-- **Authentication**: Firebase Authentication is wired up for Email/Password, Google OAuth, and GitHub OAuth, syncing seamlessly with the backend.
-- **Workspace & Chat**: Users can create workspaces, view documents, and interact with the Research Agent via a rich chat interface.
-- **Multi-Modal Support**: The chat interface supports direct file and image attachments (via `multipart/form-data`) alongside text queries.
-- **Backend Scaffold**: FastAPI backend with MongoDB persistence, prepared with placeholder agent routing for extraction, red flags, and comparisons.
-- **Documentation**: Extensive architectural blueprints (DFDs, Sequence diagrams, PRDs) are available in the `docs/` folder.
+We welcome contributions! Whether you're fixing a bug, improving the RAG pipeline, or designing a new frontend component.
 
-For a more detailed developer track record, please see [MEMORY.md](MEMORY.md).
+1. **Fork the repository** and create your feature branch: `git checkout -b feature/my-new-feature`
+2. **Review the architecture docs** to ensure your approach aligns with the multi-agent design.
+3. **Keep changes domain-focused.** (e.g., Don't mix authentication logic into the document parsing service).
+4. **Commit your changes:** `git commit -am 'Add some feature'`
+5. **Push to the branch:** `git push origin feature/my-new-feature`
+6. **Submit a pull request!**
 
----
-
-## How to Use This Repository
-
-1. Read the product and architecture docs first to understand the design intent.
-2. Use the diagram gallery for visual reference when implementing or reviewing flows.
-3. Keep backend logic inside the relevant domain package instead of creating cross-cutting shortcuts.
-4. Keep document-processing, retrieval, and reporting pipelines explicit and observable.
-5. Preserve citation grounding in every user-facing research or report response.
+> ⚠️ **Note:** Please update this `README.md` and the `MEMORY.md` file whenever a new workflow, screen, or agent is fundamentally altered.
 
 ---
 
-## Contribution Mindset
-
-- Prefer feature-local changes over broad rewrites.
-- Keep the architecture aligned with the documented agent responsibilities.
-- Update the README and docs whenever a new workflow, screen, or agent is added.
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=3b82f6&height=150&section=footer&text=AstraFinance-AI&fontSize=25&fontAlignY=80&fontColor=ffffff" alt="Footer animation" width="100%"/>
+</p>
