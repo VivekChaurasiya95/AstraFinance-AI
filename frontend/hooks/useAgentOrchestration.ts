@@ -22,7 +22,7 @@ export interface AgentTimelineEvent {
   action: string;
   details: string;
   duration: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -58,9 +58,9 @@ export function useAgentOrchestration(workspaceId: string) {
       const data = await fetcher<AgentOrchestrationState>(`/workspaces/${workspaceId}/agents`);
       setState(data);
       setError(null);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to load agent orchestration state:", err);
-      setError(err.message || "Failed to load agent status");
+      setError(err instanceof Error ? err.message : "Failed to load agent status");
     } finally {
       setLoading(false);
       if (showRefreshIndicator) {
@@ -71,6 +71,7 @@ export function useAgentOrchestration(workspaceId: string) {
 
   // Initial load and polling
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
 
     // Intelligent polling: Only poll if pipeline is running/processing
@@ -105,7 +106,7 @@ export function useAgentOrchestration(workspaceId: string) {
       }));
       // Force an immediate refresh to sync with backend
       setTimeout(() => loadData(false), 500);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to retry agent:", err);
       throw err;
     }

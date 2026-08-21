@@ -37,3 +37,60 @@ def get_agent_config(agent_name: str) -> AgentModelConfig:
         fallback_model=fallback_model,
         quality_tier=tier
     )
+
+GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.2-90b-vision-preview"]
+GEMINI_MODELS = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.5-flash-lite"]
+
+def get_user_agent_config(ai_settings: dict | None, agent_name: str) -> AgentModelConfig:
+    """
+    Build AgentModelConfig by resolving user's AI settings, with fallback to environment defaults.
+    """
+    # 1. Get environment / agent-specific defaults
+    default_config = get_agent_config(agent_name)
+    
+    if not ai_settings:
+        return default_config
+        
+    # 2. Extract user settings (provider names are typically stored capitalized in frontend, e.g., 'Groq', 'Gemini')
+    user_primary_provider = ai_settings.get("primary_provider", "").lower()
+    user_primary_model = ai_settings.get("primary_model", "")
+    
+    user_fallback_provider = ai_settings.get("fallback_provider", "").lower()
+    user_fallback_model = ai_settings.get("fallback_model", "")
+    
+    auto_fallback = ai_settings.get("auto_fallback", True)
+    
+    # 3. Resolve and validate primary
+    primary_provider = default_config.primary_provider
+    primary_model = default_config.primary_model
+    
+    if user_primary_provider in ["groq", "gemini"]:
+        primary_provider = user_primary_provider
+        # Validate model
+        if primary_provider == "groq" and user_primary_model in GROQ_MODELS:
+            primary_model = user_primary_model
+        elif primary_provider == "gemini" and user_primary_model in GEMINI_MODELS:
+            primary_model = user_primary_model
+            
+    # 4. Resolve and validate fallback
+    fallback_provider = default_config.fallback_provider
+    fallback_model = default_config.fallback_model
+    
+    if auto_fallback:
+        if user_fallback_provider in ["groq", "gemini"]:
+            fallback_provider = user_fallback_provider
+            if fallback_provider == "groq" and user_fallback_model in GROQ_MODELS:
+                fallback_model = user_fallback_model
+            elif fallback_provider == "gemini" and user_fallback_model in GEMINI_MODELS:
+                fallback_model = user_fallback_model
+    else:
+        fallback_provider = None
+        fallback_model = None
+        
+    return AgentModelConfig(
+        primary_provider=primary_provider,
+        primary_model=primary_model,
+        fallback_provider=fallback_provider,
+        fallback_model=fallback_model,
+        quality_tier=default_config.quality_tier
+    )

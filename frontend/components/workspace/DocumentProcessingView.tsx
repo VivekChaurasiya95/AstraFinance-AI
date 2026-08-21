@@ -59,9 +59,9 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
     <div className="relative w-full max-w-2xl mx-auto h-48 flex items-center justify-center overflow-hidden select-none">
       {/* Background gradient orbs */}
       <div className="absolute inset-0">
-        <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-blue-200/30 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/50/30 rounded-full blur-3xl animate-pulse" />
         <div
-          className="absolute top-1/2 right-1/4 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-indigo-200/20 rounded-full blur-3xl animate-pulse"
+          className="absolute top-1/2 right-1/4 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-primary/50/20 rounded-full blur-3xl animate-pulse"
           style={{ animationDelay: "1s" }}
         />
         <div
@@ -80,21 +80,21 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
           )}
         >
           <div
-            className="w-20 h-24 bg-white rounded-lg shadow-lg border border-slate-200 flex flex-col items-center justify-center relative overflow-hidden"
+            className="w-20 h-24 bg-card rounded-lg shadow-lg border border-border flex flex-col items-center justify-center relative overflow-hidden"
             style={{
               animation: "float 3s ease-in-out infinite",
             }}
           >
-            <div className="absolute top-0 left-0 right-0 h-6 bg-red-500 flex items-center justify-center">
+            <div className="absolute top-0 left-0 right-0 h-6 bg-destructive flex items-center justify-center">
               <span className="text-white text-[9px] font-bold tracking-wider">
                 PDF
               </span>
             </div>
             <div className="mt-4 space-y-1 w-full px-2">
-              <div className="h-1 bg-slate-200 rounded-full w-full" />
-              <div className="h-1 bg-slate-200 rounded-full w-3/4" />
-              <div className="h-1 bg-slate-200 rounded-full w-5/6" />
-              <div className="h-1 bg-slate-200 rounded-full w-2/3" />
+              <div className="h-1 bg-muted rounded-full w-full" />
+              <div className="h-1 bg-muted rounded-full w-3/4" />
+              <div className="h-1 bg-muted rounded-full w-5/6" />
+              <div className="h-1 bg-muted rounded-full w-2/3" />
             </div>
           </div>
         </div>
@@ -111,10 +111,10 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
               className={cn(
                 "absolute w-2 h-2 rounded-full transition-colors duration-300",
                 currentStep >= 3
-                  ? "bg-indigo-500"
+                  ? "bg-primary"
                   : currentStep >= 2
-                    ? "bg-blue-500"
-                    : "bg-blue-400"
+                    ? "bg-primary"
+                    : "bg-primary/70"
               )}
               style={{
                 animation: `flowRight 2.5s ease-in-out infinite`,
@@ -129,14 +129,14 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
             className={cn(
               "w-6 h-6 rounded-full flex items-center justify-center z-10 transition-all duration-500",
               currentStep >= 2
-                ? "bg-blue-500 shadow-lg shadow-blue-500/30"
-                : "bg-slate-300"
+                ? "bg-primary shadow-lg shadow-blue-500/30"
+                : "bg-muted"
             )}
           >
             <div
               className={cn(
                 "w-2 h-2 rounded-full",
-                currentStep >= 2 ? "bg-white" : "bg-slate-400"
+                currentStep >= 2 ? "bg-card" : "bg-muted"
               )}
             />
           </div>
@@ -155,17 +155,17 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
               className={cn(
                 "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 z-10",
                 currentStep >= 5
-                  ? "bg-emerald-500 shadow-lg shadow-emerald-500/30"
+                  ? "bg-success shadow-lg shadow-emerald-500/30"
                   : currentStep >= 4
-                    ? "bg-indigo-500 shadow-lg shadow-indigo-500/30"
-                    : "bg-slate-300"
+                    ? "bg-primary shadow-lg shadow-indigo-500/30"
+                    : "bg-muted"
               )}
               style={{ animation: "float 4s ease-in-out infinite" }}
             >
               <Database
                 className={cn(
                   "w-4 h-4",
-                  currentStep >= 4 ? "text-white" : "text-slate-400"
+                  currentStep >= 4 ? "text-white" : "text-muted-foreground"
                 )}
               />
             </div>
@@ -182,8 +182,8 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
                     currentStep >= 5
                       ? "bg-emerald-400"
                       : currentStep >= 4
-                        ? "bg-indigo-400"
-                        : "bg-slate-200"
+                        ? "bg-primary/50"
+                        : "bg-muted"
                   )}
                   style={{
                     top: `calc(50% + ${y}px - 6px)`,
@@ -267,7 +267,7 @@ function VerticalStepper({
                       ? "bg-emerald-400"
                       : state === "active"
                         ? "bg-gradient-to-b from-blue-400 to-slate-200"
-                        : "bg-slate-200"
+                        : "bg-muted"
                   )}
                 />
               </div>
@@ -279,12 +279,12 @@ function VerticalStepper({
                 className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500",
                   state === "complete"
-                    ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                    ? "bg-success text-white shadow-md shadow-emerald-500/20"
                     : state === "active"
-                      ? "bg-blue-50 border-2 border-blue-500 text-blue-600 shadow-md ring-4 ring-blue-100"
+                      ? "bg-primary/10 border-2 border-primary text-primary shadow-md ring-4 ring-blue-100"
                       : state === "failed"
-                        ? "bg-red-50 border-2 border-red-500 text-red-600 shadow-md ring-4 ring-red-100"
-                        : "bg-white border-2 border-slate-200 text-slate-300"
+                        ? "bg-destructive/10 border-2 border-destructive/50 text-destructive shadow-md ring-4 ring-red-100"
+                        : "bg-card border-2 border-border text-muted-foreground"
                 )}
               >
                 {state === "complete" ? (
@@ -308,12 +308,12 @@ function VerticalStepper({
                       className={cn(
                         "text-sm font-bold",
                         state === "complete"
-                          ? "text-slate-800"
+                          ? "text-foreground"
                           : state === "active"
-                            ? "text-blue-700"
+                            ? "text-primary"
                             : state === "failed"
-                              ? "text-red-700"
-                              : "text-slate-400"
+                              ? "text-destructive"
+                              : "text-muted-foreground"
                       )}
                     >
                       {stepNum} {step.label}
@@ -323,10 +323,10 @@ function VerticalStepper({
                     className={cn(
                       "text-xs mt-0.5",
                       state === "active"
-                        ? "text-slate-500"
+                        ? "text-muted-foreground"
                         : state === "failed"
-                          ? "text-red-500"
-                          : "text-slate-400"
+                          ? "text-destructive"
+                          : "text-muted-foreground"
                     )}
                   >
                     {step.description}
@@ -335,23 +335,23 @@ function VerticalStepper({
 
                 <div className="flex items-center gap-2 shrink-0">
                   {state === "complete" && (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 border border-success/50 px-2.5 py-1 rounded-full">
                       Complete
                     </span>
                   )}
                   {state === "active" && (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 border border-primary/50 px-2.5 py-1 rounded-full">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       In Progress
                     </span>
                   )}
                   {state === "failed" && (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/50 px-2.5 py-1 rounded-full">
                       Failed
                     </span>
                   )}
                   {timer !== undefined && state !== "pending" && (
-                    <span className="text-xs text-slate-400 tabular-nums">
+                    <span className="text-xs text-muted-foreground tabular-nums">
                       {String(Math.floor(timer / 60)).padStart(2, "0")}:
                       {String(timer % 60).padStart(2, "0")}
                     </span>
@@ -361,20 +361,20 @@ function VerticalStepper({
 
               {/* Failed state inline actions */}
               {state === "failed" && failReason && (
-                <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3">
-                  <p className="text-xs text-red-700 leading-relaxed">
+                <div className="mt-3 bg-destructive/10 border border-destructive/50 rounded-xl p-3">
+                  <p className="text-xs text-destructive leading-relaxed">
                     {failReason}
                   </p>
                   <div className="flex gap-2 mt-2">
                     {onRetry && (
                       <button
                         onClick={onRetry}
-                        className="text-xs font-medium text-red-700 hover:text-red-900 bg-white border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors flex items-center gap-1"
+                        className="text-xs font-medium text-destructive hover:text-red-900 bg-card border border-destructive/50 px-3 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors flex items-center gap-1"
                       >
                         <RotateCcw className="w-3 h-3" /> Retry
                       </button>
                     )}
-                    <button className="text-xs font-medium text-slate-600 hover:text-slate-800 bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+                    <button className="text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border px-3 py-1.5 rounded-lg hover:bg-surface transition-colors">
                       Contact Support
                     </button>
                   </div>
@@ -399,19 +399,19 @@ function SuccessToast({
   if (!visible) return null;
   return (
     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
-      <div className="flex items-center gap-3 bg-white border border-emerald-200 shadow-xl rounded-2xl px-5 py-3.5">
-        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+      <div className="flex items-center gap-3 bg-card border border-success/50 shadow-xl rounded-2xl px-5 py-3.5">
+        <div className="w-8 h-8 rounded-full bg-success flex items-center justify-center shrink-0">
           <Check className="w-4 h-4 text-white" />
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-800">Report indexed.</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-sm font-bold text-foreground">Report indexed.</p>
+          <p className="text-xs text-muted-foreground">
             Extraction and Red Flag analysis starting automatically.
           </p>
         </div>
         <button
           onClick={onClose}
-          className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 ml-2"
+          className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-surface ml-2"
         >
           <X className="w-4 h-4" />
         </button>
@@ -479,8 +479,8 @@ export function DocumentProcessingView({
 
   if (documents.length === 0)
     return (
-      <div className="p-12 text-center text-slate-500 flex flex-col items-center gap-4 h-full justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-4 h-full justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <p className="text-sm font-medium">
           Initializing processing pipeline...
         </p>
@@ -497,15 +497,15 @@ export function DocumentProcessingView({
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-slate-800">
+              <h2 className="text-xl font-bold text-foreground">
                 Document Processing
               </h2>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Document Agent is processing your file
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full">
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 border border-primary/50 px-3 py-1.5 rounded-full">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Document Agent
               </span>
@@ -513,19 +513,19 @@ export function DocumentProcessingView({
           </div>
 
           {/* File info chip */}
-          <div className="mt-4 flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
-            <div className="w-10 h-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-red-500" />
+          <div className="mt-4 flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3 shadow-sm">
+            <div className="w-10 h-10 rounded-lg bg-destructive/10 border border-red-100 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-destructive" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">
+              <p className="text-sm font-semibold text-foreground truncate">
                 {primaryDoc.name}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {(primaryDoc.size_bytes / 1024 / 1024).toFixed(1)} MB
               </p>
             </div>
-            <button className="text-xs text-slate-400 hover:text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors">
+            <button className="text-xs text-muted-foreground hover:text-foreground border border-border px-3 py-1.5 rounded-lg hover:bg-surface transition-colors">
               Cancel
             </button>
           </div>
@@ -535,7 +535,7 @@ export function DocumentProcessingView({
         <ProcessingAnimation currentStep={currentStep} />
 
         {/* Vertical Stepper */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mt-2">
+        <div className="bg-card border border-border rounded-2xl p-6 shadow-sm mt-2">
           <VerticalStepper
             currentStep={currentStep}
             failedStep={null}
@@ -545,7 +545,7 @@ export function DocumentProcessingView({
         </div>
 
         {/* Info note */}
-        <div className="mt-4 flex items-center gap-2 text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+        <div className="mt-4 flex items-center gap-2 text-xs text-primary bg-primary/10 border border-primary/50 rounded-xl px-4 py-3">
           <Info className="w-4 h-4 shrink-0" />
           <span>
             This may take a few moments depending on document size.

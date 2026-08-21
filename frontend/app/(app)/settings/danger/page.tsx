@@ -10,16 +10,16 @@ export default function DangerPage() {
   
   return (
     <div className="space-y-8 pb-12 relative">
-      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+      <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h2 className="text-2xl font-black text-red-700">Danger Zone</h2>
-          <p className="text-slate-500 font-medium mt-1">Irreversible actions that affect your account and data.</p>
+          <h2 className="text-2xl font-black text-destructive">Danger Zone</h2>
+          <p className="text-muted-foreground font-medium mt-1">Irreversible actions that affect your account and data.</p>
         </div>
       </div>
 
-      <div className="bg-red-50 border border-red-100 rounded-2xl p-6 shadow-sm">
+      <div className="bg-destructive/10 border border-red-100 rounded-2xl p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-destructive/20 text-destructive flex items-center justify-center">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
@@ -28,9 +28,9 @@ export default function DangerPage() {
           </div>
         </div>
         
-        <div className="bg-white rounded-xl p-5 border border-red-100">
-          <p className="text-sm font-bold text-slate-800 mb-4">
-            If you are sure, type <span className="text-red-600 select-all bg-red-50 px-1.5 py-0.5 rounded">DELETE</span> to confirm.
+        <div className="bg-card rounded-xl p-5 border border-red-100">
+          <p className="text-sm font-bold text-foreground mb-4">
+            If you are sure, type <span className="text-destructive select-all bg-destructive/10 px-1.5 py-0.5 rounded">DELETE</span> to confirm.
           </p>
           
           <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -39,7 +39,7 @@ export default function DangerPage() {
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder="Type DELETE..."
-              className="w-full sm:w-auto bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-lg focus:ring-red-500 focus:border-red-500 block p-2.5 font-bold uppercase"
+              className="w-full sm:w-auto bg-surface border border-border text-foreground text-sm rounded-lg focus:ring-red-500 focus:border-destructive/50 block p-2.5 font-bold uppercase"
             />
             <button 
               disabled={confirmText !== "DELETE"}
@@ -47,7 +47,7 @@ export default function DangerPage() {
                 "w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg text-sm font-bold transition-colors",
                 confirmText === "DELETE" 
                   ? "bg-red-600 hover:bg-red-700 text-white shadow-sm" 
-                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  : "bg-surface text-muted-foreground cursor-not-allowed"
               )}
             >
               <Trash2 className="w-4 h-4" /> Delete My Account

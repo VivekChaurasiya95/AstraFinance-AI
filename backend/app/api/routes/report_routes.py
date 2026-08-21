@@ -53,7 +53,7 @@ async def get_all_reports(
     
     if user_workspaces:
         # Build query
-        query = {"workspace_id": {"$in": user_workspaces}}
+        query: Dict[str, Any] = {"workspace_id": {"$in": user_workspaces}}
         
         if search:
             query["title"] = {"$regex": search, "$options": "i"}
@@ -118,6 +118,31 @@ async def get_all_reports(
             "pages": (total_count + limit - 1) // limit
         }
     }
+
+
+@router.get("/{report_id}", response_model=Dict[str, Any])
+async def get_report(report_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Get a single report by ID.
+    """
+    user_id = str(current_user["_id"])
+    
+    report = await reports_collection.find_one({"_id": report_id})
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
+    ws = await workspaces_collection.find_one({"_id": report["workspace_id"], "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=403, detail="Unauthorized access to report")
+        
+    report_data = dict(report)
+    report_data["id"] = report_data.pop("_id")
+    report_data["workspace_name"] = ws.get("name", "Unknown Workspace")
+    
+    if "created_at" in report_data and hasattr(report_data["created_at"], "strftime"):
+        report_data["created_at"] = report_data["created_at"].strftime("%b %d, %Y %I:%M %p")
+        
+    return report_data
 
 
 @router.patch("/{report_id}")

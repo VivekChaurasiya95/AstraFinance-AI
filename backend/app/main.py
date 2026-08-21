@@ -17,6 +17,7 @@ from .api.routes.comparison_routes import router as comparison_router
 from .api.routes.research_routes import router as research_router
 from .api.routes.settings_routes import router as settings_router
 from .api.routes.security_routes import router as security_router
+from .api.routes.notification_routes import router as notification_router
 from .database.mongo_client import db
 
 from .agents.extraction_agent import ExtractionAgent
@@ -48,6 +49,11 @@ async def lifespan(app: FastAPI):
         # Enforce unique index for firebase_uid to prevent duplicate users
         await db["users"].create_index("firebase_uid", unique=True)
         logger.info("✓ Unique index on firebase_uid ensured")
+        
+        # Ensure notification indexes
+        from .repositories import notifications_repository
+        await notifications_repository.ensure_indexes()
+        logger.info("✓ Notification indexes ensured")
     except Exception as e:
         logger.error(f"MongoDB connection/index failed: {e}")
 
@@ -91,6 +97,7 @@ app.include_router(comparison_router, prefix="/api/v1")
 app.include_router(research_router, prefix="/api/v1")
 app.include_router(settings_router, prefix="/api/v1")
 app.include_router(security_router, prefix="/api/v1")
+app.include_router(notification_router, prefix="/api/v1")
 
 
 @app.get("/")

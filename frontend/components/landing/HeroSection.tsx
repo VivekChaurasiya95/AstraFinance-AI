@@ -8,20 +8,19 @@ import Link from "next/link";
 export function HeroSection() {
   return (
     // Full-width section — the animation is the background
-    <section className="relative min-h-[100vh] w-full overflow-hidden flex items-center">
+    <section className="relative min-h-[100vh] w-full overflow-hidden flex items-center transition-theme">
+
+      {/* ── Background Grid Pattern ── */}
+      <div className="bg-grid-pattern absolute inset-0 z-0 pointer-events-none transition-theme opacity-70" />
 
       {/* ── Background Animation (full-bleed, z-0) ── */}
-      <div className="absolute inset-0 z-0 w-full h-full">
+      <div className="absolute inset-0 z-0 w-full h-full bg-[radial-gradient(circle_at_75%_45%,rgba(67,198,188,0.15),transparent_45%)]">
         <ThreeDScene />
       </div>
 
       {/* ── Soft gradient overlay so left-side text stays readable ── */}
       <div
-        className="absolute inset-0 z-10 pointer-events-none"
-        style={{
-          background:
-            "linear-gradient(to right, rgba(250,250,250,0.98) 0%, rgba(250,250,250,0.96) 38%, rgba(250,250,250,0.60) 58%, transparent 78%)",
-        }}
+        className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-r from-background via-background/80 to-transparent"
       />
 
       {/* ── Foreground content ── */}
@@ -31,36 +30,36 @@ export function HeroSection() {
         <div className="w-full md:w-[520px] lg:w-[560px] flex flex-col gap-8">
 
           {/* Badge */}
-          <div className="flex items-center gap-2 w-fit px-4 py-2 rounded-full bg-indigo-50 border border-indigo-200 shadow-sm">
-            <CheckCircle2 className="w-4 h-4 text-indigo-600 " />
-            <span className="text-xs font-semibold tracking-widest text-indigo-700 uppercase">
+          <div className="group flex items-center gap-2 w-fit px-4 py-2 rounded-full bg-primary/10 border border-primary/20 shadow-sm transition-all duration-300 hover:bg-primary/15 cursor-default hover:shadow-md hover:border-primary/30">
+            <CheckCircle2 className="w-4 h-4 text-primary group-hover:scale-110 transition-transform duration-300" />
+            <span className="text-xs font-bold tracking-widest text-primary uppercase">
               Zero hallucinated figures
             </span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-zinc-900 ">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight text-foreground transition-theme">
             Ask your financial reports{" "}
-            <span className="text-blue-600 ">anything</span>
+            <span className="bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(67,198,188,0.2)]">anything</span>
           </h1>
 
           {/* Sub-copy */}
-          <p className="text-lg md:text-xl text-zinc-600 leading-relaxed max-w-[480px]">
-            Expert analysis with verifiable citations. Zero hallucinations, total
+          <p className="text-lg md:text-xl text-muted-foreground leading-[1.65] max-w-[560px] transition-theme font-medium">
+            <span className="text-foreground font-semibold">Expert analysis with verifiable citations.</span> Zero hallucinations, total
             transparency. Experience Bloomberg-level precision powered by advanced AI.
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-row items-center gap-4 flex-wrap">
+          <div className="flex flex-row items-center gap-4 flex-wrap pt-4">
             <Link href="/register">
-              <Button className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all text-base flex items-center gap-2">
+              <Button className="group bg-primary hover:bg-primary-hover text-primary-foreground font-bold px-8 py-6 rounded-xl border border-primary/35 shadow-[0_8px_20px_rgba(67,198,188,0.2)] hover:shadow-[0_12px_30px_rgba(67,198,188,0.4)] transition-all duration-300 text-base flex items-center gap-2 hover:-translate-y-1">
                 Get Started
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
             <Button
               variant="outline"
-              className="border-2 border-zinc-300 hover:bg-white/80 text-zinc-700 font-semibold px-8 py-6 rounded-xl transition-all text-base backdrop-blur-sm bg-white/60"
+              className="bg-background/50 border border-border-strong text-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary-hover font-bold px-8 py-6 rounded-xl transition-all duration-300 text-base backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-1"
             >
               Watch Demo
             </Button>
@@ -70,15 +69,15 @@ export function HeroSection() {
       </div>
 
       {/* ── Status badge — bottom-right, outside the text area ── */}
-      <div className="absolute bottom-8 right-8 z-30 bg-white/90 backdrop-blur-md border border-zinc-200 px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3">
-        <div className="p-2 bg-indigo-100 rounded-xl">
-          <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
+      <div className="absolute bottom-8 right-8 z-30 bg-card/90 backdrop-blur-md border border-border px-4 py-3 rounded-2xl shadow-lg flex items-center gap-3 transition-theme">
+        <div className="p-2 bg-primary/10 rounded-xl transition-theme">
+          <Loader2 className="w-5 h-5 text-primary animate-spin" />
         </div>
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 ">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-theme">
             Status
           </span>
-          <span className="text-sm font-semibold text-zinc-800 ">
+          <span className="text-sm font-semibold text-foreground transition-theme">
             Generating Financial Report...
           </span>
         </div>

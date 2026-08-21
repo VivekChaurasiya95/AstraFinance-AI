@@ -95,10 +95,10 @@ const CHART_METRICS = [
 ];
 
 const COLORS = [
-  { bg: "bg-blue-50",    text: "text-blue-700",    bar: "#3B82F6" },
+  { bg: "bg-primary/10",    text: "text-primary",    bar: "#3B82F6" },
   { bg: "bg-violet-50",  text: "text-violet-700",  bar: "#8B5CF6" },
   { bg: "bg-orange-50",  text: "text-orange-700",  bar: "#F59E0B" },
-  { bg: "bg-emerald-50", text: "text-emerald-700", bar: "#10B981" },
+  { bg: "bg-success/10", text: "text-success", bar: "#10B981" },
   { bg: "bg-pink-50",    text: "text-pink-700",    bar: "#EC4899" },
   { bg: "bg-cyan-50",    text: "text-cyan-700",    bar: "#06B6D4" },
 ];
@@ -200,8 +200,8 @@ export default function ComparePage() {
 
   if (docsLoading || uploading) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center py-24 text-slate-400">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" /> 
+      <div className="flex-1 flex flex-col items-center justify-center py-24 text-muted-foreground">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" /> 
         {uploading ? "Processing documents..." : "Loading documents..."}
       </div>
     );
@@ -266,12 +266,12 @@ export default function ComparePage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow">
+            <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shadow">
               <GitCompareArrows className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Company Comparison</h2>
-              <p className="text-xs text-slate-400">
+              <h2 className="text-lg font-bold text-foreground">Company Comparison</h2>
+              <p className="text-xs text-muted-foreground">
                 Compare multiple company reports seamlessly.
               </p>
             </div>
@@ -280,7 +280,7 @@ export default function ComparePage() {
           <div className="flex items-center gap-3">
             <button
                onClick={() => setShowUpload(!showUpload)}
-               className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
+               className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
             >
                <Plus className="w-4 h-4" /> Add Company Report
             </button>
@@ -289,13 +289,13 @@ export default function ComparePage() {
 
         {/* Document Selector */}
         {availableDocs && availableDocs.length > 0 && (
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-col gap-3">
             <div className="flex items-center justify-between flex-wrap gap-4">
-              <h4 className="text-sm font-semibold text-slate-800">Select Documents to Compare</h4>
+              <h4 className="text-sm font-semibold text-foreground">Select Documents to Compare</h4>
               <button 
                 onClick={loadData}
                 disabled={selectedDocIds.length < 2 || loading}
-                className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-1.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? "Comparing..." : selectedDocIds.length < 2 ? "Select at least 2 documents" : `Compare ${selectedDocIds.length} Documents`}
               </button>
@@ -305,7 +305,7 @@ export default function ComparePage() {
                 const isSelected = selectedDocIds.includes(doc.id);
                 const isReady = doc.status === "ready";
                 return (
-                  <label key={doc.id} title={!isReady ? `Status: ${doc.status}` : ''} className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors", !isReady ? "opacity-50 cursor-not-allowed border-slate-100 bg-slate-50" : isSelected ? "border-blue-500 bg-blue-50 text-blue-800 cursor-pointer" : "border-slate-200 hover:bg-slate-50 cursor-pointer")}>
+                  <label key={doc.id} title={!isReady ? `Status: ${doc.status}` : ''} className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors", !isReady ? "opacity-50 cursor-not-allowed border-border-subtle bg-surface" : isSelected ? "border-primary bg-primary/10 text-blue-800 cursor-pointer" : "border-border hover:bg-surface cursor-pointer")}>
                     <input 
                       type="checkbox" 
                       checked={isSelected}
@@ -318,9 +318,9 @@ export default function ComparePage() {
                           setSelectedDocIds(prev => prev.filter(id => id !== doc.id));
                         }
                       }}
-                      className="rounded text-blue-600 focus:ring-blue-500 disabled:opacity-50" 
+                      className="rounded text-primary focus:ring-blue-500 disabled:opacity-50" 
                     />
-                    <span className="text-sm font-medium text-slate-800 truncate max-w-[200px]">{doc.filename || (doc as any).name}</span>
+                    <span className="text-sm font-medium text-foreground truncate max-w-[200px]">{doc.filename || (doc as any).name}</span>
                   </label>
                 );
               })}
@@ -330,34 +330,34 @@ export default function ComparePage() {
 
         {/* Upload Section */}
         {showUpload && (
-           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
+           <div className="bg-card border border-border rounded-xl p-6 shadow-sm mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
               <div 
-                className={cn("border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer relative", dragActive ? "border-blue-500 bg-blue-50/50" : "border-slate-300 hover:border-blue-400 hover:bg-slate-50")}
+                className={cn("border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer relative", dragActive ? "border-primary bg-primary/10/50" : "border-border hover:border-primary hover:bg-surface")}
                 onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
                 onClick={() => inputRef.current?.click()}
               >
                 <input ref={inputRef} type="file" multiple accept=".pdf" className="hidden" onChange={handleChange} />
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Upload className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Upload className="w-6 h-6 text-primary" />
                 </div>
-                <h4 className="text-sm font-semibold text-slate-800 mb-1">Upload Annual/Quarterly Reports</h4>
-                <p className="text-xs text-slate-500">Only PDF files are supported.</p>
+                <h4 className="text-sm font-semibold text-foreground mb-1">Upload Annual/Quarterly Reports</h4>
+                <p className="text-xs text-muted-foreground">Only PDF files are supported.</p>
               </div>
 
               {selectedFiles.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {selectedFiles.map((file, i) => (
-                     <div key={i} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-lg p-2">
+                     <div key={i} className="flex items-center justify-between bg-surface border border-border-subtle rounded-lg p-2">
                         <div className="flex items-center gap-2">
-                           <FileText className="w-4 h-4 text-slate-400" />
-                           <p className="text-xs font-medium text-slate-700">{file.name}</p>
+                           <FileText className="w-4 h-4 text-muted-foreground" />
+                           <p className="text-xs font-medium text-foreground">{file.name}</p>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedFiles(prev => prev.filter((_, idx) => idx !== i)); }} className="p-1 text-slate-400 hover:text-red-500"><X className="w-4 h-4"/></button>
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedFiles(prev => prev.filter((_, idx) => idx !== i)); }} className="p-1 text-muted-foreground hover:text-destructive"><X className="w-4 h-4"/></button>
                      </div>
                   ))}
                   <div className="flex justify-end gap-2 mt-4">
-                    <button onClick={() => { setSelectedFiles([]); setShowUpload(false); }} className="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200">Cancel</button>
-                    <button onClick={handleUploadStart} className="px-4 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                    <button onClick={() => { setSelectedFiles([]); setShowUpload(false); }} className="px-4 py-2 text-xs font-medium text-muted-foreground bg-surface rounded-lg hover:bg-surface">Cancel</button>
+                    <button onClick={handleUploadStart} className="px-4 py-2 text-xs font-medium text-white bg-primary rounded-lg hover:bg-primary/90 flex items-center gap-2">
                       Upload & Process <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -367,35 +367,35 @@ export default function ComparePage() {
         )}
 
         {!data ? (
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col items-center justify-center py-24 px-6 mt-6">
-               <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-5 border border-blue-100/50 shadow-sm">
-                 <GitCompareArrows className="w-7 h-7 text-blue-500" />
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col items-center justify-center py-24 px-6 mt-6">
+               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-5 border border-primary/50/50 shadow-sm">
+                 <GitCompareArrows className="w-7 h-7 text-primary" />
                </div>
-               <h4 className="text-slate-800 font-bold text-lg mb-2">Select documents to begin</h4>
-               <p className="text-slate-500 text-sm max-w-[400px] text-center mx-auto leading-relaxed">
-                 Choose at least two company reports from the list above and click <span className="font-semibold text-slate-700">Compare</span> to view side-by-side financial metrics.
+               <h4 className="text-foreground font-bold text-lg mb-2">Select documents to begin</h4>
+               <p className="text-muted-foreground text-sm max-w-[400px] text-center mx-auto leading-relaxed">
+                 Choose at least two company reports from the list above and click <span className="font-semibold text-foreground">Compare</span> to view side-by-side financial metrics.
                </p>
               {error && (
-                <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-4 max-w-md w-full text-sm text-red-700 flex flex-col gap-1 text-center">
+                <div className="mt-6 bg-destructive/10 border border-destructive/50 rounded-lg p-4 max-w-md w-full text-sm text-destructive flex flex-col gap-1 text-center">
                    <span className="font-semibold text-red-800">Comparison Error</span>
                    {error}
                 </div>
               )}
            </div>
         ) : loading ? (
-           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col items-center justify-center py-24 px-6">
-             <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-4" />
-             <p className="text-slate-400 text-sm">Comparing selected companies...</p>
+           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col items-center justify-center py-24 px-6">
+             <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+             <p className="text-muted-foreground text-sm">Comparing selected companies...</p>
            </div>
         ) : noPeers ? (
-           <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col items-center justify-center py-24 px-6">
-              <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4 border border-slate-100">
-                <GitCompareArrows className="w-6 h-6 text-slate-300" />
+           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col items-center justify-center py-24 px-6">
+              <div className="w-16 h-16 rounded-full bg-surface flex items-center justify-center mb-4 border border-border-subtle">
+                <GitCompareArrows className="w-6 h-6 text-muted-foreground" />
               </div>
-              <h4 className="text-slate-700 font-semibold mb-1">
+              <h4 className="text-foreground font-semibold mb-1">
                 {data.status === "blocked" ? "Comparison Blocked" : "No comparison data"}
               </h4>
-              <p className="text-slate-400 text-sm max-w-sm w-full text-center">
+              <p className="text-muted-foreground text-sm max-w-sm w-full text-center">
                 {data.message || "Add company reports to this workspace to automatically extract metrics and compare them."}
               </p>
               {/* Show any error insights from the backend */}
@@ -412,11 +412,11 @@ export default function ComparePage() {
         ) : (
           <>
             {/* Comparison Table */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/80">
-                    <th className="text-left py-3.5 px-5 text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[160px] sticky left-0 bg-slate-50/95 backdrop-blur z-10 border-r border-slate-100">
+                  <tr className="border-b border-border-subtle bg-background/80">
+                    <th className="text-left py-3.5 px-5 text-xs font-bold text-muted-foreground uppercase tracking-wider min-w-[160px] sticky left-0 bg-surface/95 backdrop-blur z-10 border-r border-border-subtle">
                       Metric
                     </th>
                     {data.financial_metrics?.map((p, i) => {
@@ -428,7 +428,7 @@ export default function ComparePage() {
                           key={`${ticker}-${i}`}
                           className={cn(
                             "text-center py-3.5 px-4 font-bold text-sm min-w-[140px]",
-                            isBase ? "bg-blue-50/60" : ""
+                            isBase ? "bg-primary/10/60" : ""
                           )}
                         >
                           <div className="flex flex-col items-center gap-1">
@@ -436,17 +436,17 @@ export default function ComparePage() {
                               className={cn(
                                 "text-[11px] font-extrabold px-2.5 py-0.5 rounded-full",
                                 isBase
-                                  ? "bg-blue-600 text-white"
+                                  ? "bg-primary text-white"
                                   : `${c.bg} ${c.text}`
                               )}
                             >
                               {ticker}
                             </span>
-                            <span className={isBase ? "text-blue-700 text-xs" : "text-slate-700 text-xs"}>
+                            <span className={isBase ? "text-primary text-xs" : "text-foreground text-xs"}>
                               {p.company_name}
                             </span>
                             {isBase && (
-                              <span className="text-[10px] text-blue-500 font-normal flex items-center gap-0.5">
+                              <span className="text-[10px] text-primary font-normal flex items-center gap-0.5">
                                 <Crown className="w-3 h-3" /> Base
                               </span>
                             )}
@@ -456,15 +456,15 @@ export default function ComparePage() {
                     })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {METRIC_ROWS.map((row) => {
                     const winner = bestForMetric(row.key, row.higherBetter);
                     return (
                       <tr
                         key={row.key}
-                        className="hover:bg-slate-50/60 transition-colors"
+                        className="hover:bg-surface/60 transition-colors"
                       >
-                        <td className="py-3 px-5 text-xs font-semibold text-slate-500 sticky left-0 bg-white/95 backdrop-blur z-10 border-r border-slate-100">
+                        <td className="py-3 px-5 text-xs font-semibold text-muted-foreground sticky left-0 bg-card/95 backdrop-blur z-10 border-r border-border-subtle">
                           {row.label}
                         </td>
                         {data.financial_metrics?.map((p, i) => {
@@ -477,8 +477,8 @@ export default function ComparePage() {
                               key={`${p.company_name}-${i}`}
                               className={cn(
                                 "py-3 px-4 text-center font-semibold text-sm",
-                                isBase ? "bg-blue-50/30" : "",
-                                isWinner ? "text-emerald-600" : "text-slate-700"
+                                isBase ? "bg-primary/10/30" : "",
+                                isWinner ? "text-success" : "text-foreground"
                               )}
                             >
                               <div className="flex items-center justify-center gap-1">
@@ -512,9 +512,9 @@ export default function ComparePage() {
                 return (
                   <div
                     key={cm.key}
-                    className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"
+                    className="bg-card border border-border rounded-xl p-4 shadow-sm"
                   >
-                    <h5 className="text-xs font-bold text-slate-600 mb-3">
+                    <h5 className="text-xs font-bold text-muted-foreground mb-3">
                       {cm.label}
                     </h5>
                     <div className="flex items-end gap-2 h-28">
@@ -526,7 +526,7 @@ export default function ComparePage() {
                             key={`${v.ticker}-${i}`}
                             className="flex-1 flex flex-col items-center gap-1"
                           >
-                            <span className="text-[10px] font-bold text-slate-600">
+                            <span className="text-[10px] font-bold text-muted-foreground">
                               {v.value}
                             </span>
                             <div className="w-full flex items-end" style={{ height: "72px" }}>
@@ -538,7 +538,7 @@ export default function ComparePage() {
                                 }}
                               />
                             </div>
-                            <span className="text-[9px] font-bold text-slate-400">
+                            <span className="text-[9px] font-bold text-muted-foreground">
                               {v.ticker}
                             </span>
                           </div>
@@ -552,36 +552,36 @@ export default function ComparePage() {
 
             {/* Comparison Analysis */}
             {data.comparison_analysis && (
-              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm mt-6">
-                <h4 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <GitCompareArrows className="w-5 h-5 text-blue-600" />
+              <div className="bg-card border border-border rounded-xl p-6 shadow-sm mt-6">
+                <h4 className="text-sm font-bold text-foreground mb-6 flex items-center gap-2">
+                  <GitCompareArrows className="w-5 h-5 text-primary" />
                   AI Comparison Analysis
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {data.comparison_analysis.revenue_analysis && (
                     <div className="space-y-2">
-                      <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Revenue</h5>
-                      <p className="text-sm text-slate-700 leading-relaxed">{data.comparison_analysis.revenue_analysis}</p>
+                      <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Revenue</h5>
+                      <p className="text-sm text-foreground leading-relaxed">{data.comparison_analysis.revenue_analysis}</p>
                     </div>
                   )}
                   {data.comparison_analysis.profit_analysis && (
                     <div className="space-y-2">
-                      <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Profitability</h5>
-                      <p className="text-sm text-slate-700 leading-relaxed">{data.comparison_analysis.profit_analysis}</p>
+                      <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Profitability</h5>
+                      <p className="text-sm text-foreground leading-relaxed">{data.comparison_analysis.profit_analysis}</p>
                     </div>
                   )}
                   {data.comparison_analysis.ratio_analysis && (
                     <div className="space-y-2">
-                      <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Financial Ratios</h5>
-                      <p className="text-sm text-slate-700 leading-relaxed">{data.comparison_analysis.ratio_analysis}</p>
+                      <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Financial Ratios</h5>
+                      <p className="text-sm text-foreground leading-relaxed">{data.comparison_analysis.ratio_analysis}</p>
                     </div>
                   )}
                   {data.comparison_analysis.financial_health_analysis && (
-                    <div className="space-y-2 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
-                      <h5 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                    <div className="space-y-2 bg-primary/10/50 p-4 rounded-lg border border-primary/50">
+                      <h5 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
                         <Trophy className="w-4 h-4" /> Financial Health Summary
                       </h5>
-                      <p className="text-sm text-slate-800 leading-relaxed">{data.comparison_analysis.financial_health_analysis}</p>
+                      <p className="text-sm text-foreground leading-relaxed">{data.comparison_analysis.financial_health_analysis}</p>
                     </div>
                   )}
                 </div>
@@ -590,8 +590,8 @@ export default function ComparePage() {
 
             {/* Dynamic Peer Insights */}
             {data.insights && data.insights.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm mt-6">
-                <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <div className="bg-card border border-border rounded-xl p-5 shadow-sm mt-6">
+                <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
                   <Crown className="w-4 h-4 text-amber-500" />
                   Dynamic Peer Insights
                 </h4>
@@ -599,12 +599,12 @@ export default function ComparePage() {
                   {data.insights.map((insight, idx) => (
                      <div
                        key={idx}
-                       className="bg-amber-50/50 rounded-lg p-4 border border-amber-100/50 flex items-start gap-3"
+                       className="bg-amber-500/10 rounded-lg p-4 border border-amber-500/20 flex items-start gap-3"
                      >
-                       <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                          <Trophy className="w-3 h-3 text-amber-600" />
+                       <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                          <Trophy className="w-3 h-3 text-amber-500" />
                        </div>
-                       <p className="text-sm font-medium text-slate-700 leading-snug">
+                       <p className="text-sm font-medium text-foreground leading-snug">
                          {insight}
                        </p>
                      </div>

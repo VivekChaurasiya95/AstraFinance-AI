@@ -3,6 +3,7 @@ import React from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import Link from 'next/link';
+import { AstraFinanceLogo } from '@/components/branding/AstraFinanceLogo';
 
 const Facebook = (props: any) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>;
 const Instagram = (props: any) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>;
@@ -63,11 +64,7 @@ export function Footer() {
 
 			<div className="grid w-full max-w-7xl mx-auto gap-8 xl:grid-cols-4 xl:gap-8">
 				<AnimatedContainer className="space-y-4 xl:col-span-1">
-					<img
-						src="https://lh3.googleusercontent.com/aida-public/AB6AXuD88MS5FU6EtPF-vJLx-DL2M3TjIyO4qY0wsfac3SmC1An05vKF1LzQ5h4r9ycOps9j16WQXyEDaLyx8l83lNcKFrS5ary3sC7V8u2prHZwHA36wgDoRjDPQF88mkbGsU_eJMtY2vuNckbB37DV9TFPPxdzcafCXadEmSLQIpqtgZlgLoacns0WLg4UksYcl-5NLLAnwhjfrKg-NW0QgheXKaDpuY_iznKIdT1B_9bdZ6BCnCjbEuY9OR48K3OTT52VEA"
-						alt="AstraFinance AI Logo"
-						className="h-10 w-auto object-contain"
-					/>
+					<AstraFinanceLogo className="h-44 w-44 sm:h-48 sm:w-48" />
 					<p className="text-muted-foreground mt-8 text-sm md:mt-0">
 						© {new Date().getFullYear()} AstraFinance AI. All rights reserved.
 					</p>

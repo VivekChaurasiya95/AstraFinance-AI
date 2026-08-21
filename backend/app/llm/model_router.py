@@ -63,6 +63,17 @@ class LLMRouter:
                     }
                     
                 logger.info(f"[LLM_ROUTER] SUCCESS Provider={provider_name} Model={model_name} Attempt={attempt+1} Latency={latency}ms")
+                
+                # Normalize content: some providers return a list of content blocks instead of a string
+                if hasattr(result, "content") and isinstance(result.content, list):
+                    text_parts = []
+                    for part in result.content:
+                        if isinstance(part, dict) and "text" in part:
+                            text_parts.append(part["text"])
+                        elif isinstance(part, str):
+                            text_parts.append(part)
+                    result.content = "".join(text_parts)
+                
                 return result
 
             except Exception as e:
@@ -125,12 +136,12 @@ class LLMRouter:
                 logger.error(f"[LLM_ROUTER] ALL PROVIDERS FAILED for {agent_name}. Primary: {e}. Fallback: {fallback_err}")
                 raise LLMError(f"All LLM providers failed for agent {agent_name}. Last error: {fallback_err}")
 
-    def invoke(self, agent_name: str, messages: List[BaseMessage], user_settings: dict = None, **kwargs) -> Any:
+    def invoke(self, agent_name: str, messages: List[BaseMessage], user_settings: dict | None = None, **kwargs) -> Any:
         from .config import get_user_agent_config
         config = get_user_agent_config(user_settings, agent_name)
         return self._route_with_config(config, agent_name, "plain", messages, None, **kwargs)
 
-    def invoke_structured(self, agent_name: str, messages: List[BaseMessage], schema: Type[BaseModel], user_settings: dict = None, **kwargs) -> BaseModel:
+    def invoke_structured(self, agent_name: str, messages: List[BaseMessage], schema: Type[BaseModel], user_settings: dict | None = None, **kwargs) -> BaseModel:
         from .config import get_user_agent_config
         config = get_user_agent_config(user_settings, agent_name)
         return self._route_with_config(config, agent_name, "structured", messages, schema, **kwargs)

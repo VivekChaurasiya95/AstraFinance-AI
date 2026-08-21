@@ -339,13 +339,27 @@ class ComparisonAgent:
     def __init__(self):
         pass
 
-    def _get_llm_analysis(self, computed_metrics_json: str, user_settings: dict = None) -> Dict[str, Any]:
+    def _get_llm_analysis(self, computed_metrics_json: str, user_settings: dict | None = None) -> Dict[str, Any]:
         content = ""
         try:
             messages = COMPARISON_PROMPT.format_messages(computed_metrics=computed_metrics_json)
             router = get_llm_router()
             response = router.invoke("comparison", messages, user_settings=user_settings, temperature=0.1)
-            content = response.content.strip()
+            
+            content = response.content
+            if isinstance(content, list):
+                text_parts = []
+                for part in content:
+                    if isinstance(part, dict) and "text" in part:
+                        text_parts.append(part["text"])
+                    elif isinstance(part, str):
+                        text_parts.append(part)
+                content = "".join(text_parts)
+            elif not isinstance(content, str):
+                content = str(content)
+                
+            content = content.strip()
+            
             if content.startswith("```"):
                 lines = content.split("\n")
                 lines = lines[1:]
@@ -357,7 +371,7 @@ class ComparisonAgent:
             logger.error("LLM analysis parsing failed: %s. Raw: %s", e, content)
             raise RuntimeError(f"LLM analysis failed: {e}")
 
-    def compare(self, companies_data: List[Dict[str, Any]], user_settings: dict = None) -> str:
+    def compare(self, companies_data: List[Dict[str, Any]], user_settings: dict | None = None) -> str:
         logger.info("Starting comparison for %d companies.", len(companies_data))
         start_time = time.time()
 

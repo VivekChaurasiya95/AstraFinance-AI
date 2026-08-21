@@ -66,18 +66,18 @@ function DropZone({
         className={cn(
           "border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all",
           dragging
-            ? "border-blue-500 bg-blue-50"
-            : "border-slate-300 hover:border-blue-400 hover:bg-slate-50 bg-white",
+            ? "border-primary bg-primary/10"
+            : "border-border hover:border-primary hover:bg-surface bg-card",
         )}
       >
-        <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center">
-          <Upload className="w-6 h-6 text-blue-500" />
+        <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+          <Upload className="w-6 h-6 text-primary" />
         </div>
         <div className="text-center">
-          <p className="text-sm font-semibold text-slate-700">
+          <p className="text-sm font-semibold text-foreground">
             {dragging ? "Drop PDFs here" : "Add documents to this workspace"}
           </p>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Upload one or more PDF files to get started with AI-powered
             financial analysis.
           </p>
@@ -105,35 +105,35 @@ function DropZone({
           {files.map((f) => (
             <div
               key={f.id}
-              className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5"
+              className="flex items-center gap-3 bg-surface border border-border rounded-lg px-3 py-2.5"
             >
-              <FileText className="w-5 h-5 text-blue-500 shrink-0" />
+              <FileText className="w-5 h-5 text-primary shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-700 truncate">
+                <p className="text-sm font-medium text-foreground truncate">
                   {f.file.name}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   {f.status === "uploading" && (
-                    <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-blue-500 rounded-full transition-all"
+                        className="h-full bg-primary rounded-full transition-all"
                         style={{ width: `${f.progress}%` }}
                       />
                     </div>
                   )}
                   {f.status === "done" && (
-                    <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                    <span className="text-xs text-success font-medium flex items-center gap-1">
                       <Check className="w-3 h-3" /> Uploaded
                     </span>
                   )}
                   {f.status === "error" && (
-                    <span className="text-xs text-red-600 font-medium flex items-center gap-1">
+                    <span className="text-xs text-destructive font-medium flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />{" "}
                       {f.errorMsg || "Failed"}
                     </span>
                   )}
                   {f.status === "pending" && (
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted-foreground">
                       {(f.file.size / 1024 / 1024).toFixed(2)} MB
                     </span>
                   )}
@@ -142,7 +142,7 @@ function DropZone({
               {(f.status === "pending" || f.status === "error") && (
                 <button
                   onClick={() => onRemove(f.id)}
-                  className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -150,13 +150,13 @@ function DropZone({
               {f.status === "done" && (
                 <button
                   onClick={() => onRemove(f.id)}
-                  className="p-1 text-slate-300 hover:text-red-500 transition-colors"
+                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}
               {f.status === "uploading" && (
-                <Loader2 className="w-4 h-4 text-blue-500 animate-spin shrink-0" />
+                <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
               )}
             </div>
           ))}
@@ -300,15 +300,15 @@ export default function CreateWorkspacePage() {
   const pendingCount = uploadFiles.filter((f) => f.status === "pending").length;
 
   return (
-    <div className="min-h-screen bg-slate-100/60 flex items-start justify-center pt-8 pb-16 px-4">
+    <div className="min-h-screen bg-surface/60 flex items-start justify-center pt-8 pb-16 px-4">
       {/* Modal Card */}
-      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div className="w-full max-w-3xl bg-card rounded-2xl shadow-xl border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-slate-100">
-          <h1 className="text-xl font-bold text-slate-900">Create Workspace</h1>
+        <div className="flex items-center justify-between px-8 py-5 border-b border-border-subtle">
+          <h1 className="text-xl font-bold text-foreground">Create Workspace</h1>
           <button
             onClick={() => router.push("/workspace")}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-surface rounded-lg transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -318,39 +318,39 @@ export default function CreateWorkspacePage() {
         <div className="px-8 py-7">
           <div className="mb-8 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-foreground">
                 Workspace Details
               </h2>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-muted-foreground">
                 Create the workspace and optionally stage PDF uploads before you
                 leave this screen.
               </p>
             </div>
-            <div className="hidden sm:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
+            <div className="hidden sm:flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-muted-foreground">
               <Upload className="w-3.5 h-3.5" />
               Documents upload here, not on a follow-up step
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-5">
+            <div className="bg-card border border-border rounded-xl p-6 flex flex-col gap-5">
               <div className="flex items-center gap-3 mb-1">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <Folder className="w-5 h-5 text-blue-500" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Folder className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-900">
+                  <h2 className="font-bold text-foreground">
                     Workspace Details
                   </h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Give your workspace a name and description
                   </p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Workspace Name <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">
+                  Workspace Name <span className="text-destructive">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -363,41 +363,41 @@ export default function CreateWorkspacePage() {
                       handleCreateWorkspace()
                     }
                     className={cn(
-                      "w-full px-3 py-2.5 pr-9 rounded-lg border text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 transition-all",
+                      "w-full px-3 py-2.5 pr-9 rounded-lg border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 transition-all",
                       nameStatus === "taken"
-                        ? "border-red-400 focus:ring-red-200"
+                        ? "border-destructive/50 focus:ring-red-200"
                         : nameStatus === "available"
-                          ? "border-emerald-400 focus:ring-emerald-200"
-                          : "border-slate-300 focus:ring-blue-200",
+                          ? "border-success/50 focus:ring-emerald-200"
+                          : "border-border focus:ring-blue-200",
                     )}
                     placeholder="e.g. Infosys Financial Analysis Q1 FY25"
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
                     {nameStatus === "checking" && (
-                      <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                      <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
                     )}
                     {nameStatus === "available" && (
-                      <Check className="w-4 h-4 text-emerald-500" />
+                      <Check className="w-4 h-4 text-success" />
                     )}
                     {nameStatus === "taken" && (
-                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <AlertCircle className="w-4 h-4 text-destructive" />
                     )}
                   </div>
                 </div>
                 {nameStatus === "available" && (
-                  <p className="text-xs text-emerald-600 mt-1 font-medium">
+                  <p className="text-xs text-success mt-1 font-medium">
                     This name is available
                   </p>
                 )}
                 {nameStatus === "taken" && (
-                  <p className="text-xs text-red-600 mt-1 font-medium">
+                  <p className="text-xs text-destructive mt-1 font-medium">
                     This name is already taken
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                <label className="block text-sm font-semibold text-foreground mb-1.5">
                   Description (optional)
                 </label>
                 <div className="relative">
@@ -406,26 +406,26 @@ export default function CreateWorkspacePage() {
                     value={description}
                     maxLength={descLimit}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all resize-none"
+                    className="w-full px-3 py-2.5 rounded-lg border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all resize-none"
                     placeholder="Quarterly financial research and analysis of Infosys Q1 FY25 performance."
                   />
-                  <span className="absolute bottom-2.5 right-3 text-xs text-slate-400">
+                  <span className="absolute bottom-2.5 right-3 text-xs text-muted-foreground">
                     {description.length}/{descLimit}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="border border-slate-200 rounded-xl p-6 bg-slate-50/60 flex flex-col gap-4">
+            <div className="border border-border rounded-xl p-6 bg-surface/60 flex flex-col gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <Upload className="w-5 h-5 text-blue-500" />
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-slate-900">
+                  <h2 className="font-bold text-foreground">
                     Upload documents now
                   </h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     Optional, but available on this screen before you create the
                     workspace.
                   </p>
@@ -441,16 +441,16 @@ export default function CreateWorkspacePage() {
           </div>
 
           {submitError && (
-            <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mt-6 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {submitError}
             </div>
           )}
         </div>
 
-        <div className="px-8 py-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="px-8 py-5 border-t border-border-subtle bg-surface flex items-center justify-between">
           <button
             onClick={() => router.push("/workspace")}
-            className="px-5 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-200 transition-colors border border-slate-300 bg-white"
+            className="px-5 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:bg-surface transition-colors border border-border bg-card"
           >
             Cancel
           </button>
@@ -458,7 +458,7 @@ export default function CreateWorkspacePage() {
           <button
             onClick={handleCreateWorkspace}
             disabled={!canProceedStep1 || createLoading || uploadLoading}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
           >
             {createLoading || uploadLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />

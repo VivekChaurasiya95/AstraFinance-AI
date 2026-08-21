@@ -47,7 +47,7 @@ CRITICAL INSTRUCTIONS:
             ("human", "Context chunks:\n{context}")
         ])
 
-    def analyze(self, document_id: str, extracted_metrics: dict | None = None, user_settings: dict = None):
+    def analyze(self, document_id: str, extracted_metrics: dict | None = None, user_settings: dict | None = None):
         queries = ["risk bankruptcy auditor warning debt liability lawsuit regulation downgrade"]
         context_parts = []
         

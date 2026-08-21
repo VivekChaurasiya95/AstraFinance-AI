@@ -48,18 +48,18 @@ async def upsert_firebase_user(
         "email_verified": email_verified,
     }
     
-    # Only update name and photo if they are explicitly provided
-    if name:
-        set_fields["name"] = name
-    if picture:
-        set_fields["photo_url"] = picture
-
     # Define fields that should only be set when a new user is created
     set_on_insert_fields = {
         "email": email,
         "role": "user",
         "created_at": now_iso,
     }
+    
+    # Only set name and photo initially so we don't overwrite user changes on subsequent logins
+    if name:
+        set_on_insert_fields["name"] = name
+    if picture:
+        set_on_insert_fields["photo_url"] = picture
     
     # Perform atomic upsert. The unique index on firebase_uid ensures no duplicates.
     await users_collection.update_one(

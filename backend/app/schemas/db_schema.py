@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any, Dict
-from datetime import datetime
+from datetime import datetime, timezone
 
 class MongoBaseModel(BaseModel):
     id: str = Field(..., alias="_id")
@@ -12,7 +12,7 @@ class DocumentStatus(BaseModel):
     processing_step: int
     current_action: str
     error: Optional[str] = None
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class DBWorkspace(BaseModel):
     id: str = Field(..., alias="_id")
@@ -22,8 +22,8 @@ class DBWorkspace(BaseModel):
     docs: int = 0
     chats: int = 0
     reports: int = 0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     icon: str = "FileTextIcon"
     iconColor: str = "text-blue-700"
     iconBg: str = "bg-blue-100"
@@ -36,7 +36,7 @@ class DBDocument(BaseModel):
     status: str = "processing"
     pdf_type: str = "Document"
     pages: int = 0
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class DBMetric(BaseModel):
     id: str = Field(..., alias="_id")
@@ -74,4 +74,4 @@ class DBAgentLog(BaseModel):
     details: str
     duration: str = ""
     metadata: Dict[str, Any] = {}
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

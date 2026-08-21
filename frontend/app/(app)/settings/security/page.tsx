@@ -200,14 +200,14 @@ export default function SecurityPage() {
   if (loading) {
     return (
       <div className="space-y-5 pb-8">
-        <div className="border-b border-slate-200 pb-3">
-          <div className="h-5 w-24 bg-slate-200 rounded animate-pulse" />
-          <div className="h-3 w-64 bg-slate-100 rounded animate-pulse mt-2" />
+        <div className="border-b border-border pb-3">
+          <div className="h-5 w-24 bg-muted rounded animate-pulse" />
+          <div className="h-3 w-64 bg-surface rounded animate-pulse mt-2" />
         </div>
         {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white border border-slate-200 rounded-xl p-5">
-            <div className="h-4 w-32 bg-slate-200 rounded animate-pulse mb-3" />
-            <div className="h-16 bg-slate-100 rounded animate-pulse" />
+          <div key={i} className="bg-card border border-border rounded-xl p-5">
+            <div className="h-4 w-32 bg-muted rounded animate-pulse mb-3" />
+            <div className="h-16 bg-surface rounded animate-pulse" />
           </div>
         ))}
       </div>
@@ -218,17 +218,17 @@ export default function SecurityPage() {
   if (error && !data) {
     return (
       <div className="space-y-5 pb-8">
-        <div className="border-b border-slate-200 pb-3">
-          <h2 className="text-xl font-extrabold text-blue-950">Security</h2>
+        <div className="border-b border-border pb-3">
+          <h2 className="text-xl font-extrabold text-foreground">Security</h2>
         </div>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-5 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+        <div className="bg-destructive/10 border border-destructive/50 rounded-xl p-5 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-sm font-bold text-red-700">Security information unavailable</h4>
-            <p className="text-xs text-red-600 mt-1">{error}</p>
+            <h4 className="text-sm font-bold text-destructive">Security information unavailable</h4>
+            <p className="text-xs text-destructive mt-1">{error}</p>
             <button
               onClick={() => { fetchedRef.current = false; fetchSecurity(); }}
-              className="mt-3 text-xs font-bold text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 transition-colors"
+              className="mt-3 text-xs font-bold text-destructive border border-destructive/50 px-3 py-1.5 rounded-lg hover:bg-destructive/20 transition-colors"
             >
               Retry
             </button>
@@ -249,18 +249,18 @@ export default function SecurityPage() {
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="flex items-center justify-between border-b border-slate-200 pb-3"
+        className="flex items-center justify-between border-b border-border pb-3"
       >
         <div>
-          <h2 className="text-xl font-extrabold text-blue-950">Security</h2>
-          <p className="text-slate-500 text-xs font-medium mt-0.5">
+          <h2 className="text-xl font-extrabold text-foreground">Security</h2>
+          <p className="text-muted-foreground text-xs font-medium mt-0.5">
             Manage your active sessions and connected accounts.
           </p>
         </div>
         <button
           onClick={() => fetchSecurity(true)}
           disabled={refreshing}
-          className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-blue-200 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-primary px-2.5 py-1.5 rounded-lg border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
         >
           <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
           Refresh
@@ -274,7 +274,7 @@ export default function SecurityPage() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-2 text-xs text-red-600"
+            className="bg-destructive/10 border border-destructive/50 rounded-xl px-4 py-3 flex items-center gap-2 text-xs text-destructive"
           >
             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
             {error}

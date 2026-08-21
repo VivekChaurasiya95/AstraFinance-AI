@@ -8,7 +8,7 @@ from pdf2image import convert_from_path
 
 class OCRExtractor:
    
-    def __init__(self, poppler_path: str = None, tesseract_cmd: str = None):
+    def __init__(self, poppler_path: str | None = None, tesseract_cmd: str | None = None):
         self.poppler_path = poppler_path
 
         if tesseract_cmd:

@@ -17,14 +17,14 @@ export function SettingsSection({
       className="mb-6"
     >
       <div className="mb-3">
-        <h3 className="text-base font-bold text-blue-950">{title}</h3>
-        <p className="text-xs text-slate-500">{description}</p>
+        <h3 className="text-base font-bold text-primary">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       <motion.div 
         whileHover={{ scale: 1.002 }}
-        className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md hover:border-blue-200/60 transition-all duration-300 relative overflow-hidden group"
+        className="bg-card border border-border rounded-xl p-5 shadow-sm hover:shadow-md hover:border-primary/50/60 transition-all duration-300 relative overflow-hidden group"
       >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         {children}
       </motion.div>
     </motion.section>
@@ -45,19 +45,19 @@ export function SettingsToggle({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-start justify-between py-4 border-b border-slate-100 last:border-0 last:pb-0 first:pt-0 group">
+    <div className="flex items-start justify-between py-4 border-b border-border-subtle last:border-0 last:pb-0 first:pt-0 group">
       <div className="pr-8">
-        <div className="font-semibold text-slate-800 transition-colors group-hover:text-blue-900">{label}</div>
-        {description && <div className="text-sm text-slate-500 mt-1">{description}</div>}
+        <div className="font-semibold text-foreground transition-colors group-hover:text-primary">{label}</div>
+        {description && <div className="text-sm text-muted-foreground mt-1">{description}</div>}
       </div>
       <button
         type="button"
         disabled={disabled}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${checked ? 'bg-blue-600 hover:bg-blue-700 shadow-[0_0_8px_rgba(37,99,235,0.4)]' : 'bg-slate-200 hover:bg-slate-300'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${checked ? 'bg-primary hover:bg-primary/90 shadow-[0_0_8px_rgba(67,198,188,0.4)]' : 'bg-muted hover:bg-muted'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         onClick={() => onChange(!checked)}
       >
         <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-300 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`}
+          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-card shadow-sm ring-0 transition duration-300 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`}
         />
       </button>
     </div>
@@ -80,16 +80,16 @@ export function SettingsSelect({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between py-4 border-b border-slate-100 last:border-0 last:pb-0 first:pt-0 group">
+    <div className="flex items-center justify-between py-4 border-b border-border-subtle last:border-0 last:pb-0 first:pt-0 group">
       <div className="pr-8">
-        <div className="font-semibold text-slate-800 transition-colors group-hover:text-blue-900">{label}</div>
-        {description && <div className="text-sm text-slate-500 mt-1">{description}</div>}
+        <div className="font-semibold text-foreground transition-colors group-hover:text-primary">{label}</div>
+        {description && <div className="text-sm text-muted-foreground mt-1">{description}</div>}
       </div>
       <select
         disabled={disabled}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-white border-2 border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-0 focus:border-blue-500 block p-2.5 font-bold min-w-[150px] disabled:opacity-50 shadow-sm hover:border-blue-300 transition-all cursor-pointer outline-none"
+        className="bg-card border-2 border-border text-foreground text-sm rounded-xl focus:ring-0 focus:border-primary block p-2.5 font-bold min-w-[150px] disabled:opacity-50 shadow-sm hover:border-primary/50 transition-all cursor-pointer outline-none"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value} className="font-medium">

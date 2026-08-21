@@ -21,7 +21,7 @@ export default function PrivacyPage() {
   if (loading || !settings) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -34,21 +34,21 @@ export default function PrivacyPage() {
 
   return (
     <div className="space-y-8 pb-12 relative">
-      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+      <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h2 className="text-2xl font-black text-blue-950">Privacy</h2>
-          <p className="text-slate-500 font-medium mt-1">Control how your data is used and stored.</p>
+          <h2 className="text-2xl font-black text-foreground">Privacy</h2>
+          <p className="text-muted-foreground font-medium mt-1">Control how your data is used and stored.</p>
         </div>
         
         <div className="h-8">
           <AnimatePresence>
             {isSaving && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 text-sm font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 text-sm font-bold text-muted-foreground bg-surface px-3 py-1.5 rounded-full">
                 <Loader2 className="w-4 h-4 animate-spin" /> Saving...
               </motion.div>
             )}
             {!isSaving && showSaved && (
-              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 text-sm font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full">
+              <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2 text-sm font-bold text-success bg-success/10 border border-emerald-100 px-3 py-1.5 rounded-full">
                 <Save className="w-4 h-4" /> Saved
               </motion.div>
             )}

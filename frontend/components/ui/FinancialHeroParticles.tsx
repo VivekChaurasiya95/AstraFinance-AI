@@ -22,7 +22,7 @@ export function FinancialHeroParticles() {
       {particles.map((p) => (
         <motion.div
           key={p.id}
-          className="absolute rounded-full bg-blue-500/30"
+          className="absolute rounded-full bg-primary/30"
           style={{
             width: p.size,
             height: p.size,

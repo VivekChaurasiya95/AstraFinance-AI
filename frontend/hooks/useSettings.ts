@@ -12,14 +12,7 @@ export type Settings = {
     enforce_citations: boolean;
     risk_warnings: boolean;
   };
-  notifications: {
-    reports: boolean;
-    agents: boolean;
-    risk: boolean;
-    workspace: boolean;
-    email_enabled: boolean;
-    in_app_enabled: boolean;
-  };
+  notifications: Record<string, unknown>;
   appearance: {
     theme: string;
     density: string;
@@ -45,18 +38,33 @@ export function useSettings() {
       setError(null);
       const data = await fetcher<Settings>("/settings");
       setSettings(data);
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch settings");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch settings");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSettings();
+    let mounted = true;
+    const init = async () => {
+      try {
+        const data = await fetcher<Settings>("/settings");
+        if (mounted) {
+          setSettings(data);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : "Failed to fetch settings");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    init();
+    return () => { mounted = false; };
   }, []);
 
-  const updateSetting = async (updates: Record<string, any>) => {
+  const updateSetting = async (updates: Record<string, unknown>) => {
     try {
       setIsSaving(true);
       const data = await fetcher<Settings>("/settings", {
@@ -65,9 +73,9 @@ export function useSettings() {
       });
       setSettings(data);
       return { success: true };
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to update settings:", err);
-      return { success: false, error: err.message };
+      return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
     } finally {
       setIsSaving(false);
     }

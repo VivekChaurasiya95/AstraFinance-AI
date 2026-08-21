@@ -17,6 +17,23 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
+
+def _extract_text_content(content: Any) -> str:
+    """Safely extract a string from an LLM response content field.
+    Some providers (e.g. Gemini via LangChain) return a list of content blocks
+    instead of a plain string."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, dict) and "text" in part:
+                parts.append(part["text"])
+            elif isinstance(part, str):
+                parts.append(part)
+        return "".join(parts)
+    return str(content)
+
 records: List[Dict[str, Any]] = []
 
 def add_record(data: Dict[str, Any]) -> None:
@@ -172,7 +189,7 @@ def call_document_agent(company_name: str, question: str = "", workspace_id: str
                     chroma_results = collection.query(
                         query_embeddings=config["embeddings"],
                         n_results=8,
-                        where=where_filter
+                        where=where_filter  # type: ignore
                     )
                 else:
                     chroma_results = collection.query(
@@ -180,8 +197,8 @@ def call_document_agent(company_name: str, question: str = "", workspace_id: str
                         n_results=8
                     )
 
-                documents = chroma_results.get("documents", [])
-                metadatas = chroma_results.get("metadatas", [])
+                documents = chroma_results.get("documents") or []
+                metadatas = chroma_results.get("metadatas") or []
 
                 for qi in range(len(documents)):
                     for i, text in enumerate(documents[qi]):
@@ -256,7 +273,7 @@ class ResearchAgent:
     def __init__(self):
         pass
 
-    def _extract_company_names(self, user_query: str, user_settings: dict = None) -> List[str]:
+    def _extract_company_names(self, user_query: str, user_settings: dict | None = None) -> List[str]:
         """Use the LLM to extract company names from the user query."""
         prompt = (
             "Extract all company names from the following user query. "
@@ -271,7 +288,7 @@ class ResearchAgent:
         try:
             router = get_llm_router()
             response = router.invoke("research", [HumanMessage(content=prompt)], user_settings=user_settings, temperature=0.0)
-            content = response.content.strip()
+            content = _extract_text_content(response.content).strip()
             # Strip markdown fences if present
             if content.startswith("```"):
                 content = re.sub(r'^```(?:json)?\s*', '', content)
@@ -379,7 +396,7 @@ class ResearchAgent:
         data["citations"] = final_citations
         return json.dumps(data)
 
-    def analyze(self, user_query: str, workspace_id: str | None = None, user_settings: dict = None) -> str:
+    def analyze(self, user_query: str, workspace_id: str | None = None, user_settings: dict | None = None) -> str:
         start_time = time.time()
         logger.info("=== Research Agent Query: %s ===", user_query)
 
@@ -526,7 +543,7 @@ Return ONLY the JSON object. No markdown fences."""
         try:
             router = get_llm_router()
             response = router.invoke("research", [HumanMessage(content=analysis_prompt)], user_settings=user_settings, temperature=0.0)
-            raw_output = response.content
+            raw_output = _extract_text_content(response.content)
         except Exception as e:
             logger.error("LLM analysis failed: %s", e)
             return json.dumps({

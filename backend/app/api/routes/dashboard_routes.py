@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import io
 from fpdf import FPDF
@@ -31,16 +31,15 @@ def parse_dt(dt) -> datetime:
             return datetime.fromisoformat(dt.replace("Z", "+00:00"))
         except ValueError:
             pass
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 def time_ago(dt: Optional[datetime]) -> str:
     if dt is None:
         return "Unknown"
     try:
-        # Strip timezone info if present so subtraction works with naive utcnow()
-        if hasattr(dt, "tzinfo") and dt.tzinfo is not None:
-            dt = dt.replace(tzinfo=None)
-        diff = datetime.utcnow() - dt
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        diff = datetime.now(timezone.utc) - dt
         if diff.days > 0:
             return f"{diff.days}d ago"
         hours = diff.seconds // 3600
@@ -60,7 +59,7 @@ def time_ago(dt: Optional[datetime]) -> str:
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
     thirty_days_ago = now - timedelta(days=30)
 
@@ -160,6 +159,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
                 "severity": rf.get("severity", "High"),
                 "title": title,
                 "time_ago": time_ago(dt),
+                "detected_at": dt.isoformat(),
                 "pinned": rf.get("pinned", False),
             }
         )
@@ -275,7 +275,7 @@ async def mark_notifications_read(current_user: dict = Depends(get_current_user)
     user_id = str(current_user["_id"])
     await users_collection.update_one(
         {"_id": user_id},
-        {"$set": {"last_read_notifications": datetime.utcnow()}},
+        {"$set": {"last_read_notifications": datetime.now(timezone.utc)}},
     )
     return {"status": "success"}
 
@@ -284,7 +284,7 @@ async def mark_notifications_read(current_user: dict = Depends(get_current_user)
 @router.post("/daily-summary", response_model=DailySummaryResponse)
 async def generate_daily_summary(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     one_day_ago = now - timedelta(days=1)
 
     # Get user workspaces
@@ -372,6 +372,7 @@ async def generate_daily_summary(current_user: dict = Depends(get_current_user))
         rep_count = await reports_collection.count_documents({"workspace_id": ws_id})
         workspace_summaries.append(
             {
+                "id": ws_id,
                 "name": ws_name,
                 "docs_processed": docs_count,
                 "risks_found": risks_count,

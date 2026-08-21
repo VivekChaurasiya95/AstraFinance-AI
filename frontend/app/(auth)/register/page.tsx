@@ -9,7 +9,7 @@ import {
   signInWithPopup,
   updateProfile,
 } from "firebase/auth";
-import { Eye, EyeOff, AlertCircle, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,15 +17,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
+import { AstraFinanceLogo } from "@/components/branding/AstraFinanceLogo";
 
-const SplineAuthScene = dynamic(() => import("@/components/auth/SplineAuthScene"), {
-  ssr: false,
-  loading: () => (
-    <div className="absolute inset-0 flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-    </div>
-  )
-});
+import SolarLoader from "@/components/ui/solar-loader";
 
 type FirebaseAuthError = {
   code?: string;
@@ -102,15 +96,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC] items-center justify-center p-4 sm:p-6 lg:p-8 font-sans selection:bg-blue-100">
+    <div className="flex h-screen w-full bg-background items-center justify-center p-4 sm:p-6 lg:p-8 font-sans transition-theme overflow-hidden">
       
       {/* Outer Application Window */}
-      <div className="w-full max-w-[1440px] h-[calc(100vh-2rem)] lg:h-[calc(100vh-4rem)] min-h-[750px] bg-white rounded-[24px] lg:rounded-[32px] shadow-sm border border-slate-200/60 overflow-hidden flex flex-col lg:flex-row relative">
+      <div className="w-full max-w-[1440px] h-full max-h-[800px] bg-card rounded-[24px] lg:rounded-[32px] shadow-sm border border-border overflow-hidden flex flex-col lg:flex-row relative transition-theme">
         
         {/* ======================================================== */}
         {/* LEFT PANEL: FORM (48% width on desktop) */}
         {/* ======================================================== */}
-        <div className="w-full lg:w-[48%] xl:w-[45%] h-full flex flex-col items-center justify-center bg-[#F4F7FB] p-4 sm:p-8 lg:p-12 overflow-y-auto overflow-x-hidden relative z-10 scrollbar-hide">
+        <div className="w-full lg:w-[48%] xl:w-[45%] h-full flex flex-col items-center justify-center bg-background-secondary p-4 sm:p-6 lg:p-8 overflow-y-auto overflow-x-hidden relative z-10 transition-theme [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           
           <motion.div 
             initial="hidden"
@@ -119,27 +113,24 @@ export default function RegisterPage() {
               hidden: { opacity: 0 },
               show: { opacity: 1, transition: { staggerChildren: 0.08 } }
             }}
-            className="w-full max-w-[460px] bg-white rounded-[32px] shadow-sm border border-slate-100 p-8 sm:p-10 flex flex-col"
+            className="w-full max-w-[460px] bg-card rounded-[32px] shadow-sm border border-border-subtle p-6 sm:p-8 flex flex-col"
           >
             {/* Logo */}
-            <motion.div variants={fadeUp} className="flex flex-col items-center mb-6">
-              <Link href="/" className="flex flex-col items-center">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-emerald-400 flex items-center justify-center mb-2 shadow-sm">
-                  <ShieldCheck className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-[12px] font-bold text-blue-500 uppercase tracking-widest">AstraFinance AI</span>
+            <motion.div variants={fadeUp} className="flex flex-col items-center mb-4">
+              <Link href="/" aria-label="AstraFinance home" className="flex flex-col items-center">
+                <AstraFinanceLogo className="h-12 w-12" />
               </Link>
             </motion.div>
 
-            <motion.div variants={fadeUp} className="mb-6 text-center">
-              <h2 className="text-[28px] sm:text-[32px] font-extrabold text-[#0B1535] tracking-tight">Create your account</h2>
+            <motion.div variants={fadeUp} className="mb-4 text-center">
+              <h2 className="text-[24px] sm:text-[28px] font-extrabold text-foreground tracking-tight transition-theme">Create your account</h2>
             </motion.div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               
               {/* Full Name */}
-              <motion.div variants={fadeUp} className="flex flex-col gap-2">
-                <Label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">Full Name</Label>
+              <motion.div variants={fadeUp} className="flex flex-col gap-1.5">
+                <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Full Name</Label>
                 <Input
                   id="fullName"
                   type="text"
@@ -148,13 +139,13 @@ export default function RegisterPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                   disabled={loading}
-                  className="h-[48px] px-4 rounded-xl bg-white border-slate-200 hover:border-slate-300 text-[#0B1535] placeholder:text-slate-400 focus-visible:ring-0 focus-visible:border-blue-600 focus-visible:shadow-[0_0_0_3px_rgba(37,99,235,0.08)] transition-all text-[15px] shadow-sm"
+                  className="h-[44px] px-4 rounded-xl bg-card border-border hover:border-border-strong text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:border-primary transition-all text-[14px] shadow-sm"
                 />
               </motion.div>
 
               {/* Email */}
-              <motion.div variants={fadeUp} className="flex flex-col gap-2">
-                <Label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">Email Address</Label>
+              <motion.div variants={fadeUp} className="flex flex-col gap-1.5">
+                <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Email Address</Label>
                 <div className="relative">
                   <Input
                     id="email"
@@ -168,24 +159,24 @@ export default function RegisterPage() {
                     required
                     disabled={loading}
                     className={cn(
-                      "h-[48px] px-4 rounded-xl transition-all text-[15px] placeholder:text-slate-400 shadow-sm",
+                      "h-[44px] px-4 rounded-xl transition-all text-[14px] placeholder:text-muted-foreground shadow-sm",
                       emailError
-                        ? "border-red-300 hover:border-red-400 focus-visible:ring-0 focus-visible:border-red-500 text-red-900"
-                        : "bg-white border-slate-200 hover:border-slate-300 text-[#0B1535] focus-visible:ring-0 focus-visible:border-blue-600 focus-visible:shadow-[0_0_0_3px_rgba(37,99,235,0.08)]"
+                        ? "border-destructive hover:border-destructive focus-visible:ring-0 focus-visible:border-destructive text-destructive"
+                        : "bg-card border-border hover:border-border-strong text-foreground focus-visible:ring-0 focus-visible:border-primary"
                     )}
                   />
-                  {emailError && <AlertCircle className="absolute right-4 top-[17px] w-5 h-5 text-red-500" />}
+                  {emailError && <AlertCircle className="absolute right-4 top-[15px] w-4 h-4 text-destructive" />}
                 </div>
                 {emailError && (
-                  <p className="text-[13px] font-medium text-red-500 mt-1">
-                    Email in use. <Link href="/login" className="underline hover:text-red-700">Log in instead</Link>
+                  <p className="text-[12px] font-medium text-destructive mt-1">
+                    Email in use. <Link href="/login" className="underline hover:text-destructive">Log in instead</Link>
                   </p>
                 )}
               </motion.div>
 
               {/* Password */}
-              <motion.div variants={fadeUp} className="flex flex-col gap-2">
-                <Label className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">Password</Label>
+              <motion.div variants={fadeUp} className="flex flex-col gap-1.5">
+                <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -196,41 +187,41 @@ export default function RegisterPage() {
                     required
                     disabled={loading}
                     minLength={6}
-                    className="h-[48px] px-4 pr-12 rounded-xl bg-white border-slate-200 hover:border-slate-300 text-[#0B1535] placeholder:text-slate-400 focus-visible:ring-0 focus-visible:border-blue-600 focus-visible:shadow-[0_0_0_3px_rgba(37,99,235,0.08)] transition-all text-[15px] shadow-sm tracking-[0.2em] font-medium"
+                    className="h-[44px] px-4 pr-12 rounded-xl bg-card border-border hover:border-border-strong text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:border-primary transition-all text-[14px] shadow-sm tracking-[0.2em] font-medium"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                    className="absolute right-3 top-1.5 w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground rounded-lg transition-colors"
                   >
-                    {showPassword ? <Eye className="w-[18px] h-[18px]" /> : <EyeOff className="w-[18px] h-[18px]" />}
+                    {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </button>
                 </div>
               </motion.div>
 
               {/* Terms Checkbox */}
-              <motion.div variants={fadeUp} className="flex items-start gap-3 mt-1">
+              <motion.div variants={fadeUp} className="flex items-start gap-2 mt-0">
                 <Checkbox
                   id="terms"
                   checked={termsAccepted}
                   onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
-                  className="mt-1 border-slate-300 data-[state=checked]:bg-[#0B1535] data-[state=checked]:border-[#0B1535] w-4 h-4 rounded-[4px]"
+                  className="mt-[3px] border-border data-[state=checked]:bg-foreground data-[state=checked]:border-foreground w-3.5 h-3.5 rounded-[4px] transition-theme"
                 />
-                <Label htmlFor="terms" className="text-[14px] leading-[1.6] text-slate-600 cursor-pointer select-none">
-                  I agree to the <Link href="#" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors">Terms of Service</Link> and <Link href="#" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors">Privacy Policy</Link>{"."}
+                <Label htmlFor="terms" className="text-[12px] leading-[1.5] text-muted-foreground cursor-pointer select-none">
+                  I agree to the <Link href="#" className="text-primary font-semibold hover:text-primary transition-colors">Terms of Service</Link> and <Link href="#" className="text-primary font-semibold hover:text-primary transition-colors">Privacy Policy</Link>{"."}
                 </Label>
               </motion.div>
 
               {/* Submit CTA */}
-              <motion.div variants={fadeUp} className="mt-2">
+              <motion.div variants={fadeUp} className="mt-1">
                 <button
                   type="submit"
                   disabled={!termsAccepted || loading}
                   className={cn(
-                    "w-full h-[52px] flex items-center justify-center text-white font-semibold rounded-xl transition-all text-[15px]",
+                    "w-full h-[48px] flex items-center justify-center text-white font-semibold rounded-xl transition-all text-[14px]",
                     termsAccepted && !loading 
-                      ? "bg-[#8CA4F8] hover:bg-[#7b95f5] active:scale-[0.98] shadow-sm hover:shadow-md hover:-translate-y-[1px]" 
-                      : "bg-[#8CA4F8]/50 text-white cursor-not-allowed shadow-none"
+                      ? "bg-primary hover:bg-primary-hover active:scale-[0.98] shadow-sm hover:shadow-md hover:-translate-y-[1px]" 
+                      : "bg-primary/50 text-white cursor-not-allowed shadow-none"
                   )}
                 >
                   {loading ? (
@@ -243,10 +234,10 @@ export default function RegisterPage() {
             </form>
 
             {/* Divider */}
-            <motion.div variants={fadeUp} className="flex items-center my-6">
-              <div className="flex-grow border-t border-slate-200/80" />
-              <span className="mx-4 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Or sign up with</span>
-              <div className="flex-grow border-t border-slate-200/80" />
+            <motion.div variants={fadeUp} className="flex items-center my-5">
+              <div className="flex-grow border-t border-border/80" />
+              <span className="mx-4 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Or sign up with</span>
+              <div className="flex-grow border-t border-border/80" />
             </motion.div>
 
             {/* OAuth Buttons */}
@@ -254,7 +245,7 @@ export default function RegisterPage() {
               <button
                 onClick={() => handleOAuth("Google")}
                 disabled={loading}
-                className="flex-1 h-[48px] flex items-center justify-center gap-2.5 bg-white border border-slate-200 text-[#0B1535] text-[14px] font-semibold rounded-xl hover:bg-[#F8FAFC] hover:border-slate-300 transition-all active:scale-[0.98] shadow-sm"
+                className="flex-1 h-[44px] flex items-center justify-center gap-2.5 bg-card border border-border text-foreground text-[13px] font-semibold rounded-xl hover:bg-surface hover:border-border-strong transition-all active:scale-[0.98] shadow-sm"
               >
                 <GoogleIcon />
                 Google
@@ -262,7 +253,7 @@ export default function RegisterPage() {
               <button
                 onClick={() => handleOAuth("GitHub")}
                 disabled={loading}
-                className="flex-1 h-[48px] flex items-center justify-center gap-2.5 bg-white border border-slate-200 text-[#0B1535] text-[14px] font-semibold rounded-xl hover:bg-[#F8FAFC] hover:border-slate-300 transition-all active:scale-[0.98] shadow-sm"
+                className="flex-1 h-[44px] flex items-center justify-center gap-2.5 bg-card border border-border text-foreground text-[13px] font-semibold rounded-xl hover:bg-surface hover:border-border-strong transition-all active:scale-[0.98] shadow-sm"
               >
                 <GitHubIcon />
                 GitHub
@@ -270,8 +261,8 @@ export default function RegisterPage() {
             </motion.div>
           </motion.div>
 
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-center text-[14px] text-slate-500 mt-6">
-            Already have an account? <Link href="/login" className="text-blue-600 font-bold hover:text-blue-700 transition-colors">Log In</Link>
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-center text-[13px] text-muted-foreground mt-4">
+            Already have an account? <Link href="/login" className="text-primary font-bold hover:text-primary transition-colors">Log In</Link>
           </motion.p>
         </div>
 
@@ -288,7 +279,7 @@ export default function RegisterPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.3, duration: 0.8 }}
               >
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-cyan-300 text-[12px] font-bold uppercase tracking-wider mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/10 backdrop-blur-md border border-white/10 text-cyan-300 text-[12px] font-bold uppercase tracking-wider mb-4">
                   <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                   AstraFinance AI
                 </div>
@@ -300,13 +291,12 @@ export default function RegisterPage() {
             </div>
 
             {/* Subtle Gradient Backdrops */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3" />
             <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/4" />
             
-            {/* 3D Scene Wrapper */}
-            {/* Using mix-blend-screen to remove black backgrounds from Spline scenes and let the #0C1B5B shine through */}
-            <div className="absolute inset-0 z-10 mix-blend-screen opacity-90 scale-[1.1] origin-center">
-              <SplineAuthScene />
+            {/* 3D Solar Loader Scene */}
+            <div className="absolute inset-0 z-10 flex items-center justify-center opacity-90 scale-[1.1] origin-center">
+              <SolarLoader size={60} speed={1.2} />
             </div>
 
             {/* Bottom Graphic / Accents */}

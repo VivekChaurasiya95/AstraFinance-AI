@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onIdTokenChanged, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { API_BASE_URL } from "@/lib/api";
 
@@ -45,10 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const idToken = await firebaseUser.getIdToken(true);
+          const idToken = await firebaseUser.getIdToken();
           setToken(idToken);
           setUser(firebaseUser);
 
@@ -80,13 +80,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               id: dbData.id,
               name: dbData.name || firebaseUser.displayName || "",
               email: dbData.email || firebaseUser.email || "",
-              profile_picture: dbData.profile_picture_url || firebaseUser.photoURL || null,
+              profile_picture: dbData.profile_picture_url !== undefined ? dbData.profile_picture_url : (firebaseUser.photoURL || null),
             });
           } else {
-            console.error("Backend sync failed", await response.text());
+            const errorText = await response.text();
+            console.error(`Backend sync failed [${response.status}]:`, errorText);
+            if (response.status === 401 || response.status === 403) {
+              console.warn("Backend rejected session. Signing out.");
+              await auth.signOut();
+            }
           }
         } catch (error) {
-          console.error("Token refresh or sync failed", error);
+          console.warn("Authentication refresh request failed. Keeping local session active temporarily. Reason: Network unavailable or blocked.", error);
         } finally {
           syncingRef.current = false;
         }

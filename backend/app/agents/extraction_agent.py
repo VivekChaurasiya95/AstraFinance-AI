@@ -68,7 +68,7 @@ CRITICAL INSTRUCTIONS:
             ("human", "Context chunks:\n{context}")
         ])
 
-    def extract(self, document_id: str, user_settings: dict = None):
+    def extract(self, document_id: str, user_settings: dict | None = None):
         queries = _retrieval_queries("", "")
         raw_chunks = []
         

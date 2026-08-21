@@ -90,17 +90,17 @@ function LoginContent() {
   };
 
   return (
-    <div className="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center relative overflow-hidden font-sans">
+    <div className="bg-background text-foreground min-h-screen flex items-center justify-center relative overflow-hidden font-sans transition-theme">
       {/* Subtle background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-background-secondary to-surface pointer-events-none transition-theme" />
 
       {/* Decorative background circles */}
-      <div className="absolute top-0 right-0 w-96 h-96 -translate-y-1/2 translate-x-1/2 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 translate-y-1/2 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-96 h-96 -translate-y-1/2 translate-x-1/2 rounded-full bg-primary/10 blur-3xl pointer-events-none transition-theme" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 translate-y-1/2 -translate-x-1/2 rounded-full bg-cyan/10 blur-3xl pointer-events-none transition-theme" />
 
       {/* Centered Auth Card */}
       <main className="w-full max-w-[420px] px-6 relative z-10 animate-in fade-in zoom-in-95 duration-500">
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-slate-200 flex flex-col gap-6">
+        <div className="bg-card rounded-2xl shadow-xl p-8 border border-border flex flex-col gap-6">
           {/* Header */}
           <div className="text-center flex flex-col gap-2 items-center">
             <Link
@@ -108,15 +108,15 @@ function LoginContent() {
               className="h-16 w-auto mb-2 flex items-center justify-center cursor-pointer"
             >
               <img
-                alt="AstraFinance AI Logo"
-                className="object-contain h-16 w-auto"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHTeJtTNNmIDRKtXzrDbdUcEscRsdbSrQ1rXU46QeWbkEBYIbYJbjfKiHDq1KBUofieyE9PYcYvrSh69qSi4WRTQ2m_S4YVLrGg5PBXmU5EtRC1edRXc4ERfDjO32-bkbwAYlQv0iCQ0UcU6RukW0bd0EqRxoc9r-sh4t-nqpOJ3smwrfxzCg9jNsj2gb0Thw-NtmO4skiiCLfeOMSiCnHBZ7OZeVksbTAzr7JQHqKelJyIiufN4NN2hIO7OXsNc2_IQ"
+                alt="AstraFinance AI"
+                src="/logo.svg"
+                className="w-12 h-12 object-contain"
               />
             </Link>
-            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight">
               Welcome Back
             </h1>
-            <p className="text-sm font-medium text-slate-500">
+            <p className="text-sm font-medium text-muted-foreground">
               Please enter your details to log in.
             </p>
           </div>
@@ -127,7 +127,7 @@ function LoginContent() {
             <div className="flex flex-col gap-2">
               <Label
                 htmlFor="email"
-                className="text-xs font-bold text-slate-500 tracking-widest uppercase"
+                className="text-xs font-bold text-muted-foreground tracking-widest uppercase"
               >
                 Email Address
               </Label>
@@ -139,7 +139,7 @@ function LoginContent() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="h-11 px-4 rounded-md border-slate-300 bg-white text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-colors"
+                className="h-11 px-4 rounded-md border-border bg-card text-foreground focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-primary transition-colors"
                 suppressHydrationWarning
               />
             </div>
@@ -149,13 +149,13 @@ function LoginContent() {
               <div className="flex justify-between items-center">
                 <Label
                   htmlFor="password"
-                  className="text-xs font-bold text-slate-500 tracking-widest uppercase"
+                  className="text-xs font-bold text-muted-foreground tracking-widest uppercase"
                 >
                   Password
                 </Label>
                 <Link
                   href="#"
-                  className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors focus:outline-none focus:underline"
+                  className="text-xs font-medium text-primary hover:text-primary-hover transition-colors focus:outline-none focus:underline"
                 >
                   Forgot password?
                 </Link>
@@ -169,14 +169,14 @@ function LoginContent() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={loading}
-                  className="h-11 px-4 pr-10 rounded-md border-slate-300 bg-white text-slate-900 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-colors"
+                  className="h-11 px-4 pr-10 rounded-md border-border bg-card text-foreground focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-primary transition-colors"
                   suppressHydrationWarning
                 />
                 <button
                   type="button"
                   aria-label="Toggle password visibility"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none flex items-center justify-center"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none flex items-center justify-center"
                   suppressHydrationWarning
                 >
                   {showPassword ? (
@@ -192,7 +192,7 @@ function LoginContent() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-11 mt-2 bg-blue-700 text-white text-base font-medium rounded-md hover:bg-blue-800 transition-all focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-11 mt-2 bg-primary text-white text-base font-medium rounded-md hover:bg-primary-hover transition-all focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
               suppressHydrationWarning
             >
               {loading ? "Logging in..." : "Log In"}
@@ -201,11 +201,11 @@ function LoginContent() {
 
           {/* Divider */}
           <div className="relative flex items-center mt-2">
-            <div className="flex-grow border-t border-slate-200" />
-            <span className="mx-3 text-xs font-medium text-slate-400 uppercase tracking-widest select-none">
+            <div className="flex-grow border-t border-border" />
+            <span className="mx-3 text-xs font-medium text-muted-foreground uppercase tracking-widest select-none">
               Or continue with
             </span>
-            <div className="flex-grow border-t border-slate-200" />
+            <div className="flex-grow border-t border-border" />
           </div>
 
           {/* OAuth Buttons */}
@@ -214,7 +214,7 @@ function LoginContent() {
               type="button"
               variant="outline"
               onClick={() => handleOAuth("Google")}
-              className="flex-1 h-11 gap-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all font-medium rounded-md"
+              className="flex-1 h-11 gap-2 border-border bg-card text-foreground hover:bg-surface hover:border-border-strong transition-all font-medium rounded-md"
               suppressHydrationWarning
             >
               <GoogleIcon />
@@ -224,7 +224,7 @@ function LoginContent() {
               type="button"
               variant="outline"
               onClick={() => handleOAuth("GitHub")}
-              className="flex-1 h-11 gap-2 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all font-medium rounded-md"
+              className="flex-1 h-11 gap-2 border-border bg-card text-foreground hover:bg-surface hover:border-border-strong transition-all font-medium rounded-md"
               suppressHydrationWarning
             >
               <GitHubIcon />
@@ -234,11 +234,11 @@ function LoginContent() {
         </div>
 
         {/* Footer Link */}
-        <p className="text-center text-sm text-slate-600 mt-8">
+        <p className="text-center text-sm text-muted-foreground mt-8">
           Don&apos;t have an account?{" "}
           <Link
             href="/register"
-            className="text-blue-600 hover:text-blue-800 font-semibold transition-colors focus:outline-none focus:underline"
+            className="text-primary hover:text-primary-hover font-semibold transition-colors focus:outline-none focus:underline"
           >
             Register
           </Link>
@@ -296,7 +296,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="min-h-screen bg-surface flex items-center justify-center">
           Loading...
         </div>
       }

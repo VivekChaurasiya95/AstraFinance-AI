@@ -89,15 +89,15 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
     }
   };
 
-  const userImage = dbUser?.profile_picture || firebaseUser?.photoURL;
+  const userImage = dbUser ? dbUser.profile_picture : firebaseUser?.photoURL;
   const userName = dbUser?.name || firebaseUser?.displayName || "User";
   const userEmail = dbUser?.email || firebaseUser?.email || "email@example.com";
 
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute top-14 right-8 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-        <div className="p-5 border-b border-slate-100 bg-slate-50 flex flex-col gap-4">
+      <div className="absolute top-14 right-8 w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="p-5 border-b border-border-subtle bg-surface flex flex-col gap-4">
           
           <div className="flex items-start gap-4">
             <div className="relative group shrink-0">
@@ -133,18 +133,18 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
               {isEditing ? (
                 <div className="flex flex-col gap-3">
                   <div>
-                    <label className="text-[10px] text-slate-500 font-semibold uppercase mb-1 block">Name</label>
+                    <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Name</label>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-2 py-1.5 text-sm border border-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     {name !== userName && (
                       <button
                         onClick={handleNameSave}
                         disabled={isSavingName}
-                        className="mt-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center gap-1 ml-auto"
+                        className="mt-1 text-xs bg-primary text-white px-2 py-1 rounded hover:bg-primary/90 flex items-center gap-1 ml-auto"
                       >
                         {isSavingName ? "Saving..." : <><Check className="w-3 h-3" /> Save Name</>}
                       </button>
@@ -152,22 +152,22 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
                   </div>
                   
                   <div>
-                    <label className="text-[10px] text-slate-500 font-semibold uppercase mb-1 block">Email (Cannot be changed)</label>
+                    <label className="text-[10px] text-muted-foreground font-semibold uppercase mb-1 block">Email (Cannot be changed)</label>
                     <input
                       type="email"
                       value={email}
                       disabled
-                      className="w-full px-2 py-1.5 text-sm border border-slate-200 bg-slate-50 text-slate-500 rounded cursor-not-allowed"
+                      className="w-full px-2 py-1.5 text-sm border border-border bg-surface text-muted-foreground rounded cursor-not-allowed"
                     />
                   </div>
 
-                  <div className="flex justify-end mt-2 pt-2 border-t border-slate-200">
+                  <div className="flex justify-end mt-2 pt-2 border-t border-border">
                     <button
                       onClick={() => {
                         setName(userName);
                         setIsEditing(false);
                       }}
-                      className="text-xs text-slate-500 hover:text-slate-700 font-medium"
+                      className="text-xs text-muted-foreground hover:text-foreground font-medium"
                     >
                       Done Editing
                     </button>
@@ -175,11 +175,11 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
                 </div>
               ) : (
                 <div>
-                  <div className="font-semibold text-slate-900 truncate">{userName}</div>
-                  <div className="text-sm text-slate-500 truncate">{userEmail}</div>
+                  <div className="font-semibold text-foreground truncate">{userName}</div>
+                  <div className="text-sm text-muted-foreground truncate">{userEmail}</div>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="text-xs text-blue-600 hover:underline mt-1 flex items-center gap-1"
+                    className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
                   >
                     <Edit2 className="w-3 h-3" /> Edit Profile
                   </button>
@@ -190,16 +190,16 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
         </div>
 
         <div className="p-2">
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:bg-surface hover:text-foreground rounded-lg transition-colors">
             <User className="w-4 h-4" /> My Account
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors">
+          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:bg-surface hover:text-foreground rounded-lg transition-colors">
             <Mail className="w-4 h-4" /> Notification Preferences
           </button>
-          <div className="h-px bg-slate-100 my-1 mx-2" />
+          <div className="h-px bg-surface my-1 mx-2" />
           <button
             onClick={onSignOut}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
           >
             <LogOut className="w-4 h-4" /> Sign Out
           </button>

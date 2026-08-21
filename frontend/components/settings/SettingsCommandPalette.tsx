@@ -89,7 +89,7 @@ export function SettingsCommandPalette() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-md"
+            className="fixed inset-0 bg-background/80 backdrop-blur-md"
             onClick={() => setOpen(false)}
           />
 
@@ -99,28 +99,28 @@ export function SettingsCommandPalette() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="relative w-[600px] max-w-[90vw] shrink-0 bg-white rounded-2xl shadow-[0_0_50px_rgba(59,130,246,0.2)] overflow-hidden border border-blue-200/60"
+            className="relative w-[600px] max-w-[90vw] shrink-0 bg-card rounded-2xl shadow-[0_0_50px_rgba(59,130,246,0.2)] overflow-hidden border border-primary/50/60"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center px-4 py-4 border-b border-slate-100/80 bg-white">
-              <Search className="w-5 h-5 text-blue-500 mr-3 shrink-0" />
+            <div className="flex items-center px-4 py-4 border-b border-border/80 bg-card">
+              <Search className="w-5 h-5 text-primary mr-3 shrink-0" />
               <input
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search settings..."
-                className="flex-1 bg-transparent text-slate-800 placeholder-slate-400 outline-none text-lg font-medium"
+                className="flex-1 bg-transparent text-foreground placeholder-slate-400 outline-none text-lg font-medium"
               />
-              <kbd className="hidden sm:inline-flex shrink-0 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[10px] font-black text-slate-400 font-sans shadow-sm">
+              <kbd className="hidden sm:inline-flex shrink-0 px-2 py-1 bg-surface border border-border rounded text-[10px] font-black text-muted-foreground font-sans shadow-sm">
                 ESC
               </kbd>
             </div>
 
             <div className="max-h-[320px] overflow-y-auto p-2">
               {results.length === 0 ? (
-                <div className="py-12 flex flex-col items-center justify-center text-center text-sm text-slate-500">
-                  <Search className="w-8 h-8 text-slate-300 mb-3" />
-                  <p>No settings found for <span className="font-bold text-slate-700">"{query}"</span></p>
+                <div className="py-12 flex flex-col items-center justify-center text-center text-sm text-muted-foreground">
+                  <Search className="w-8 h-8 text-muted-foreground mb-3" />
+                  <p>No settings found for <span className="font-bold text-foreground">"{query}"</span></p>
                 </div>
               ) : (
                 results.map((item, i) => {
@@ -133,32 +133,32 @@ export function SettingsCommandPalette() {
                       onMouseEnter={() => setActiveIndex(i)}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all cursor-pointer text-left relative overflow-hidden group outline-none",
-                        isActive ? "bg-blue-50/80" : "hover:bg-slate-50"
+                        isActive ? "bg-primary/10/80" : "hover:bg-surface"
                       )}
                     >
                       {isActive && (
                         <motion.div
                           layoutId="command-palette-active"
-                          className="absolute inset-0 border border-blue-400/50 shadow-[inset_0_0_10px_rgba(59,130,246,0.1)] rounded-xl"
+                          className="absolute inset-0 border border-primary/50 shadow-[inset_0_0_10px_rgba(59,130,246,0.1)] rounded-xl"
                           transition={{ type: "spring", stiffness: 350, damping: 30 }}
                         />
                       )}
                       <div className={cn(
                         "w-8 h-8 shrink-0 flex items-center justify-center rounded-lg transition-colors relative z-10",
-                        isActive ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-500"
+                        isActive ? "bg-primary/20 text-primary" : "bg-surface text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                       )}>
                         <Icon className="w-4 h-4" />
                       </div>
                       <span className={cn(
                         "text-sm font-medium transition-colors relative z-10",
-                        isActive ? "text-blue-900 font-bold" : "text-slate-600 group-hover:text-slate-900 group-hover:font-semibold"
+                        isActive ? "text-blue-900 font-bold" : "text-muted-foreground group-hover:text-foreground group-hover:font-semibold"
                       )}>
                         {item.name}
                       </span>
                       {isActive && (
                         <div className="ml-auto relative z-10 flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Jump</span>
-                          <ChevronRight className="w-4 h-4 text-blue-500" />
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Jump</span>
+                          <ChevronRight className="w-4 h-4 text-primary" />
                         </div>
                       )}
                     </button>
@@ -167,17 +167,17 @@ export function SettingsCommandPalette() {
               )}
             </div>
             
-            <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/80 text-[11px] font-semibold text-slate-500 flex items-center justify-between">
+            <div className="px-4 py-3 border-t border-border-subtle bg-background/80 text-[11px] font-semibold text-muted-foreground flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span>Navigate</span>
                 <div className="flex gap-1">
-                  <kbd className="font-sans font-black bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-slate-600">↑</kbd>
-                  <kbd className="font-sans font-black bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-slate-600">↓</kbd>
+                  <kbd className="font-sans font-black bg-card px-1.5 py-0.5 rounded border border-border shadow-sm text-muted-foreground">↑</kbd>
+                  <kbd className="font-sans font-black bg-card px-1.5 py-0.5 rounded border border-border shadow-sm text-muted-foreground">↓</kbd>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <span>Select</span>
-                <kbd className="font-sans font-black bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-slate-600 text-[10px]">ENTER</kbd>
+                <kbd className="font-sans font-black bg-card px-1.5 py-0.5 rounded border border-border shadow-sm text-muted-foreground text-[10px]">ENTER</kbd>
               </div>
             </div>
           </motion.div>

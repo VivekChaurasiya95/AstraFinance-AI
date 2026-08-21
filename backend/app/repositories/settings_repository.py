@@ -23,12 +23,27 @@ DEFAULT_SETTINGS = {
         "strict_financial_mode": True,
     },
     "notifications": {
-        "reports": True,
-        "agents": True,
-        "risk": True,
-        "workspace": True,
-        "email_enabled": True,
-        "in_app_enabled": True,
+        "in_app": True,
+        "email": True,
+        "browser": False,
+        "report_generation": True,
+        "report_failed": True,
+        "research_complete": True,
+        "agent_started": False,
+        "agent_completed": True,
+        "agent_failed": True,
+        "pipeline_completed": True,
+        "risk_anomalies": True,
+        "high_risk_finding": True,
+        "document_processed": True,
+        "workspace_updates": False,
+        "priority": "important",
+        "quiet_hours": {
+            "enabled": False,
+            "start": "22:00",
+            "end": "08:00",
+            "allow_critical": True
+        }
     },
     "appearance": {
         "theme": "System",

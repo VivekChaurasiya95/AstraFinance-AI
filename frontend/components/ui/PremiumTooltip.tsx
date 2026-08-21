@@ -9,9 +9,9 @@ export function PremiumTooltip({ active, payload, label }: any) {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-slate-900 border border-slate-700/50 rounded-xl shadow-xl px-4 py-3 min-w-[140px]"
+        className="bg-foreground border border-slate-700/50 rounded-xl shadow-xl px-4 py-3 min-w-[140px]"
       >
-        <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">
+        <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-2">
           {label}
         </p>
         <div className="flex flex-col gap-1.5">
@@ -22,7 +22,7 @@ export function PremiumTooltip({ active, payload, label }: any) {
                   className="w-2 h-2 rounded-full shadow-sm" 
                   style={{ backgroundColor: entry.color }} 
                 />
-                <span className="text-slate-300 text-xs font-medium">
+                <span className="text-muted-foreground text-xs font-medium">
                   {entry.name}
                 </span>
               </div>

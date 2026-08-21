@@ -68,26 +68,26 @@ function CitationsViewer({
   const active = citations[activeCitationIdx] || citations[0];
 
   return (
-    <div className="w-[360px] bg-white border-l border-slate-200 flex flex-col shrink-0 h-full">
+    <div className="w-[360px] bg-card border-l border-border flex flex-col shrink-0 h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-slate-800">Citations</span>
-          <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+          <span className="text-sm font-bold text-foreground">Citations</span>
+          <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
             {citations.length}
           </span>
         </div>
         <button
           onClick={onClose}
-          className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+          className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-surface transition-colors"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
       {/* Source navigation */}
-      <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/50">
-        <p className="text-xs text-slate-500 mb-2">
+      <div className="px-4 py-2 border-b border-border-subtle bg-surface/50">
+        <p className="text-xs text-muted-foreground mb-2">
           Source {activeCitationIdx + 1} of {citations.length}
         </p>
         <div className="flex items-center gap-2">
@@ -97,26 +97,26 @@ function CitationsViewer({
                 (activeCitationIdx - 1 + citations.length) % citations.length
               )
             }
-            className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-200 transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-surface transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-7 h-7 rounded bg-red-50 flex items-center justify-center shrink-0">
-              <FileText className="w-3.5 h-3.5 text-red-500" />
+            <div className="w-7 h-7 rounded bg-destructive/10 flex items-center justify-center shrink-0">
+              <FileText className="w-3.5 h-3.5 text-destructive" />
             </div>
-            <span className="text-xs font-medium text-slate-700 truncate">
+            <span className="text-xs font-medium text-foreground truncate">
               {active.doc}
             </span>
           </div>
-          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded font-medium shrink-0">
+          <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded font-medium shrink-0">
             p. {active.page}
           </span>
           <button
             onClick={() =>
               onChangeCitation((activeCitationIdx + 1) % citations.length)
             }
-            className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-200 transition-colors"
+            className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-surface transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -124,18 +124,18 @@ function CitationsViewer({
       </div>
 
       {/* Page info */}
-      <div className="px-4 py-2 flex items-center justify-between border-b border-slate-100">
-        <span className="text-xs text-slate-400">
+      <div className="px-4 py-2 flex items-center justify-between border-b border-border-subtle">
+        <span className="text-xs text-muted-foreground">
           Page {active.page} of 68
         </span>
         <div className="flex items-center gap-1">
-          <button className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100">
+          <button className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-surface">
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
-          <button className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100">
+          <button className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-surface">
             <ZoomOut className="w-3.5 h-3.5" />
           </button>
-          <button className="p-1 text-slate-400 hover:text-slate-600 rounded hover:bg-slate-100">
+          <button className="p-1 text-muted-foreground hover:text-foreground rounded hover:bg-surface">
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -144,21 +144,21 @@ function CitationsViewer({
       {/* Document content preview */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-4">
-          <h4 className="text-sm font-bold text-slate-800 mb-3">
+          <h4 className="text-sm font-bold text-foreground mb-3">
             Q1 FY25 Performance Highlights
           </h4>
           <div className="space-y-2">
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               <span className="font-semibold">
                 • Strong deal wins and pipeline
               </span>
             </p>
             {active.highlightedText ? (
-              <p className="text-xs text-slate-700 leading-relaxed bg-yellow-200/60 px-1.5 py-1 rounded border border-yellow-300">
+              <p className="text-xs text-foreground leading-relaxed bg-yellow-200/60 px-1.5 py-1 rounded border border-yellow-300">
                 {active.highlightedText}
               </p>
             ) : (
-              <p className="text-xs text-slate-700 leading-relaxed bg-yellow-200/60 px-1.5 py-1 rounded border border-yellow-300">
+              <p className="text-xs text-foreground leading-relaxed bg-yellow-200/60 px-1.5 py-1 rounded border border-yellow-300">
                 Total Contract Value (TCV) for Q1 FY25 was $2.1 billion, an
                 increase of 19.7% QoQ. The quarter saw strong large deal wins
                 across BFSI, Manufacturing and Retail verticals.
@@ -167,34 +167,34 @@ function CitationsViewer({
           </div>
 
           {/* Mini table */}
-          <div className="mt-4 border border-slate-200 rounded-lg overflow-hidden bg-white">
+          <div className="mt-4 border border-border rounded-lg overflow-hidden bg-card">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left py-1.5 px-2 font-semibold text-slate-600">
+                <tr className="bg-surface border-b border-border-subtle">
+                  <th className="text-left py-1.5 px-2 font-semibold text-muted-foreground">
                     Deal Wins (TCV)
                   </th>
-                  <th className="text-right py-1.5 px-2 text-slate-400">
+                  <th className="text-right py-1.5 px-2 text-muted-foreground">
                     (USD Billion)
                   </th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-slate-100">
-                  <td className="py-1.5 px-2 text-slate-500">Q4 FY24</td>
-                  <td className="py-1.5 px-2 text-right text-slate-700 font-medium">
+                <tr className="border-b border-border-subtle">
+                  <td className="py-1.5 px-2 text-muted-foreground">Q4 FY24</td>
+                  <td className="py-1.5 px-2 text-right text-foreground font-medium">
                     1.75
                   </td>
                 </tr>
-                <tr className="border-b border-slate-100">
-                  <td className="py-1.5 px-2 text-slate-500">Q1 FY25</td>
-                  <td className="py-1.5 px-2 text-right text-slate-700 font-medium">
+                <tr className="border-b border-border-subtle">
+                  <td className="py-1.5 px-2 text-muted-foreground">Q1 FY25</td>
+                  <td className="py-1.5 px-2 text-right text-foreground font-medium">
                     2.10
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-1.5 px-2 text-slate-500">QoQ Growth</td>
-                  <td className="py-1.5 px-2 text-right text-emerald-600 font-bold">
+                  <td className="py-1.5 px-2 text-muted-foreground">QoQ Growth</td>
+                  <td className="py-1.5 px-2 text-right text-success font-bold">
                     19.7%
                   </td>
                 </tr>
@@ -206,10 +206,10 @@ function CitationsViewer({
         {/* Highlights section */}
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
               <Bookmark className="w-3 h-3" /> Highlights on this page
             </span>
-            <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-medium">
+            <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded font-medium">
               1
             </span>
           </div>
@@ -217,16 +217,16 @@ function CitationsViewer({
             <p className="text-xs font-semibold text-orange-800 mb-1">
               Strong deal wins and pipeline
             </p>
-            <p className="text-[11px] text-slate-600 leading-relaxed">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
               Total Contract Value (TCV) for Q1 FY25 was $2.1 billion, an
               increase of 19.7% QoQ.
             </p>
-            <p className="text-[10px] text-slate-400 mt-1">Page {active.page}</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Page {active.page}</p>
           </div>
         </div>
 
         {/* Open in full document */}
-        <button className="w-full mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-xl py-2.5 hover:bg-blue-50 transition-colors">
+        <button className="w-full mt-4 flex items-center justify-center gap-1.5 text-xs font-medium text-primary border border-primary/50 rounded-xl py-2.5 hover:bg-primary/10 transition-colors">
           <ExternalLink className="w-3.5 h-3.5" />
           Open in full document
         </button>
@@ -267,33 +267,33 @@ function ChatHistoryDrawer({
   const dateOrder = ["Today", "Yesterday", "Last 7 days", "Earlier"];
 
   return (
-    <div className="w-[360px] bg-white border-l border-slate-200 flex flex-col shrink-0 h-full animate-in slide-in-from-right duration-200">
+    <div className="w-[360px] bg-card border-l border-border flex flex-col shrink-0 h-full animate-in slide-in-from-right duration-200">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
         <div className="flex items-center gap-2">
-          <History className="w-4 h-4 text-slate-600" />
-          <span className="text-sm font-bold text-slate-800">Chat History</span>
+          <History className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-bold text-foreground">Chat History</span>
         </div>
         <button
           onClick={onClose}
-          className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+          className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-surface transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* Search */}
-      <div className="px-4 py-2 border-b border-slate-100">
+      <div className="px-4 py-2 border-b border-border-subtle">
         <div className="relative">
-          <SearchIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <SearchIcon className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-10 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full pl-9 pr-10 py-2 border border-border rounded-lg text-xs bg-card focus:ring-2 focus:ring-blue-500 outline-none"
           />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-300 bg-slate-100 px-1.5 py-0.5 rounded">
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground bg-surface px-1.5 py-0.5 rounded">
             ⌘K
           </span>
         </div>
@@ -303,13 +303,13 @@ function ChatHistoryDrawer({
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-6">
-            <MessageSquare className="w-8 h-8 text-slate-300 mb-3" />
-            <p className="text-sm font-medium text-slate-500">
+            <MessageSquare className="w-8 h-8 text-muted-foreground mb-3" />
+            <p className="text-sm font-medium text-muted-foreground">
               {searchQuery
                 ? "No matching conversations"
                 : "No conversations yet"}
             </p>
-            <p className="text-xs text-slate-400 mt-1 text-center">
+            <p className="text-xs text-muted-foreground mt-1 text-center">
               {searchQuery
                 ? "Try a different search term"
                 : "Ask your first question"}
@@ -321,8 +321,8 @@ function ChatHistoryDrawer({
             if (!sessions || sessions.length === 0) return null;
             return (
               <div key={dateGroup}>
-                <div className="px-4 py-2 sticky top-0 bg-white z-10">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <div className="px-4 py-2 sticky top-0 bg-card z-10">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     {dateGroup}
                   </span>
                 </div>
@@ -331,19 +331,19 @@ function ChatHistoryDrawer({
                     <button
                       key={session.id}
                       onClick={() => onSelectSession(session)}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors flex items-start gap-3 group"
+                      className="w-full text-left px-4 py-3 hover:bg-surface transition-colors flex items-start gap-3 group"
                     >
-                      <MessageSquare className="w-4 h-4 text-slate-400 mt-0.5 shrink-0 group-hover:text-blue-500" />
+                      <MessageSquare className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0 group-hover:text-primary" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors">
+                        <p className="text-xs font-medium text-foreground truncate group-hover:text-primary transition-colors">
                           {session.firstQuestion}
                         </p>
                       </div>
                       <div className="shrink-0 flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-muted-foreground">
                           {session.timestamp}
                         </span>
-                        <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-semibold text-muted-foreground bg-surface px-1.5 py-0.5 rounded">
                           {session.messageCount}
                         </span>
                       </div>
@@ -357,16 +357,16 @@ function ChatHistoryDrawer({
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2.5 border-t border-slate-100 flex items-center justify-between">
+      <div className="px-4 py-2.5 border-t border-border-subtle flex items-center justify-between">
         {searchQuery && (
           <button
             onClick={() => setSearchQuery("")}
-            className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+            className="text-xs text-primary hover:text-primary-hover font-medium flex items-center gap-1"
           >
             <X className="w-3 h-3" /> Clear search
           </button>
         )}
-        <span className="text-[10px] text-slate-400 ml-auto">
+        <span className="text-[10px] text-muted-foreground ml-auto">
           {filtered.length} conversations
         </span>
       </div>
@@ -378,14 +378,14 @@ function ChatHistoryDrawer({
 const QUICK_ACTIONS = [
   {
     icon: Sparkles,
-    color: "bg-blue-50 text-blue-500",
+    color: "bg-primary/10 text-primary",
     title: "Financial Overview",
     desc: "Give me a summary of Infosys Q1 FY25 performance.",
     prompt: "Give me a financial overview and summary of performance.",
   },
   {
     icon: Sparkles,
-    color: "bg-emerald-50 text-emerald-500",
+    color: "bg-success/10 text-success",
     title: "Compare Metrics",
     desc: "Compare revenue and profit with other workspaces.",
     prompt: "Compare the key financial metrics across available documents.",
@@ -524,10 +524,10 @@ export function ChatTab({
           /* Empty state */
           <div className="flex-1 flex flex-col items-center justify-center pb-8 px-6 gap-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-slate-800 mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 Hello, {firstName}! 👋
               </h2>
-              <p className="text-slate-500 text-sm max-w-md">
+              <p className="text-muted-foreground text-sm max-w-md">
                 Ask anything about the documents in this workspace — I&apos;ll
                 always show you the page it came from.
               </p>
@@ -539,7 +539,7 @@ export function ChatTab({
                   <button
                     key={qa.title}
                     onClick={() => sendMessage(qa.prompt)}
-                    className="text-left p-4 rounded-2xl border border-slate-200 bg-white hover:shadow-md hover:border-blue-200 transition-all group"
+                    className="text-left p-4 rounded-2xl border border-border bg-card hover:shadow-md hover:border-primary/50 transition-all group"
                   >
                     <div
                       className={cn(
@@ -549,10 +549,10 @@ export function ChatTab({
                     >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <p className="font-semibold text-slate-800 text-sm mb-0.5 group-hover:text-blue-700 transition-colors">
+                    <p className="font-semibold text-foreground text-sm mb-0.5 group-hover:text-primary transition-colors">
                       {qa.title}
                     </p>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <p className="text-xs text-muted-foreground leading-relaxed">
                       {qa.desc}
                     </p>
                   </button>
@@ -576,8 +576,8 @@ export function ChatTab({
                   className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
                     msg.role === "user"
-                      ? "bg-slate-800 text-white"
-                      : "bg-blue-100 text-blue-600"
+                      ? "bg-foreground text-white"
+                      : "bg-primary/20 text-primary"
                   )}
                 >
                   {msg.role === "user" ? (
@@ -593,28 +593,28 @@ export function ChatTab({
                     className={cn(
                       "rounded-2xl px-4 py-3 text-sm leading-relaxed",
                       msg.role === "user"
-                        ? "bg-blue-600 text-white rounded-tr-sm"
+                        ? "bg-primary text-white rounded-tr-sm"
                         : msg.status === "error"
-                          ? "bg-red-50 border border-red-200 text-red-700 rounded-tl-sm"
+                          ? "bg-destructive/10 border border-destructive/50 text-destructive rounded-tl-sm"
                           : msg.status === "not-found"
-                            ? "bg-slate-100 border border-slate-200 text-slate-600 rounded-tl-sm"
-                            : "bg-white border border-slate-200 text-slate-700 rounded-tl-sm shadow-sm"
+                            ? "bg-surface border border-border text-muted-foreground rounded-tl-sm"
+                            : "bg-card border border-border text-foreground rounded-tl-sm shadow-sm"
                     )}
                   >
                     <div className="whitespace-pre-wrap">{msg.content}</div>
 
                     {/* Citation pills */}
                     {msg.citations && msg.citations.length > 0 && (
-                      <div className="mt-3 pt-2 border-t border-slate-200/60 flex flex-wrap gap-1.5">
+                      <div className="mt-3 pt-2 border-t border-border/60 flex flex-wrap gap-1.5">
                         {msg.citations.map((c, ci) => (
                           <button
                             key={ci}
                             onClick={() => handleCitationClick(msg.citations!)}
-                            className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary bg-primary/10 border border-primary/50 px-2 py-0.5 rounded-full hover:bg-primary/20 hover:border-primary/50 transition-colors cursor-pointer"
                           >
                             <FileText className="w-3 h-3" />
                             {ci + 1}
-                            <span className="text-blue-400">
+                            <span className="text-primary">
                               p.{c.page}
                             </span>
                           </button>
@@ -632,7 +632,7 @@ export function ChatTab({
                           if (lastUserMsg)
                             sendMessage(lastUserMsg.content);
                         }}
-                        className="mt-2 text-xs font-medium text-red-600 hover:text-red-800 underline"
+                        className="mt-2 text-xs font-medium text-destructive hover:text-red-800 underline"
                       >
                         Retry
                       </button>
@@ -640,7 +640,7 @@ export function ChatTab({
 
                     {/* Not found suggestion */}
                     {msg.status === "not-found" && (
-                      <p className="mt-2 text-xs text-slate-500 italic">
+                      <p className="mt-2 text-xs text-muted-foreground italic">
                         Try rephrasing or upload a document that covers this
                         topic.
                       </p>
@@ -650,25 +650,25 @@ export function ChatTab({
                   {/* Message footer actions */}
                   <div className="flex items-center gap-2 mt-1.5 px-1">
                     {msg.timestamp && (
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-muted-foreground">
                         {msg.timestamp}
                       </span>
                     )}
                     {msg.role === "user" && msg.status === "done" && (
-                      <span className="text-[10px] text-slate-400">✓</span>
+                      <span className="text-[10px] text-muted-foreground">✓</span>
                     )}
                     {msg.role === "assistant" && msg.status === "done" && (
                       <div className="flex items-center gap-0.5 ml-auto">
-                        <button className="p-1 text-slate-300 hover:text-slate-500 rounded transition-colors">
+                        <button className="p-1 text-muted-foreground hover:text-muted-foreground rounded transition-colors">
                           <ThumbsUp className="w-3.5 h-3.5" />
                         </button>
-                        <button className="p-1 text-slate-300 hover:text-slate-500 rounded transition-colors">
+                        <button className="p-1 text-muted-foreground hover:text-muted-foreground rounded transition-colors">
                           <ThumbsDown className="w-3.5 h-3.5" />
                         </button>
-                        <button className="p-1 text-slate-300 hover:text-slate-500 rounded transition-colors">
+                        <button className="p-1 text-muted-foreground hover:text-muted-foreground rounded transition-colors">
                           <Copy className="w-3.5 h-3.5" />
                         </button>
-                        <button className="p-1 text-slate-300 hover:text-slate-500 rounded transition-colors">
+                        <button className="p-1 text-muted-foreground hover:text-muted-foreground rounded transition-colors">
                           <Bookmark className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -681,28 +681,28 @@ export function ChatTab({
             {/* Thinking state */}
             {sending && (
               <div className="flex gap-3 max-w-3xl animate-in slide-in-from-bottom-2 fade-in duration-150">
-                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
-                  <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+                  <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium text-slate-600">
+                      <span className="text-sm font-medium text-muted-foreground">
                         Thinking...
                       </span>
                       <div className="flex gap-1 items-center">
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0ms]" />
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:150ms]" />
-                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:300ms]" />
+                        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0ms]" />
+                        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:150ms]" />
+                        <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:300ms]" />
                       </div>
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       Research Agent is analyzing your question and searching
                       through documents...
                     </p>
                   </div>
                   <div className="flex items-center gap-2 mt-1.5 px-1">
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-muted-foreground">
                       {new Date().toLocaleTimeString([], {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -711,7 +711,7 @@ export function ChatTab({
                     {stopVisible && (
                       <button
                         onClick={() => setSending(false)}
-                        className="text-xs font-medium text-red-500 border border-red-200 bg-red-50 px-2.5 py-1 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-1 ml-2"
+                        className="text-xs font-medium text-destructive border border-destructive/50 bg-destructive/10 px-2.5 py-1 rounded-lg hover:bg-destructive/20 transition-colors flex items-center gap-1 ml-2"
                       >
                         <Square className="w-3 h-3" /> Stop generating
                       </button>
@@ -732,7 +732,7 @@ export function ChatTab({
               <button
                 key={i}
                 onClick={() => sendMessage(q)}
-                className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors whitespace-nowrap shrink-0"
+                className="text-xs text-primary bg-primary/10 border border-primary/50 px-3 py-1.5 rounded-full hover:bg-primary/20 transition-colors whitespace-nowrap shrink-0"
               >
                 {q}
               </button>
@@ -741,14 +741,14 @@ export function ChatTab({
         )}
 
         {/* Composer */}
-        <div className="px-6 pb-5 pt-2 border-t border-slate-100 bg-white/80 backdrop-blur-sm">
+        <div className="px-6 pb-5 pt-2 border-t border-border-subtle bg-card/80 backdrop-blur-sm">
           <div className="max-w-3xl mx-auto">
             {/* Scope chip */}
             <div className="flex items-center gap-2 mb-2">
-              <button className="flex items-center gap-1.5 text-xs text-slate-600 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors">
+              <button className="flex items-center gap-1.5 text-xs text-muted-foreground bg-surface border border-border px-2.5 py-1 rounded-lg hover:bg-surface transition-colors">
                 <span className="font-medium">Scope:</span>
                 <span>All documents in this workspace</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
+                <ChevronDown className="w-3 h-3 text-muted-foreground" />
               </button>
               <button
                 onClick={() => {
@@ -758,8 +758,8 @@ export function ChatTab({
                 className={cn(
                   "p-1.5 rounded-lg transition-colors ml-auto",
                   showHistory
-                    ? "bg-blue-50 text-blue-600"
-                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface"
                 )}
               >
                 <History className="w-4 h-4" />
@@ -767,7 +767,7 @@ export function ChatTab({
             </div>
 
             {/* Input */}
-            <div className="relative flex items-end gap-2 border border-slate-300 rounded-2xl bg-white shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all px-4 py-3">
+            <div className="relative flex items-end gap-2 border border-border rounded-2xl bg-card shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all px-4 py-3">
               <textarea
                 ref={textareaRef}
                 rows={1}
@@ -786,28 +786,28 @@ export function ChatTab({
                 }}
                 disabled={sending}
                 placeholder={`Ask anything about your documents...`}
-                className="flex-1 bg-transparent resize-none outline-none text-sm text-slate-800 placeholder:text-slate-400 min-h-[24px] max-h-[120px] leading-relaxed disabled:opacity-50"
+                className="flex-1 bg-transparent resize-none outline-none text-sm text-foreground placeholder:text-muted-foreground min-h-[24px] max-h-[120px] leading-relaxed disabled:opacity-50"
               />
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                   title="Attach file"
                 >
                   <Paperclip className="w-4 h-4" />
                 </button>
                 <button
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                   title="AI suggestions"
                 >
                   <Sparkles className="w-4 h-4" />
                 </button>
-                <span className="text-[10px] text-slate-300 hidden sm:block">
+                <span className="text-[10px] text-muted-foreground hidden sm:block">
                   Press ⌘ + Enter to send
                 </span>
                 <button
                   disabled={!input.trim() || sending}
                   onClick={() => sendMessage(input)}
-                  className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  className="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
                 >
                   {sending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

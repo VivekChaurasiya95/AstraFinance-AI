@@ -44,7 +44,7 @@ export default function ProfileConfigurationPage() {
   const originalName = dbUser?.name || user?.displayName || "";
   const hasUnsavedChanges = name.trim() !== originalName;
   const userInitials = (name || "U").charAt(0).toUpperCase();
-  const profilePicture = dbUser?.profile_picture || user?.photoURL || null;
+  const profilePicture = dbUser ? dbUser.profile_picture : (user?.photoURL || null);
 
   // ── Unsaved changes warning ──
   useEffect(() => {
@@ -158,7 +158,7 @@ export default function ProfileConfigurationPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-7 h-7 animate-spin text-blue-500" />
+        <Loader2 className="w-7 h-7 animate-spin text-primary" />
       </div>
     );
   }
@@ -166,10 +166,10 @@ export default function ProfileConfigurationPage() {
   return (
     <div className="space-y-6 pb-10 relative">
       {/* Page header */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+      <div className="flex items-center justify-between border-b border-border pb-3">
         <div>
-          <h2 className="text-xl font-extrabold text-blue-950">Profile</h2>
-          <p className="text-slate-500 text-xs font-medium mt-0.5">
+          <h2 className="text-xl font-extrabold text-foreground">Profile</h2>
+          <p className="text-muted-foreground text-xs font-medium mt-0.5">
             Manage your personal information and profile photo.
           </p>
         </div>
@@ -183,7 +183,7 @@ export default function ProfileConfigurationPage() {
                 initial={{ opacity: 0, y: -4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full"
+                className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground bg-surface px-3 py-1.5 rounded-full"
               >
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…
               </motion.div>
@@ -194,7 +194,7 @@ export default function ProfileConfigurationPage() {
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full"
+                className="flex items-center gap-1.5 text-xs font-bold text-success bg-success/10 border border-emerald-100 px-3 py-1.5 rounded-full"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" /> Saved
               </motion.div>
@@ -205,7 +205,7 @@ export default function ProfileConfigurationPage() {
                 initial={{ opacity: 0, scale: 0.85 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center gap-1.5 text-xs font-bold text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-full"
+                className="flex items-center gap-1.5 text-xs font-bold text-destructive bg-destructive/10 border border-red-100 px-3 py-1.5 rounded-full"
               >
                 <AlertCircle className="w-3.5 h-3.5" /> Error
               </motion.div>
@@ -256,17 +256,17 @@ export default function ProfileConfigurationPage() {
 
           {/* Upload / Remove controls */}
           <div className="flex-1 min-w-0">
-            <h4 className="text-xs font-bold text-slate-800 mb-0.5">
+            <h4 className="text-xs font-bold text-foreground mb-0.5">
               Change Photo
             </h4>
-            <p className="text-[11px] text-slate-500 mb-2.5 leading-relaxed">
+            <p className="text-[11px] text-muted-foreground mb-2.5 leading-relaxed">
               PNG, JPG, GIF or WEBP — max 5 MB.
             </p>
             <div className="flex gap-2.5">
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={photoUploading}
-                className="text-xs font-bold bg-white border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                className="text-xs font-bold bg-card border border-border px-3 py-1.5 rounded-lg hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-all disabled:opacity-50 flex items-center gap-1.5"
               >
                 {photoUploading ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -279,7 +279,7 @@ export default function ProfileConfigurationPage() {
                 <button
                   onClick={handleRemovePhoto}
                   disabled={photoUploading}
-                  className="text-xs font-bold text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  className="text-xs font-bold text-destructive hover:bg-destructive/10 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5"
                 >
                   <Trash2 className="w-3 h-3" /> Remove
                 </button>
@@ -293,7 +293,7 @@ export default function ProfileConfigurationPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="text-[11px] text-red-500 mt-2 flex items-center gap-1"
+                  className="text-[11px] text-destructive mt-2 flex items-center gap-1"
                 >
                   <AlertCircle className="w-3 h-3 shrink-0" /> {photoError}
                 </motion.p>
@@ -320,7 +320,7 @@ export default function ProfileConfigurationPage() {
         <div className="space-y-5">
           {/* Full Name */}
           <div>
-            <label htmlFor="profile-name" className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label htmlFor="profile-name" className="block text-xs font-bold text-foreground mb-1.5">
               Full Name
             </label>
             <input
@@ -333,29 +333,7 @@ export default function ProfileConfigurationPage() {
                 setNameError(null);
               }}
               maxLength={100}
-              style={{
-                width: "100%",
-                maxWidth: "384px",
-                height: "42px",
-                borderWidth: "2px",
-                borderStyle: "solid",
-                borderColor: nameError ? "#fca5a5" : "#e2e8f0",
-                borderRadius: "12px",
-                padding: "0 12px",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#0f172a",
-                backgroundColor: "#ffffff",
-                outline: "none",
-                boxShadow: "0 1px 2px 0 rgba(0,0,0,0.05)",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = nameError ? "#ef4444" : "#3b82f6";
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = nameError ? "#fca5a5" : "#e2e8f0";
-              }}
+              className={`w-full max-w-[384px] h-[42px] border-2 rounded-xl px-3 text-sm font-medium outline-none shadow-sm transition-colors bg-background text-foreground ${nameError ? 'border-destructive focus:border-destructive' : 'border-border focus:border-primary'}`}
             />
             <AnimatePresence>
               {nameError && (
@@ -363,7 +341,7 @@ export default function ProfileConfigurationPage() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="text-[11px] text-red-500 mt-1.5 flex items-center gap-1"
+                  className="text-[11px] text-destructive mt-1.5 flex items-center gap-1"
                 >
                   <AlertCircle className="w-3 h-3 shrink-0" /> {nameError}
                 </motion.p>
@@ -379,7 +357,7 @@ export default function ProfileConfigurationPage() {
 
           {/* Email (read-only) */}
           <div>
-            <label htmlFor="profile-email" className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label htmlFor="profile-email" className="block text-xs font-bold text-foreground mb-1.5">
               Email Address
             </label>
             <input
@@ -388,24 +366,9 @@ export default function ProfileConfigurationPage() {
               disabled
               value={user?.email || ""}
               placeholder="your@email.com"
-              style={{
-                width: "100%",
-                maxWidth: "384px",
-                height: "42px",
-                borderWidth: "2px",
-                borderStyle: "solid",
-                borderColor: "#f1f5f9",
-                borderRadius: "12px",
-                padding: "0 12px",
-                fontSize: "14px",
-                fontWeight: 500,
-                color: "#94a3b8",
-                backgroundColor: "#f8fafc",
-                cursor: "not-allowed",
-                outline: "none",
-              }}
+              className="w-full max-w-[384px] h-[42px] border-2 border-border/50 rounded-xl px-3 text-sm font-medium text-muted-foreground bg-muted/50 cursor-not-allowed outline-none"
             />
-            <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
+            <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
               <Shield className="w-3 h-3 shrink-0" />
               Email is linked to your Google account and cannot be changed
               here.
@@ -417,7 +380,7 @@ export default function ProfileConfigurationPage() {
             <button
               onClick={handleSaveName}
               disabled={!hasUnsavedChanges || saveState === "saving"}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
+              className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-lg shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
             >
               {saveState === "saving" ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -432,7 +395,7 @@ export default function ProfileConfigurationPage() {
                   setName(originalName);
                   setNameError(null);
                 }}
-                className="text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors px-3 py-2"
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-3 py-2"
               >
                 Discard
               </button>
@@ -447,23 +410,23 @@ export default function ProfileConfigurationPage() {
         description="Read-only information about your account."
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+          <div className="bg-surface rounded-xl border border-border-subtle p-3">
             <div className="flex items-center gap-2 mb-1">
-              <Shield className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <Shield className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                 Provider
               </span>
             </div>
-            <p className="text-sm font-semibold text-slate-800">Google OAuth</p>
+            <p className="text-sm font-semibold text-foreground">Google OAuth</p>
           </div>
-          <div className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+          <div className="bg-surface rounded-xl border border-border-subtle p-3">
             <div className="flex items-center gap-2 mb-1">
-              <Clock className="w-3.5 h-3.5 text-blue-500" />
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <Clock className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                 Member Since
               </span>
             </div>
-            <p className="text-sm font-semibold text-slate-800">
+            <p className="text-sm font-semibold text-foreground">
               {user?.metadata?.creationTime
                 ? new Date(user.metadata.creationTime).toLocaleDateString(
                     "en-US",

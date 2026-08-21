@@ -12,7 +12,15 @@ import aiofiles
 import traceback
 import re
 
-from ...schemas.workspace_schema import WorkspaceCreate, WorkspaceResponse
+from ...schemas.workspace_schema import (
+    WorkspaceCreate,
+    WorkspaceResponse,
+    WorkspaceMember,
+    WorkspaceInviteRequest,
+    WorkspaceRoleUpdate,
+    WorkspaceUpdateRequest,
+    WorkspaceDefaults
+)
 from ...agents.document_agent import DocumentAgent
 from ...agents.extraction_agent import ExtractionAgent
 from ...agents.red_flag_agent import RedFlagAgent
@@ -27,8 +35,12 @@ from ...database.mongo_client import (
     agent_logs_collection,
     agent_executions_collection,
     reports_collection,
+    users_collection,
     db
 )
+from ...repositories.settings_repository import get_user_settings
+from ...repositories import notifications_repository
+from ...repositories import user_repository
 from ...agents.report_agent import report_agent
 from fastapi.responses import FileResponse
 
@@ -44,6 +56,38 @@ except Exception as e:
     research_agent = None
 
 # ── Helper ────────────────────────────────────────────────────────────────────
+async def maybe_notify_user(user_id: str, setting_key: str, category: str, priority: str, title: str, message: str, agent: str | None = None, workspace_id: str | None = None, reference_id: str | None = None):
+    settings = await get_user_settings(user_id)
+    notifs = settings.get("notifications", {})
+    
+    # Priority check
+    user_priority = notifs.get("priority", "all")
+    if user_priority == "critical" and priority != "critical":
+        return
+    if user_priority == "important" and priority == "low":
+        return
+        
+    # Quiet hours check
+    qh = notifs.get("quiet_hours", {})
+    if qh.get("enabled"):
+        # Very simplified check for demonstration purposes, assumes UTC match
+        pass # In a real implementation we'd check times, but we respect allow_critical
+        if priority != "critical" and not qh.get("allow_critical", True):
+            return
+            
+    if notifs.get(setting_key, True):
+        await notifications_repository.create_notification(
+            user_id=user_id,
+            type_id=setting_key,
+            category=category,
+            priority=priority,
+            title=title,
+            message=message,
+            agent=agent,
+            workspace_id=workspace_id,
+            reference_id=reference_id
+        )
+
 def format_workspace(ws: dict) -> dict:
     if "_id" in ws:
         ws["id"] = ws.pop("_id")
@@ -51,6 +95,13 @@ def format_workspace(ws: dict) -> dict:
         ws["updatedAt"] = ws["updated_at"].isoformat()
     elif "updatedAt" not in ws:
         ws["updatedAt"] = datetime.now(timezone.utc).isoformat()
+    
+    ws["defaults"] = ws.get("defaults", {"ai_provider": "Groq", "response_style": "Professional"})
+    
+    members = ws.get("members", [])
+    # Member count is owner + invited members
+    ws["member_count"] = 1 + len(members)
+    
     return ws
 
 
@@ -63,6 +114,17 @@ async def get_workspaces(current_user: dict = Depends(get_current_user)):
     async for ws in cursor:
         workspaces.append(format_workspace(ws))
     return workspaces
+
+@router.get("/current")
+async def get_current_workspace(current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one(
+        {"owner_id": user_id},
+        sort=[("updated_at", -1)]
+    )
+    if not ws:
+        raise HTTPException(status_code=404, detail="No workspace found")
+    return format_workspace(ws)
 
 
 @router.get("/check-name")
@@ -84,6 +146,144 @@ async def get_workspace(workspace_id: str, current_user: dict = Depends(get_curr
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
     return format_workspace(ws)
+
+@router.patch("/{workspace_id}")
+async def update_workspace(workspace_id: str, update_req: WorkspaceUpdateRequest, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
+        
+    update_data = {"updated_at": datetime.now(timezone.utc)}
+    if update_req.name is not None:
+        update_data["name"] = update_req.name
+    if update_req.description is not None:
+        update_data["description"] = update_req.description
+    if update_req.defaults is not None:
+        update_data["defaults"] = update_req.defaults.model_dump()
+        
+    await workspaces_collection.update_one(
+        {"_id": workspace_id},
+        {"$set": update_data}
+    )
+    updated_ws = await workspaces_collection.find_one({"_id": workspace_id})
+    return format_workspace(updated_ws)
+
+# ── Workspace Members ─────────────────────────────────────────────────────────
+
+@router.get("/{workspace_id}/members", response_model=List[WorkspaceMember])
+async def get_workspace_members(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
+        
+    members = []
+    
+    # Add owner
+    owner_user = await users_collection.find_one({"_id": ObjectId(ws["owner_id"])})
+    if owner_user:
+        members.append(WorkspaceMember(
+            id=str(owner_user["_id"]),
+            user_id=str(owner_user["_id"]),
+            email=owner_user.get("email", ""),
+            name=owner_user.get("name", "Unknown User"),
+            role="Owner",
+            photo_url=owner_user.get("photo_url")
+        ))
+        
+    # Add other members
+    ws_members = ws.get("members", [])
+    for member in ws_members:
+        member_user = await users_collection.find_one({"_id": ObjectId(member["user_id"])})
+        if member_user:
+            members.append(WorkspaceMember(
+                id=str(member_user["_id"]),
+                user_id=str(member_user["_id"]),
+                email=member_user.get("email", ""),
+                name=member_user.get("name", "Unknown User"),
+                role=member.get("role", "Viewer"),
+                photo_url=member_user.get("photo_url")
+            ))
+            
+    return members
+
+
+@router.post("/{workspace_id}/invitations")
+async def invite_workspace_member(workspace_id: str, invite: WorkspaceInviteRequest, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
+        
+    target_user = await users_collection.find_one({"email": invite.email})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User with this email not found")
+        
+    target_id = str(target_user["_id"])
+    
+    if target_id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot invite the owner")
+        
+    existing_members = ws.get("members", [])
+    if any(m["user_id"] == target_id for m in existing_members):
+        raise HTTPException(status_code=400, detail="User is already a member")
+        
+    new_member = {
+        "user_id": target_id,
+        "role": invite.role,
+        "added_at": datetime.now(timezone.utc)
+    }
+    
+    await workspaces_collection.update_one(
+        {"_id": workspace_id},
+        {"$push": {"members": new_member}}
+    )
+    
+    return {"message": "Invitation sent successfully"}
+
+
+@router.patch("/{workspace_id}/members/{member_id}")
+async def update_workspace_member(workspace_id: str, member_id: str, role_update: WorkspaceRoleUpdate, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
+        
+    if member_id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot change owner role")
+        
+    # Update the specific member's role
+    result = await workspaces_collection.update_one(
+        {"_id": workspace_id, "members.user_id": member_id},
+        {"$set": {"members.$.role": role_update.role}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Member not found in workspace")
+        
+    return {"message": "Role updated successfully"}
+
+
+@router.delete("/{workspace_id}/members/{member_id}")
+async def remove_workspace_member(workspace_id: str, member_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
+        
+    if member_id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot remove the owner")
+        
+    result = await workspaces_collection.update_one(
+        {"_id": workspace_id},
+        {"$pull": {"members": {"user_id": member_id}}}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Member not found in workspace")
+        
+    return {"message": "Member removed successfully"}
 
 
 @router.post("")
@@ -203,14 +403,14 @@ async def get_workspace_documents(workspace_id: str, current_user: dict = Depend
     return {"documents": docs, "total": len(docs)}
 
 
-async def add_agent_activity(workspace_id: str, doc_id: str, agent_name: str, agent_type: str, status: str, action: str, details: str, metadata: dict | None = None):
+async def add_agent_activity(workspace_id: str, document_id: str | None, agent_name: str, agent_type: str, status: str, action: str, details: str = "", metadata: dict | None = None):
     now = datetime.now(timezone.utc)
     duration = "Running"
     if status in ["Complete", "Failed"]:
         running_log = await agent_logs_collection.find_one(
             {
                 "workspace_id": workspace_id,
-                "document_id": doc_id,
+                "document_id": document_id,
                 "agent_name": agent_name,
                 "action": action,
                 "status": "Running"
@@ -229,7 +429,7 @@ async def add_agent_activity(workspace_id: str, doc_id: str, agent_name: str, ag
     log_doc = {
         "_id": str(uuid.uuid4()),
         "workspace_id": workspace_id,
-        "document_id": doc_id,
+        "document_id": document_id,
         "agent_name": agent_name,
         "agent_type": agent_type,
         "status": status,
@@ -271,9 +471,9 @@ async def init_agent_executions(workspace_id: str, doc_id: str):
             upsert=True
         )
 
-async def update_agent_execution(workspace_id: str, doc_id: str, agent_name: str, status: str, action: str, details: str = "", progress: int = 0, error: str = None, metadata: dict | None = None):
+async def update_agent_execution(workspace_id: str, doc_id: str, agent_name: str, status: str, action: str, details: str = "", progress: int = 0, error: str | None = None, metadata: dict | None = None):
     now = datetime.now(timezone.utc)
-    update_data = {
+    update_data: Dict[str, Any] = {
         "status": status,
         "action": action,
         "details": details,
@@ -304,7 +504,7 @@ async def update_agent_execution(workspace_id: str, doc_id: str, agent_name: str
     await add_agent_activity(workspace_id, doc_id, agent_name, agent_type, status, action, details, metadata)
 
 
-async def simulate_document_processing(workspace_id: str, doc_id: str, file_path: str, file_name: str, user_settings: dict = None):
+async def simulate_document_processing(workspace_id: str, doc_id: str, file_path: str, file_name: str, user_settings: dict | None = None):
     try:
         await init_agent_executions(workspace_id, doc_id)
         
@@ -313,6 +513,11 @@ async def simulate_document_processing(workspace_id: str, doc_id: str, file_path
         
         # Step 1: Parsing and Chunking
         await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 1, "progress": 16, "status": "processing"}})
+        user_id = user_settings.get("user_id") if user_settings else None
+        
+        if user_id:
+            await maybe_notify_user(user_id, "agent_started", "agents", "low", "Agent Started", "Document Agent started parsing PDF.", "Document Agent", workspace_id, f"{doc_id}_doc_start")
+            
         await update_agent_execution(workspace_id, doc_id, "Document Agent", "Running", "Extracting & Chunking", "Parsing PDF and creating semantic chunks.", 10)
         
         await asyncio.sleep(1) # Yield
@@ -321,10 +526,16 @@ async def simulate_document_processing(workspace_id: str, doc_id: str, file_path
             if stats.get('chunks', 0) > 0:
                 document_success = True
                 await update_agent_execution(workspace_id, doc_id, "Document Agent", "Complete", "Text Chunked", f"Successfully extracted and indexed {stats.get('chunks')} chunks.", 100, metadata=stats)
+                if user_id:
+                    await maybe_notify_user(user_id, "agent_completed", "agents", "low", "Agent Completed", "Document Agent finished processing.", "Document Agent", workspace_id, f"{doc_id}_doc_comp")
             else:
                 await update_agent_execution(workspace_id, doc_id, "Document Agent", "Failed", "No Chunks", "Failed to extract text from document.", 100, metadata=stats)
+                if user_id:
+                    await maybe_notify_user(user_id, "agent_failed", "agents", "critical", "Agent Failed", "Document Agent failed to extract text.", "Document Agent", workspace_id, f"{doc_id}_doc_fail")
         except Exception as e:
             await update_agent_execution(workspace_id, doc_id, "Document Agent", "Failed", "Chunking Failed", str(e), 100, error=str(e))
+            if user_id:
+                await maybe_notify_user(user_id, "agent_failed", "agents", "critical", "Agent Failed", f"Document Agent error: {e}", "Document Agent", workspace_id, f"{doc_id}_doc_fail")
             
         # Step 2: Extraction
         await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 2, "progress": 33}})
@@ -366,11 +577,21 @@ async def simulate_document_processing(workspace_id: str, doc_id: str, file_path
                     rf["_id"] = str(uuid.uuid4())
                     rf["workspace_id"] = workspace_id
                     rf["document_id"] = doc_id
+                    rf["detected_at"] = datetime.now(timezone.utc)
                     await red_flags_collection.insert_one(rf)
+                    
+                    if user_id:
+                        severity = rf.get("severity", "Medium").lower()
+                        if severity == "high":
+                            await maybe_notify_user(user_id, "high_risk_finding", "risk", "critical", "High Risk Finding", f"Red Flag Agent detected high severity anomaly: {rf.get('category', 'Risk')}", "Red Flag Agent", workspace_id, f"{doc_id}_rf_high_{rf['_id']}")
+                        else:
+                            await maybe_notify_user(user_id, "risk_anomalies", "risk", "important", "Risk Anomaly", f"Red Flag Agent detected anomaly: {rf.get('category', 'Risk')}", "Red Flag Agent", workspace_id, f"{doc_id}_rf_{rf['_id']}")
                     
                 await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Complete", "Risk Analysis Complete", f"Identified {len(red_flags)} risks.", 100, metadata={"risks_found": len(red_flags)})
             except Exception as e:
                 await update_agent_execution(workspace_id, doc_id, "Red Flag Agent", "Failed", "Analysis Error", str(e), 100, error=str(e))
+                if user_id:
+                    await maybe_notify_user(user_id, "agent_failed", "agents", "critical", "Agent Failed", f"Red Flag Agent error: {e}", "Red Flag Agent", workspace_id, f"{doc_id}_rf_fail")
 
         # Step 4: Comparison
         await documents_collection.update_one({"_id": doc_id}, {"$set": {"processing_step": 4, "progress": 66}})
@@ -414,6 +635,13 @@ async def simulate_document_processing(workspace_id: str, doc_id: str, file_path
             update_doc["error_message"] = "Pipeline failed at extraction or risk step"
             
         await documents_collection.update_one({"_id": doc_id}, {"$set": update_doc})
+        
+        if user_id:
+            if final_status == "ready":
+                await maybe_notify_user(user_id, "pipeline_completed", "agents", "important", "Analysis Pipeline Completed", f"Successfully analyzed document: {file_name}", None, workspace_id, f"{doc_id}_pipeline_success")
+                await maybe_notify_user(user_id, "document_processed", "documents", "low", "Document Processed", f"{file_name} is ready for Q&A and reports.", None, workspace_id, f"{doc_id}_processed")
+            else:
+                await maybe_notify_user(user_id, "agent_failed", "agents", "critical", "Pipeline Failed", f"Failed to complete pipeline for: {file_name}", None, workspace_id, f"{doc_id}_pipeline_fail")
         
     except Exception as e:
         traceback.print_exc()
@@ -478,7 +706,7 @@ async def upload_document(
         uploaded.append(ret_doc)
         
         # Queue processing task
-        user_settings = await settings_repository.get_user_settings(user_id)
+        user_settings = await get_user_settings(user_id)
         background_tasks.add_task(simulate_document_processing, workspace_id, doc_id, file_path, filename, user_settings)
         
         # Update workspace docs count
@@ -678,7 +906,7 @@ async def retry_agent(workspace_id: str, agent_id: int, background_tasks: Backgr
             print("Retry pipeline failed:", e)
             await documents_collection.update_one({"_id": doc_id}, {"$set": {"status": "failed", "error_message": str(e)}})
 
-    user_settings = await settings_repository.get_user_settings(user_id)
+    user_settings = await get_user_settings(user_id)
     background_tasks.add_task(resume_pipeline, doc["_id"], user_settings)
     return {"message": "Retry triggered successfully"}
 
@@ -815,7 +1043,7 @@ async def chat_with_workspace(
         })
 
         if research_agent:
-            user_settings = await settings_repository.get_user_settings(str(current_user["_id"]))
+            user_settings = await get_user_settings(str(current_user["_id"]))
             res_json = await asyncio.to_thread(research_agent.analyze, actual_message, workspace_id, user_settings)
             res = json.loads(res_json)
 
@@ -1151,7 +1379,9 @@ async def get_workspace_red_flags(
     async for rf in cursor:
         rf["id"] = rf.pop("_id")
         if "detected_at" not in rf:
-            rf["detected_at"] = "Just now"
+            rf["detected_at"] = "Unknown"
+        elif hasattr(rf["detected_at"], "isoformat"):
+            rf["detected_at"] = rf["detected_at"].isoformat()
         flags.append(rf)
 
     return {
@@ -1358,7 +1588,7 @@ async def get_workspace_comparison(
             
             agent = ComparisonAgent()
             # Agent might take some time, so offload to thread
-            user_settings = await settings_repository.get_user_settings(user_id)
+            user_settings = await get_user_settings(user_id)
             result_json = await asyncio.to_thread(agent.compare, companies_data, user_settings)
             result_dict = json.loads(result_json)
             
@@ -1414,14 +1644,51 @@ async def generate_report(workspace_id: str, payload: GenerateReportRequest, bac
         
     report_id = str(uuid.uuid4())
     
+    # Determine unique title based on documents
+    report_title = payload.title
+    try:
+        if payload.documents:
+            first_doc_id = payload.documents[0]
+            if isinstance(first_doc_id, str):
+                try:
+                    doc_obj_id = ObjectId(first_doc_id)
+                except:
+                    doc_obj_id = first_doc_id
+            else:
+                doc_obj_id = first_doc_id
+                
+            doc_record = await documents_collection.find_one({"_id": doc_obj_id, "workspace_id": workspace_id})
+            
+            company_name = None
+            if doc_record:
+                metrics_record = await metrics_collection.find_one({"document_id": doc_obj_id})
+                if metrics_record and metrics_record.get("company_name"):
+                    company_name = metrics_record.get("company_name")
+                else:
+                    # Fallback to document filename (without extension)
+                    company_name = os.path.splitext(doc_record.get("name", "Unknown Document"))[0]
+            
+            if company_name:
+                time_str = datetime.now().strftime("%b %d, %Y %I:%M %p")
+                report_title = f"{company_name.strip()} — {payload.report_type} — {time_str}"
+        
+        # Fallback if no docs or error but still a generic title
+        if report_title in ["AstraFinance Report", "Infosys FY25 Research Report", "AstraFinance AI Report"] and not payload.documents:
+            time_str = datetime.now().strftime("%b %d, %Y %I:%M %p")
+            report_title = f"Financial Analysis — {time_str}"
+            
+    except Exception as e:
+        print(f"Error generating dynamic report title: {e}")
+        pass
+
     # Store initial report record in DB
     report_doc = {
         "_id": report_id,
         "workspace_id": workspace_id,
-        "title": payload.title,
+        "title": report_title,
         "summary": "AI generated comprehensive report.",
         "status": "pending",
-        "pipeline_stage": "Initializing Report Agent",
+        "pipeline_stage": "Initializing Financial Report Agent",
         "created_at": datetime.now(timezone.utc),
         "pages": 0,
         "type": payload.report_type,
@@ -1442,7 +1709,7 @@ async def generate_report(workspace_id: str, payload: GenerateReportRequest, bac
     await reports_collection.insert_one(report_doc)
     
     # Spawn background task
-    user_settings = await settings_repository.get_user_settings(str(current_user["_id"]))
+    user_settings = await get_user_settings(str(current_user["_id"]))
     background_tasks.add_task(
         run_report_pipeline_task,
         report_id=report_id,
@@ -1455,10 +1722,10 @@ async def generate_report(workspace_id: str, payload: GenerateReportRequest, bac
     
     return {"report_id": report_id, "status": "pending"}
 
-async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: GenerateReportRequest, workspace_name: str, current_user: dict, user_settings: dict = None):
+async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: GenerateReportRequest, workspace_name: str, current_user: dict, user_settings: dict | None = None):
     # Helper to update report pipeline state
-    async def update_state(status: str, stage: str, error: str = None, counts: dict = None):
-        update_doc = {"status": status, "pipeline_stage": stage}
+    async def update_state(status: str, stage: str, error: str | None = None, counts: dict | None = None):
+        update_doc: Dict[str, Any] = {"status": status, "pipeline_stage": stage}
         if error:
             update_doc["error_message"] = error
         if counts:
@@ -1491,7 +1758,7 @@ async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: G
             })
 
     try:
-        await update_state("running", "Collecting Document Data")
+        await update_state("running", "Aggregating Source Documents")
         await add_activity("Running", "Collecting Data", f"Gathering {len(payload.documents)} documents.")
         
         docs = []
@@ -1505,7 +1772,7 @@ async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: G
             async for doc in docs_cursor:
                 docs.append(doc)
                 
-        await update_state("running", "Loading Extracted Financial Metrics", counts={"documents_processed": len(docs)})
+        await update_state("running", "Extracting Key Financial Metrics", counts={"documents_processed": len(docs)})
         await add_activity("Running", "Loading Metrics", "Extracting financial metrics.")
         
         for doc in docs:
@@ -1513,7 +1780,7 @@ async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: G
             if m:
                 metrics_data.append(m)
                 
-        await update_state("running", "Loading Risk Analysis", counts={"documents_processed": len(docs), "metrics_found": len(metrics_data)})
+        await update_state("running", "Running Risk & Sentiment Analysis", counts={"documents_processed": len(docs), "metrics_found": len(metrics_data)})
         await add_activity("Running", "Loading Risks", "Aggregating red flags.")
         
         for doc in docs:
@@ -1528,7 +1795,7 @@ async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: G
         async for comp in cache_cursor:
             comparison_data.append(comp)
             
-        await update_state("running", "Generating AI Financial Insights", counts={"documents_processed": len(docs), "metrics_found": len(metrics_data), "risks_found": len(red_flags_data), "comparisons_found": len(comparison_data)})
+        await update_state("running", "Generating AI Strategic Insights", counts={"documents_processed": len(docs), "metrics_found": len(metrics_data), "risks_found": len(red_flags_data), "comparisons_found": len(comparison_data)})
         await add_activity("Running", "AI Analysis", "Generating institutional insights with LLM.")
         
         # Run synchronous PDF generation in a thread
@@ -1544,7 +1811,7 @@ async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: G
             user_settings=user_settings
         )
         
-        await update_state("running", "Validating Generated PDF")
+        await update_state("running", "Rendering Premium PDF Layout")
         
         if not pdf_path or not os.path.exists(pdf_path) or os.path.getsize(pdf_path) == 0:
             raise Exception("Generated PDF file is missing or empty.")
@@ -1579,10 +1846,38 @@ async def run_report_pipeline_task(report_id: str, workspace_id: str, payload: G
         
         await add_activity("Complete", "Generated Report", f"Successfully compiled PDF report '{payload.title}'.")
         
+        user_id = user_settings.get("user_id") if user_settings else None
+        if user_id:
+            await maybe_notify_user(
+                user_id=user_id,
+                setting_key="report_generation",
+                category="reports",
+                priority="important",
+                title="Financial Report Ready",
+                message=f"Your report '{payload.title}' has been successfully generated.",
+                agent="Report Agent",
+                workspace_id=workspace_id,
+                reference_id=f"{report_id}_success"
+            )
+        
     except Exception as e:
         print(f"Background Report Task Failed: {e}")
         await update_state("failed", "Report Generation Failed", error=str(e))
         await add_activity("Failed", "Generation Failed", str(e))
+        
+        user_id = user_settings.get("user_id") if user_settings else None
+        if user_id:
+            await maybe_notify_user(
+                user_id=user_id,
+                setting_key="report_failed",
+                category="reports",
+                priority="critical",
+                title="Report Generation Failed",
+                message=f"Failed to generate report '{payload.title}'. Error: {e}",
+                agent="Report Agent",
+                workspace_id=workspace_id,
+                reference_id=f"{report_id}_fail"
+            )
 
 @router.get("/{workspace_id}/reports/{report_id}/status")
 async def get_report_status(workspace_id: str, report_id: str, current_user: dict = Depends(get_current_user)):

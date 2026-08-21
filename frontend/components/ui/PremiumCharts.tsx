@@ -41,8 +41,8 @@ export function DonutChart({ segments }: { segments: any[] }) {
   if (!segments || !Array.isArray(segments) || segments.length === 0) {
     return (
       <div className="w-full h-full flex items-center justify-center relative">
-        <div className="w-48 h-48 border-[20px] border-slate-100 rounded-full flex items-center justify-center">
-           <span className="text-slate-400 font-bold text-sm">No Data</span>
+        <div className="w-48 h-48 border-[20px] border-border-subtle rounded-full flex items-center justify-center">
+           <span className="text-muted-foreground font-bold text-sm">No Data</span>
         </div>
       </div>
     );
@@ -57,15 +57,15 @@ export function DonutChart({ segments }: { segments: any[] }) {
   if (total <= 0) {
     return (
       <div className="w-full h-full flex items-center justify-center relative">
-        <div className="w-48 h-48 border-[20px] border-slate-100 rounded-full flex items-center justify-center">
-           <span className="text-slate-400 font-bold text-sm">No Data</span>
+        <div className="w-48 h-48 border-[20px] border-border-subtle rounded-full flex items-center justify-center">
+           <span className="text-muted-foreground font-bold text-sm">No Data</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-[260px] relative flex flex-col items-center">
+    <div className="w-[160px] h-[160px] relative flex-shrink-0">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Tooltip content={<PremiumTooltip />} />
@@ -73,8 +73,8 @@ export function DonutChart({ segments }: { segments: any[] }) {
             data={validSegments}
             cx="50%"
             cy="50%"
-            innerRadius={65}
-            outerRadius={95}
+            innerRadius={48}
+            outerRadius={72}
             paddingAngle={2}
             dataKey="numVal"
             nameKey="segment"
@@ -93,9 +93,9 @@ export function DonutChart({ segments }: { segments: any[] }) {
           </Pie>
         </PieChart>
       </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-0">
-        <span className="text-slate-900 text-3xl font-black tracking-tighter">100%</span>
-        <span className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mt-1">Total Revenue</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <span className="text-foreground text-2xl font-black tracking-tighter">100%</span>
+        <span className="text-muted-foreground text-[9px] uppercase font-bold tracking-widest mt-0.5">Total Revenue</span>
       </div>
     </div>
   );
@@ -104,7 +104,7 @@ export function DonutChart({ segments }: { segments: any[] }) {
 // ── 2. Recharts Area Trend ─────────────────────────────────────────────
 export function QuarterlyTrendChart({ trendData }: { trendData: any[] }) {
   if (!trendData || !Array.isArray(trendData) || trendData.length === 0 || trendData[0].quarter == null) {
-    return <div className="w-full h-40 flex items-center justify-center text-slate-400">No data</div>;
+    return <div className="w-full h-40 flex items-center justify-center text-muted-foreground">No data</div>;
   }
 
   const validData = trendData.map(q => ({
@@ -180,7 +180,7 @@ export function QuarterlyTrendChart({ trendData }: { trendData: any[] }) {
 // ── 3. Recharts Geography Bar (Replacing Polar) ────────────────────────
 export function GeographySplitChart({ splitData }: { splitData: any[] }) {
   if (!splitData || !Array.isArray(splitData) || splitData.length === 0) {
-    return <div className="w-full h-40 flex items-center justify-center text-slate-400">No data</div>;
+    return <div className="w-full h-40 flex items-center justify-center text-muted-foreground">No data</div>;
   }
   const validGeos = splitData.map(g => ({ name: g.region, Value: parseNum(g.percentage) })).filter(g => Number.isFinite(g.Value));
 
@@ -236,10 +236,10 @@ export function CircularGauge({ value, label }: { value: number | string; label:
   if (!Number.isFinite(numVal) || numVal < 0) {
     return (
       <div className="flex flex-col items-center justify-center w-full max-w-[120px]">
-        <div className="w-24 h-24 flex items-center justify-center border-8 border-slate-100 rounded-full">
-          <span className="text-slate-400 font-bold text-sm">-</span>
+        <div className="w-24 h-24 flex items-center justify-center border-8 border-border-subtle rounded-full">
+          <span className="text-muted-foreground font-bold text-sm">-</span>
         </div>
-        <span className="text-xs font-semibold text-slate-500 mt-2">{label}</span>
+        <span className="text-xs font-semibold text-muted-foreground mt-2">{label}</span>
       </div>
     );
   }
@@ -250,8 +250,8 @@ export function CircularGauge({ value, label }: { value: number | string; label:
   ];
 
   return (
-    <div className="flex flex-col items-center justify-center w-full max-w-[140px]">
-      <div className="w-full h-[100px] relative -mb-4">
+    <div className="flex flex-col items-center justify-center flex-shrink-0">
+      <div className="w-[150px] h-[80px] relative">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -260,8 +260,8 @@ export function CircularGauge({ value, label }: { value: number | string; label:
               cy="100%"
               startAngle={180}
               endAngle={0}
-              innerRadius={35}
-              outerRadius={45}
+              innerRadius={42}
+              outerRadius={58}
               paddingAngle={2}
               dataKey="value"
               stroke="none"
@@ -273,11 +273,11 @@ export function CircularGauge({ value, label }: { value: number | string; label:
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-1 pointer-events-none">
-          <span className="text-slate-900 text-lg font-black">{numVal}%</span>
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-center pb-0.5 pointer-events-none">
+          <span className="text-foreground text-xl font-black">{numVal}%</span>
         </div>
       </div>
-      <span className="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider text-center leading-tight">
+      <span className="text-[11px] font-bold text-muted-foreground mt-2 uppercase tracking-wider text-center leading-tight">
         {label}
       </span>
     </div>
@@ -310,8 +310,8 @@ export function KeyMetricsRadarChart({ metrics }: { metrics: any[] }) {
             content={({ active, payload }) => {
               if (active && payload && payload.length) {
                 return (
-                  <div className="bg-slate-900 border border-slate-700/50 rounded-xl shadow-xl px-4 py-3">
-                    <p className="text-slate-300 text-xs font-bold mb-1">{payload[0].payload.subject}</p>
+                  <div className="bg-foreground border border-slate-700/50 rounded-xl shadow-xl px-4 py-3">
+                    <p className="text-muted-foreground text-xs font-bold mb-1">{payload[0].payload.subject}</p>
                     <p className="text-white text-sm font-bold">Value: {payload[0].payload.originalValue}</p>
                   </div>
                 );

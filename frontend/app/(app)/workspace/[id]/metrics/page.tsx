@@ -166,19 +166,19 @@ export default function MetricsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "ready":
-        return <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Ready</span>;
+        return <span className="bg-emerald-100 text-success px-2 py-0.5 rounded text-[10px] font-bold uppercase">Ready</span>;
       case "processing":
-        return <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin"/> Processing</span>;
+        return <span className="bg-primary/20 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin"/> Processing</span>;
       case "failed":
-        return <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">Failed</span>;
+        return <span className="bg-destructive/20 text-destructive px-2 py-0.5 rounded text-[10px] font-bold uppercase">Failed</span>;
       default:
-        return <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{status}</span>;
+        return <span className="bg-surface text-foreground px-2 py-0.5 rounded text-[10px] font-bold uppercase">{status}</span>;
     }
   };
 
   if (loading || docsLoading)
     return (
-      <div className="flex-1 flex items-center justify-center py-24 text-slate-400">
+      <div className="flex-1 flex items-center justify-center py-24 text-muted-foreground">
         <Loader2 className="w-6 h-6 animate-spin mr-2" />
         Loading metrics…
       </div>
@@ -195,9 +195,9 @@ export default function MetricsPage() {
   if (data?.status === "running") {
     emptyState = (
       <div className="flex-1 flex flex-col items-center justify-center py-24 text-center px-6">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-6" />
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Metrics extraction is in progress</h2>
-        <p className="text-sm text-slate-500 max-w-md">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mb-6" />
+        <h2 className="text-xl font-bold text-foreground mb-2">Metrics extraction is in progress</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
           The Extraction Agent is currently analyzing your document. This may take a moment.
         </p>
       </div>
@@ -205,11 +205,11 @@ export default function MetricsPage() {
   } else if (data?.status === "failed") {
     emptyState = (
       <div className="flex-1 flex flex-col items-center justify-center py-24 text-center px-6">
-        <div className="w-20 h-20 rounded-2xl bg-red-50 flex items-center justify-center mb-6">
-          <Info className="w-10 h-10 text-red-500" />
+        <div className="w-20 h-20 rounded-2xl bg-destructive/10 flex items-center justify-center mb-6">
+          <Info className="w-10 h-10 text-destructive" />
         </div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Extraction Failed</h2>
-        <p className="text-sm text-slate-500 max-w-md">
+        <h2 className="text-xl font-bold text-foreground mb-2">Extraction Failed</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
           Metrics could not be extracted because the Extraction Agent failed. You can retry it from the Agent Status sidebar.
         </p>
       </div>
@@ -217,11 +217,11 @@ export default function MetricsPage() {
   } else if (!data || data.status !== "complete" || !data.key_metrics || data.key_metrics.length === 0 || data.key_metrics[0].label === "Data") {
     emptyState = (
       <div className="flex-1 flex flex-col items-center justify-center py-24 text-center px-6">
-        <div className="w-20 h-20 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
-          <TrendingUp className="w-10 h-10 text-blue-400" />
+        <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+          <TrendingUp className="w-10 h-10 text-primary" />
         </div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">No supported financial metrics were found</h2>
-        <p className="text-sm text-slate-500 max-w-md">
+        <h2 className="text-xl font-bold text-foreground mb-2">No supported financial metrics were found</h2>
+        <p className="text-sm text-muted-foreground max-w-md">
           {selectedDocumentId 
             ? "This document does not contain supported metrics, or extraction has not been completed."
             : "Upload supported financial documents (such as 10-K, 10-Q, or Earnings Reports) for our AI agents to automatically extract key metrics."}
@@ -242,19 +242,19 @@ export default function MetricsPage() {
       <FinancialHeroParticles />
       <div className="max-w-[1160px] mx-auto px-6 py-6 space-y-6 relative z-10">
         {/* ── Document Selection Header ────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 border border-slate-200 rounded-xl shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-4 border border-border rounded-xl shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-lg font-bold shadow shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center text-lg font-bold shadow shrink-0">
               {displayCompany.charAt(0)}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900 line-clamp-1">
+                <h2 className="text-lg font-bold text-foreground line-clamp-1">
                   {displayCompany} {data?.company && "Limited"}
                 </h2>
-                {data?.status === "complete" && <BadgeCheck className="w-5 h-5 text-blue-500 shrink-0" />}
+                {data?.status === "complete" && <BadgeCheck className="w-5 h-5 text-primary shrink-0" />}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {data?.period || "Metrics Dashboard"}
               </p>
             </div>
@@ -263,21 +263,21 @@ export default function MetricsPage() {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="group flex items-center gap-3 px-2.5 py-2.5 bg-white border border-slate-200 hover:border-blue-300 hover:shadow-sm hover:shadow-blue-100/50 rounded-xl text-sm font-medium transition-all min-w-[260px] max-w-sm w-full outline-none focus:ring-4 focus:ring-blue-500/10"
+              className="group flex items-center gap-3 px-2.5 py-2.5 bg-card border border-border hover:border-primary/50 hover:shadow-sm hover:shadow-blue-100/50 rounded-xl text-sm font-medium transition-all min-w-[260px] max-w-sm w-full outline-none focus:ring-4 focus:ring-blue-500/10"
             >
-              <div className="w-9 h-9 rounded-lg bg-blue-50/80 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+              <div className="w-9 h-9 rounded-lg bg-primary/10/80 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                 <FileText className="w-4 h-4" />
               </div>
               <div className="flex flex-col items-start flex-1 min-w-0 gap-0.5">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 leading-none">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground leading-none">
                   Source Document
                 </span>
-                <span className="truncate w-full text-left font-semibold text-slate-800 leading-none">
+                <span className="truncate w-full text-left font-semibold text-foreground leading-none">
                   {displayTitle}
                 </span>
               </div>
-              <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center shrink-0 ml-1 group-hover:bg-blue-50 transition-colors">
-                <ChevronDown className={cn("w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-transform duration-200", dropdownOpen && "rotate-180")} />
+              <div className="w-7 h-7 rounded-full bg-surface flex items-center justify-center shrink-0 ml-1 group-hover:bg-primary/10 transition-colors">
+                <ChevronDown className={cn("w-4 h-4 text-muted-foreground group-hover:text-primary transition-transform duration-200", dropdownOpen && "rotate-180")} />
               </div>
             </button>
 
@@ -288,14 +288,14 @@ export default function MetricsPage() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ type: "spring", bounce: 0.35, duration: 0.5 }}
-                  className="absolute right-0 top-full mt-2 w-full sm:w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[300px]"
+                  className="absolute right-0 top-full mt-2 w-full sm:w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[300px]"
                 >
-                  <div className="p-3 border-b border-slate-100 bg-slate-50/50">
-                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Document</h3>
+                  <div className="p-3 border-b border-border-subtle bg-surface/50">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Select Document</h3>
                   </div>
                   <div className="overflow-y-auto flex-1 p-1">
                     {documents.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-slate-500">No documents available</div>
+                      <div className="p-4 text-center text-sm text-muted-foreground">No documents available</div>
                     ) : (
                       documents.map((doc) => {
                         const isSelected = selectedDocumentId === doc.id || (!selectedDocumentId && displayTitle === doc.name);
@@ -305,21 +305,21 @@ export default function MetricsPage() {
                             onClick={() => handleSelectDocument(doc.id)}
                             className={cn(
                               "w-full text-left px-3 py-2.5 rounded-lg flex items-start gap-3 transition-colors",
-                              isSelected ? "bg-blue-50" : "hover:bg-slate-50"
+                              isSelected ? "bg-primary/10" : "hover:bg-surface"
                             )}
                           >
-                            <div className={cn("mt-0.5 shrink-0 w-4", isSelected ? "text-blue-600" : "text-transparent")}>
+                            <div className={cn("mt-0.5 shrink-0 w-4", isSelected ? "text-primary" : "text-transparent")}>
                               <Check className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-0.5">
-                                <span className={cn("text-sm font-medium truncate", isSelected ? "text-blue-900" : "text-slate-700")}>
+                                <span className={cn("text-sm font-medium truncate", isSelected ? "text-blue-900" : "text-foreground")}>
                                   {doc.name}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
                                 {getStatusBadge(doc.status)}
-                                <span className="text-[10px] text-slate-400">
+                                <span className="text-[10px] text-muted-foreground">
                                   {doc.uploaded_at}
                                 </span>
                               </div>
@@ -347,16 +347,16 @@ export default function MetricsPage() {
             
             // Premium muted colors based on category
             const l = m.label.toLowerCase();
-            let theme = { bg: "bg-slate-50/50", text: "text-slate-600", iconBg: "bg-slate-100", iconColor: "text-slate-500", border: "border-slate-200/60" };
+            let theme = { bg: "bg-surface/50", text: "text-muted-foreground", iconBg: "bg-surface", iconColor: "text-muted-foreground", border: "border-border/60" };
             
             if (l.includes("revenue") || l.includes("cash") || l.includes("growth") || l.includes("sales")) {
-              theme = { bg: "bg-emerald-50/30", text: "text-emerald-700", iconBg: "bg-emerald-100/50", iconColor: "text-emerald-600", border: "border-emerald-100/50" };
+              theme = { bg: "bg-success/10/30", text: "text-success", iconBg: "bg-emerald-100/50", iconColor: "text-success", border: "border-emerald-100/50" };
             } else if (l.includes("profit") || l.includes("margin") || l.includes("ebitda")) {
-              theme = { bg: "bg-blue-50/30", text: "text-blue-700", iconBg: "bg-blue-100/50", iconColor: "text-blue-600", border: "border-blue-100/50" };
+              theme = { bg: "bg-primary/10/30", text: "text-primary", iconBg: "bg-primary/20/50", iconColor: "text-primary", border: "border-primary/50/50" };
             } else if (l.includes("debt") || l.includes("equity") || l.includes("liability")) {
               theme = { bg: "bg-orange-50/30", text: "text-orange-700", iconBg: "bg-orange-100/50", iconColor: "text-orange-600", border: "border-orange-100/50" };
             } else if (l.includes("roe") || l.includes("eps") || l.includes("return")) {
-              theme = { bg: "bg-indigo-50/30", text: "text-indigo-700", iconBg: "bg-indigo-100/50", iconColor: "text-indigo-600", border: "border-indigo-100/50" };
+              theme = { bg: "bg-primary/10/30", text: "text-primary", iconBg: "bg-primary/20/50", iconColor: "text-primary", border: "border-indigo-100/50" };
             }
 
             return (
@@ -366,7 +366,7 @@ export default function MetricsPage() {
                 transition={{ duration: 0.4, delay: i * 0.05, ease: "easeOut" }}
                 key={m.label}
                 className={cn(
-                  "relative overflow-hidden bg-white rounded-[16px] p-4 border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] hover:shadow-[0_8px_30px_-4px_rgba(6,81,237,0.1)] transition-shadow duration-300 group flex flex-col justify-between min-h-[110px]",
+                  "relative overflow-hidden bg-card rounded-[16px] p-4 border shadow-[0_2px_10px_-3px_rgba(6,81,237,0.05)] hover:shadow-[0_8px_30px_-4px_rgba(6,81,237,0.1)] transition-shadow duration-300 group flex flex-col justify-between min-h-[110px]",
                   theme.border
                 )}
               >
@@ -374,7 +374,7 @@ export default function MetricsPage() {
                 <div className={cn("absolute -top-10 -right-10 w-24 h-24 rounded-full blur-2xl opacity-40 transition-opacity group-hover:opacity-70", theme.bg)} />
                 
                 <div className="flex items-start justify-between relative z-10 mb-2">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest max-w-[70%] leading-tight">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest max-w-[70%] leading-tight">
                     {m.label}
                   </span>
                   <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0", theme.iconBg, theme.iconColor)}>
@@ -383,7 +383,7 @@ export default function MetricsPage() {
                 </div>
                 
                 <div className="relative z-10 mt-auto">
-                  <p className="text-xl font-bold text-slate-900 tracking-tight">
+                  <p className="text-xl font-bold text-foreground tracking-tight">
                     {(() => {
                       const num = parseNumber(m.value);
                       if (isNaN(num)) return m.value;
@@ -409,7 +409,7 @@ export default function MetricsPage() {
                   <div className="flex items-center gap-1.5 mt-1">
                     <div className={cn(
                       "flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold",
-                      m.trend === "up" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                      m.trend === "up" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
                     )}>
                       {m.trend === "up" ? (
                         <ArrowUpRight className="w-3 h-3" strokeWidth={2.5} />
@@ -418,7 +418,7 @@ export default function MetricsPage() {
                       )}
                       <span>{m.change}</span>
                     </div>
-                    <span className="text-slate-400 font-medium text-[10px] tracking-wide uppercase">
+                    <span className="text-muted-foreground font-medium text-[10px] tracking-wide uppercase">
                       {m.period}
                     </span>
                   </div>
@@ -434,17 +434,19 @@ export default function MetricsPage() {
           <div className="space-y-5">
             {/* Revenue by Segment */}
             {data?.revenue_breakdown && data?.revenue_breakdown.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                <h4 className="text-sm font-bold text-slate-800 mb-4">
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm w-full box-border">
+                <h4 className="text-[15px] font-bold text-foreground mb-6">
                   Revenue by Segment
                 </h4>
-                <div className="flex items-start gap-6">
-                  <DonutChart segments={data.revenue_breakdown} />
-                  <div className="flex-1 space-y-2.5 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(150px,0.9fr)_minmax(0,1.4fr)] gap-6 items-center">
+                  <div className="flex justify-center sm:justify-start">
+                    <DonutChart segments={data.revenue_breakdown} />
+                  </div>
+                  <div className="flex flex-col justify-center space-y-3 min-w-0">
                     {data.revenue_breakdown.map((seg, i) => {
                       const numVal = parseNumber(seg.value);
                       return (
-                      <div key={seg.segment} className="flex items-center gap-2">
+                      <div key={seg.segment} className="flex items-center gap-3">
                         <span
                           className="w-2.5 h-2.5 rounded-full shrink-0"
                           style={{
@@ -452,10 +454,10 @@ export default function MetricsPage() {
                               SEG_COLORS[i % SEG_COLORS.length],
                           }}
                         />
-                        <span className="text-xs text-slate-600 flex-1 truncate">
+                        <span className="text-[13px] text-muted-foreground flex-1 min-w-0 truncate" title={seg.segment}>
                           {seg.segment}
                         </span>
-                        <span className="text-xs font-bold text-slate-700">
+                        <span className="text-[13px] font-bold text-foreground shrink-0">
                           {isNaN(numVal) ? seg.value : `${numVal}%`}
                         </span>
                       </div>
@@ -467,29 +469,33 @@ export default function MetricsPage() {
 
             {/* Operating Margin Gauge */}
             {latestQuarter && latestQuarter.margin != null && !isNaN(parseNumber(latestQuarter.margin)) && (
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex items-center justify-around">
-                <CircularGauge
-                  value={latestQuarter.margin}
-                  label="Operating Margin"
-                />
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-[11px] text-slate-400 uppercase tracking-wider font-bold">
-                      Latest Quarter
-                    </p>
-                    <p className="text-sm font-bold text-slate-800">
-                      {latestQuarter.quarter || "N/A"}
-                    </p>
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm w-full box-border">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center h-full">
+                  <div className="flex justify-center sm:justify-start">
+                    <CircularGauge
+                      value={latestQuarter.margin}
+                      label="Operating Margin"
+                    />
                   </div>
-                  <div>
-                    <p className="text-[11px] text-slate-400 uppercase tracking-wider font-bold">
-                      Profit
-                    </p>
-                    <p className="text-sm font-bold text-slate-800">
-                      {latestQuarter.profit != null
-                        ? `₹${parseNumber(latestQuarter.profit).toLocaleString()} Cr`
-                        : "N/A"}
-                    </p>
+                  <div className="flex flex-col justify-center space-y-5">
+                    <div>
+                      <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5">
+                        Latest Quarter
+                      </p>
+                      <p className="text-base font-bold text-foreground leading-none">
+                        {latestQuarter.quarter || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-bold mb-1.5">
+                        Profit
+                      </p>
+                      <p className="text-base font-bold text-foreground leading-none">
+                        {latestQuarter.profit != null
+                          ? `₹${parseNumber(latestQuarter.profit).toLocaleString()} Cr`
+                          : "N/A"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -500,9 +506,9 @@ export default function MetricsPage() {
           <div className="space-y-5">
             {/* Geography Split */}
             {data?.geography_split && data?.geography_split.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 text-slate-400" />
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm w-full box-border">
+                <h4 className="text-[15px] font-bold text-foreground mb-6 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-muted-foreground" />
                   Geography Split
                 </h4>
                 <GeographySplitChart splitData={data.geography_split} />
@@ -511,9 +517,9 @@ export default function MetricsPage() {
 
             {/* Quarterly Revenue Trend */}
             {data?.quarterly_trend && data?.quarterly_trend.length > 0 && data?.quarterly_trend[0].quarter != null && (
-              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 text-slate-400" />
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm w-full box-border">
+                <h4 className="text-[15px] font-bold text-foreground mb-6 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-muted-foreground" />
                   Quarterly Revenue Trend
                 </h4>
                 <QuarterlyTrendChart trendData={data.quarterly_trend} />
@@ -525,17 +531,17 @@ export default function MetricsPage() {
         {/* ── Additional Visualizations ──────────────────────────── */}
         {data?.key_metrics && data?.key_metrics.filter(m => !isNaN(parseNumber(m.value)) && parseNumber(m.value) > 0).length >= 3 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-slate-400" />
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm w-full box-border">
+              <h4 className="text-[15px] font-bold text-foreground mb-6 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-muted-foreground" />
                 Key Metrics Overview
               </h4>
               <KeyMetricsRadarChart metrics={data.key_metrics} />
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-              <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-1.5">
-                <BarChart3 className="w-4 h-4 text-slate-400" />
+            <div className="bg-card border border-border rounded-2xl p-6 shadow-sm w-full box-border">
+              <h4 className="text-[15px] font-bold text-foreground mb-6 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-muted-foreground" />
                 Key Metrics Distribution (Log Scale)
               </h4>
               <KeyMetricsBarChart metrics={data.key_metrics} />

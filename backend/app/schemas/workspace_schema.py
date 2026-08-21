@@ -7,6 +7,10 @@ class WorkspaceCreate(BaseModel):
     description: Optional[str] = Field(None, json_schema_extra={"example": "Aggregated transcript data"})
 
 
+class WorkspaceDefaults(BaseModel):
+    ai_provider: str = "Groq"
+    response_style: str = "Professional"
+
 class WorkspaceResponse(BaseModel):
     id: str
     name: str
@@ -20,6 +24,28 @@ class WorkspaceResponse(BaseModel):
     icon: str
     iconColor: str
     iconBg: str
+    member_count: int = 1
+    defaults: WorkspaceDefaults = Field(default_factory=WorkspaceDefaults)
+
+class WorkspaceMember(BaseModel):
+    id: str
+    user_id: str
+    email: str
+    name: str
+    role: str
+    photo_url: Optional[str] = None
+
+class WorkspaceInviteRequest(BaseModel):
+    email: str
+    role: str
+
+class WorkspaceRoleUpdate(BaseModel):
+    role: str
+
+class WorkspaceUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    defaults: Optional[WorkspaceDefaults] = None
 
 
 class AgentActivity(BaseModel):
@@ -37,6 +63,7 @@ class RedFlag(BaseModel):
     severity: str
     title: str
     time_ago: str
+    detected_at: Optional[str] = None
     pinned: bool = False
 
 
@@ -50,6 +77,7 @@ class AgentSummaryItem(BaseModel):
 
 
 class WorkspaceSummaryItem(BaseModel):
+    id: str
     name: str
     docs_processed: int
     risks_found: int
