@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from loguru import logger
 from ..database.mongo_client import db
+from ..services.notification_bus import notification_bus
 
 # We use a dedicated collection for notifications
 notifications_collection = db["notifications"]
@@ -37,7 +38,7 @@ async def create_notification(
                 "reference_id": reference_id
             })
             if existing:
-                logger.info(f"Notification already exists for {type_id} and ref {reference_id}. Skipping.")
+                logger.debug(f"[Notifications] Notification already exists for {type_id} and ref {reference_id}. Skipping.")
                 return False
 
         notification = {
@@ -57,6 +58,17 @@ async def create_notification(
         }
         
         await notifications_collection.insert_one(notification)
+        
+        # Publish real-time event to connected clients
+        # Convert _id to id to match API response schema
+        event_payload: Dict[str, Any] = {**notification}
+        event_payload["id"] = event_payload.pop("_id")
+        event_payload["created_at"] = event_payload["created_at"].isoformat()
+        
+        logger.info(f"[Notifications] Notification created type={type_id} uid={user_id[:8]}")
+        await notification_bus.publish(user_id, {"type": "new_notification", "data": event_payload})
+        logger.info(f"[Notifications] Notification delivered type={type_id} uid={user_id[:8]}")
+        
         return True
     except Exception as e:
         logger.error(f"Error creating notification: {e}")

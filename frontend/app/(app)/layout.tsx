@@ -24,6 +24,8 @@ import { NotificationsPanel } from "@/components/layout/NotificationsPanel";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { fetcher } from "@/lib/api";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { useNotificationStore } from "@/hooks/useNotificationStore";
+import { NotificationProvider } from "@/components/providers/NotificationProvider";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -32,16 +34,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+  
+  const unreadCount = useNotificationStore(state => state.unreadCount);
   
   useEffect(() => {
     if (!loading && !user) {
       window.location.href = "/login";
-    } else if (user) {
-      // Fetch initial notification status
-      fetcher<{has_unread: boolean}>("/dashboard/notifications")
-        .then(res => setHasUnreadNotifications(res.has_unread))
-        .catch(() => {});
     }
   }, [user, loading, router]);
 
@@ -64,6 +62,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
+    <NotificationProvider>
     <div className="bg-background text-foreground font-sans min-h-screen flex">
       {/* Mobile Sidebar Overlay */}
       {mobileMenuOpen && (
@@ -167,7 +166,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileOpen(false); }}
               className="text-muted-foreground hover:text-blue-900 transition-colors relative">
               <NotificationsIcon className="w-6 h-6" />
-              {hasUnreadNotifications && <span className="absolute top-0.5 right-1 w-2 h-2 bg-primary rounded-full border-2 border-white"></span>}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
             <button suppressHydrationWarning 
               onClick={() => setProfileOpen(!profileOpen)}
@@ -193,7 +196,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {notificationsOpen && (
             <NotificationsPanel 
               onClose={() => setNotificationsOpen(false)}
-              onNotificationsFetched={(hasUnread) => setHasUnreadNotifications(hasUnread)}
             />
           )}
         </header>
@@ -215,7 +217,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="relative" 
               onClick={() => { setNotificationsOpen(!notificationsOpen); setProfileOpen(false); }}>
               <NotificationsIcon className="w-6 h-6 text-muted-foreground" />
-              {hasUnreadNotifications && <span className="absolute top-0.5 right-1 w-2 h-2 bg-primary rounded-full border-2 border-white"></span>}
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-[9px] font-bold flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
             </button>
             <button suppressHydrationWarning onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               <MenuIcon className="w-6 h-6 text-muted-foreground" />
@@ -256,5 +262,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         })}
       </nav>
     </div>
+    </NotificationProvider>
   );
 }

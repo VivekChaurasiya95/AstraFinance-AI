@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 import aiofiles
 import traceback
 import re
+from loguru import logger
 
 from ...schemas.workspace_schema import (
     WorkspaceCreate,
@@ -154,7 +155,7 @@ async def update_workspace(workspace_id: str, update_req: WorkspaceUpdateRequest
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
         
-    update_data = {"updated_at": datetime.now(timezone.utc)}
+    update_data: Dict[str, Any] = {"updated_at": datetime.now(timezone.utc)}
     if update_req.name is not None:
         update_data["name"] = update_req.name
     if update_req.description is not None:
@@ -167,6 +168,8 @@ async def update_workspace(workspace_id: str, update_req: WorkspaceUpdateRequest
         {"$set": update_data}
     )
     updated_ws = await workspaces_collection.find_one({"_id": workspace_id})
+    if not updated_ws:
+        raise HTTPException(status_code=404, detail="Workspace not found after update")
     return format_workspace(updated_ws)
 
 # ── Workspace Members ─────────────────────────────────────────────────────────
@@ -500,11 +503,19 @@ async def update_agent_execution(workspace_id: str, doc_id: str, agent_name: str
         {"$set": update_data}
     )
     
+    if status == "Running" and exec_doc and exec_doc.get("status") not in ["Running", "Failed", "Complete"]:
+        logger.info(f"[Pipeline] {agent_name} started document={doc_id}")
+    elif status == "Complete":
+        logger.info(f"[Pipeline] {agent_name} completed document={doc_id}")
+    elif status == "Failed":
+        logger.error(f"[Pipeline] Agent failed\nagent={agent_name}\ndocument={doc_id}\nerror={error or details}")
+    
     agent_type = exec_doc["agent_type"] if exec_doc else "document"
     await add_agent_activity(workspace_id, doc_id, agent_name, agent_type, status, action, details, metadata)
 
 
 async def simulate_document_processing(workspace_id: str, doc_id: str, file_path: str, file_name: str, user_settings: dict | None = None):
+    logger.info(f"[Pipeline] Started document={doc_id}")
     try:
         await init_agent_executions(workspace_id, doc_id)
         
@@ -642,6 +653,8 @@ async def simulate_document_processing(workspace_id: str, doc_id: str, file_path
                 await maybe_notify_user(user_id, "document_processed", "documents", "low", "Document Processed", f"{file_name} is ready for Q&A and reports.", None, workspace_id, f"{doc_id}_processed")
             else:
                 await maybe_notify_user(user_id, "agent_failed", "agents", "critical", "Pipeline Failed", f"Failed to complete pipeline for: {file_name}", None, workspace_id, f"{doc_id}_pipeline_fail")
+        
+        logger.info(f"[Pipeline] Completed document={doc_id}")
         
     except Exception as e:
         traceback.print_exc()

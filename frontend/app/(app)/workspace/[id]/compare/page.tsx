@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   GitCompareArrows,
   Loader2,
@@ -105,6 +105,7 @@ const COLORS = [
 
 export default function ComparePage() {
   const params = useParams();
+  const router = useRouter();
   const workspaceId = params.id as string;
 
   const [data, setData] = useState<ComparisonData | null>(null);
@@ -161,15 +162,10 @@ export default function ComparePage() {
       await uploadMultipart(`/workspaces/${workspaceId}/documents`, formData);
       setSelectedFiles([]);
       setShowUpload(false);
-      // Document processing takes 15-30s. Show uploading state, then let polling pick up the comparison.
-      setTimeout(() => {
-        loadData();
-      }, 5000);
-      // Second reload after extraction likely finishes
-      setTimeout(() => {
-        loadData();
-        setUploading(false);
-      }, 20000);
+      
+      // Upload succeeded! Redirect to the Documents tab where processing will be shown natively.
+      router.push(`/workspace/${workspaceId}/documents`);
+      
     } catch (e) {
       console.error("Upload failed", e);
       setUploading(false);

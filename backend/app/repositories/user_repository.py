@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 from bson import ObjectId
 from datetime import datetime, timezone
 from loguru import logger
@@ -15,6 +15,9 @@ async def get_user_by_id(user_id: str) -> Optional[dict]:
     except Exception as e:
         logger.error(f"Error fetching user by id {user_id}: {e}")
         return None
+
+async def get_user_by_firebase_uid(firebase_uid: str) -> Optional[dict]:
+    return await users_collection.find_one({"firebase_uid": firebase_uid})
 
 
 async def create_user(user_data: dict) -> dict:
@@ -39,40 +42,46 @@ async def upsert_firebase_user(
     email_verified: bool = False,
 ) -> Optional[dict]:
     now_iso = datetime.now(timezone.utc).isoformat()
+    short_uid = firebase_uid[:8] if firebase_uid else "unknown"
 
-    # Define fields that should be updated on every login
-    set_fields = {
-        "last_login": now_iso,
-        "updated_at": now_iso,
+    user = await users_collection.find_one({"firebase_uid": firebase_uid})
+    if user:
+        needs_update = False
+        updates: Dict[str, Any] = {}
+        if user.get("provider") != provider:
+            updates["provider"] = provider
+            needs_update = True
+        if user.get("email_verified") != email_verified:
+            updates["email_verified"] = email_verified
+            needs_update = True
+            
+        if needs_update:
+            updates["updated_at"] = now_iso
+            updates["last_login"] = now_iso
+            await users_collection.update_one({"_id": user["_id"]}, {"$set": updates})
+            logger.info(f"[User] Profile updated uid={short_uid}")
+            return await users_collection.find_one({"_id": user["_id"]})
+            
+        logger.debug(f"[User] Existing user verified uid={short_uid}")
+        return user
+
+    new_user = {
+        "firebase_uid": firebase_uid,
+        "email": email,
+        "name": name or "",
+        "photo_url": picture or "",
         "provider": provider,
         "email_verified": email_verified,
-    }
-    
-    # Define fields that should only be set when a new user is created
-    set_on_insert_fields = {
-        "email": email,
         "role": "user",
         "created_at": now_iso,
+        "updated_at": now_iso,
+        "last_login": now_iso
     }
     
-    # Only set name and photo initially so we don't overwrite user changes on subsequent logins
-    if name:
-        set_on_insert_fields["name"] = name
-    if picture:
-        set_on_insert_fields["photo_url"] = picture
-    
-    # Perform atomic upsert. The unique index on firebase_uid ensures no duplicates.
-    await users_collection.update_one(
-        {"firebase_uid": firebase_uid},
-        {
-            "$set": set_fields,
-            "$setOnInsert": set_on_insert_fields
-        },
-        upsert=True
-    )
-    
-    logger.info(f"✓ User Upserted: {email} (UID: {firebase_uid})")
-    return await users_collection.find_one({"firebase_uid": firebase_uid})
+    result = await users_collection.insert_one(new_user)
+    new_user["_id"] = result.inserted_id
+    logger.info(f"[User] Created uid={short_uid}")
+    return new_user
 
 
 async def update_user(user_id: str, update_data: dict) -> bool:

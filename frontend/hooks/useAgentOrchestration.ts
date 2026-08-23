@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetcher } from '@/lib/api';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export type AgentStatus = "Idle" | "Queued" | "Running" | "Complete" | "Failed" | "Blocked";
 
@@ -35,6 +36,7 @@ export interface AgentOrchestrationState {
 }
 
 export function useAgentOrchestration(workspaceId: string) {
+  const { user, loading: authLoading } = useAuth();
   const [state, setState] = useState<AgentOrchestrationState>({
     pipeline_status: 'idle',
     document_id: null,
@@ -49,6 +51,12 @@ export function useAgentOrchestration(workspaceId: string) {
 
   const loadData = useCallback(async (showRefreshIndicator = false) => {
     if (!workspaceId) return;
+    if (authLoading) return; // Wait for authentication initialization
+    if (!user) {
+      setError("Not authenticated");
+      setLoading(false);
+      return;
+    }
     
     if (showRefreshIndicator) {
       setIsRefreshing(true);
@@ -59,7 +67,7 @@ export function useAgentOrchestration(workspaceId: string) {
       setState(data);
       setError(null);
     } catch (err) {
-      console.error("Failed to load agent orchestration state:", err);
+      console.warn("Failed to load agent orchestration state:", err);
       setError(err instanceof Error ? err.message : "Failed to load agent status");
     } finally {
       setLoading(false);
@@ -67,15 +75,19 @@ export function useAgentOrchestration(workspaceId: string) {
         setIsRefreshing(false);
       }
     }
-  }, [workspaceId]);
+  }, [workspaceId, authLoading, user]);
 
-  // Initial load and polling
+  // Initial load
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (authLoading || !user || !workspaceId) return;
     loadData();
+  }, [authLoading, user, workspaceId, loadData]);
 
-    // Intelligent polling: Only poll if pipeline is running/processing
-    const isActive = state.agents.some(a => a.status === 'Running' || a.status === 'Queued');
+  // Intelligent polling
+  const isActive = state.agents.some(a => a.status === 'Running' || a.status === 'Queued');
+  
+  useEffect(() => {
+    if (authLoading || !user) return;
     
     if (isActive) {
       pollingRef.current = setInterval(() => {
@@ -86,9 +98,10 @@ export function useAgentOrchestration(workspaceId: string) {
     return () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
+        pollingRef.current = null;
       }
     };
-  }, [loadData, state.agents]);
+  }, [isActive, authLoading, user, loadData]);
 
   const forceRefresh = useCallback(() => {
     return loadData(true);

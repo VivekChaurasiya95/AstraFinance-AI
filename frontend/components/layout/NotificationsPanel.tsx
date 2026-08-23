@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { fetcher } from "@/lib/api";
 import { BellIcon, CheckCircleIcon, InfoIcon, AlertTriangleIcon, XCircleIcon, Loader2, CheckCheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNotificationStore } from "@/hooks/useNotificationStore";
 
 function timeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -39,38 +40,16 @@ interface NotificationResponse {
 
 interface NotificationsPanelProps {
   onClose: () => void;
-  onNotificationsFetched?: (hasUnread: boolean) => void;
 }
 
-export function NotificationsPanel({ onClose, onNotificationsFetched }: NotificationsPanelProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadNotifications = async () => {
-    try {
-      const data = await fetcher<NotificationResponse>("/notifications");
-      setNotifications(data.notifications);
-      if (onNotificationsFetched) {
-        onNotificationsFetched(data.has_unread);
-      }
-    } catch (error) {
-      console.error("Failed to load notifications:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadNotifications();
-  }, [onNotificationsFetched]);
+export function NotificationsPanel({ onClose }: NotificationsPanelProps) {
+  const { notifications, markAsRead, markAllAsRead, isInitialized } = useNotificationStore();
+  const loading = !isInitialized;
 
   const handleMarkAllRead = async () => {
     try {
       await fetcher("/notifications/read-all", { method: "POST" });
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      if (onNotificationsFetched) {
-        onNotificationsFetched(false);
-      }
+      markAllAsRead();
     } catch (error) {
       console.error("Failed to mark all read:", error);
     }
@@ -80,13 +59,7 @@ export function NotificationsPanel({ onClose, onNotificationsFetched }: Notifica
     if (!read) {
       try {
         await fetcher(`/notifications/${id}/read`, { method: "PATCH" });
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-        
-        // Re-check unread status
-        const hasUnread = notifications.some(n => !n.read && n.id !== id);
-        if (onNotificationsFetched) {
-          onNotificationsFetched(hasUnread);
-        }
+        markAsRead(id);
       } catch (error) {
         console.error("Failed to mark read:", error);
       }

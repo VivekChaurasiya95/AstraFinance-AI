@@ -34,26 +34,28 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("[Startup] AstraFinance AI starting")
     # 1. Init Firebase
     try:
         init_firebase()
-        logger.info("✓ Firebase Admin SDK initialized")
+        logger.info("[Firebase] Connected")
     except Exception as e:
         logger.error(f"Firebase initialization failed: {e}")
         
     # 2. Ping MongoDB and ensure indexes
     try:
         await db.command("ping")
-        logger.info("✓ MongoDB Connected successfully")
+        logger.info("[MongoDB] Connected")
         
         # Enforce unique index for firebase_uid to prevent duplicate users
         await db["users"].create_index("firebase_uid", unique=True)
-        logger.info("✓ Unique index on firebase_uid ensured")
         
         # Ensure notification indexes
         from .repositories import notifications_repository
         await notifications_repository.ensure_indexes()
-        logger.info("✓ Notification indexes ensured")
+        logger.info("[Notifications] Ready")
+        logger.info("[API] Listening on http://127.0.0.1:8000")
+        logger.info("[Startup] Ready")
     except Exception as e:
         logger.error(f"MongoDB connection/index failed: {e}")
 
@@ -74,6 +76,32 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+import re
+
+class UvicornAccessLogFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        if hasattr(record, "args") and isinstance(record.args, tuple) and len(record.args) >= 5:
+            method = record.args[1]
+            path = record.args[2]
+            status = record.args[4]
+            
+            new_args = list(record.args)
+            if isinstance(path, str) and "token=" in path:
+                new_args[2] = re.sub(r'token=[^& ]+', 'token=[REDACTED]', path)
+                record.args = tuple(new_args)
+                
+            # Downgrade routine polling and common GET requests to DEBUG if successful
+            if isinstance(status, int) and status < 400 and method == "GET" and isinstance(path, str):
+                if any(x in path for x in ["/agents", "/me", "/documents", "/notifications"]):
+                    record.levelno = logging.DEBUG
+                    record.levelname = "DEBUG"
+                    
+        return True
+
+uvicorn_access_logger = logging.getLogger("uvicorn.access")
+if uvicorn_access_logger:
+    uvicorn_access_logger.addFilter(UvicornAccessLogFilter())
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -81,8 +109,9 @@ app.add_middleware(
         "http://localhost:3001",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        "http://10.23.69.37:3000",
     ],
-    allow_origin_regex=".*",
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
