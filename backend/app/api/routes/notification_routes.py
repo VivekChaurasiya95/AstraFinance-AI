@@ -61,7 +61,7 @@ async def sse_notifications(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
     
     async def event_generator():
-        logger.info(f"[Notifications] SSE connected user={user_id}")
+        logger.debug(f"[Notifications] SSE connected user={user_id}")
         queue = await notification_bus.subscribe(user_id)
         try:
             # Yield an immediate heartbeat to establish connection fully

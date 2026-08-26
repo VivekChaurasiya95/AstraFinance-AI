@@ -13,7 +13,7 @@ class NotificationBus:
         if user_id not in self.clients:
             self.clients[user_id] = []
         self.clients[user_id].append(queue)
-        logger.info(f"SSE subscribed user={user_id} active_connections={len(self.clients[user_id])}")
+        logger.debug(f"SSE subscribed user={user_id} active_connections={len(self.clients[user_id])}")
         return queue
 
     def unsubscribe(self, user_id: str, queue: asyncio.Queue):
@@ -22,7 +22,7 @@ class NotificationBus:
             try:
                 self.clients[user_id].remove(queue)
                 active_conns = len(self.clients[user_id])
-                logger.info(f"SSE disconnected user={user_id} active_connections={active_conns}")
+                logger.debug(f"SSE disconnected user={user_id} active_connections={active_conns}")
                 if not self.clients[user_id]:
                     del self.clients[user_id]
             except ValueError:

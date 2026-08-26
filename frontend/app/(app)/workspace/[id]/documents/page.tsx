@@ -7,3 +7,4 @@ export default function DocumentsPage() {
   const params = useParams();
   return <DocumentsTab workspaceId={params.id as string} onDocCountChange={() => {}} />;
 }
+ 
