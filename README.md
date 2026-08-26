@@ -155,16 +155,16 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-	U[User / Analyst] --> F[Frontend Workspace\nNext.js + Tailwind v4 + Spline3D]
-	F --> A[Auth Layer\nFirebase: Google OAuth · GitHub OAuth · Email]
-	F -->|REST / SSE| B[Backend API\nFastAPI (Python)]
+	U["User / Analyst"] --> F["Frontend Workspace<br>Next.js + Tailwind v4 + Spline3D"]
+	F --> A["Auth Layer<br>Firebase: Google OAuth · GitHub OAuth · Email"]
+	F -->|REST / SSE| B["Backend API<br>FastAPI (Python)"]
 
 	subgraph Backend Core
-		B --> C[Document Processing\nParse · OCR · Clean · Chunk]
-		B --> D[Embeddings & Vector Store\nChromaDB / FAISS]
-		B --> E[RAG & Retrieval\nSemantic Search & Reranking]
-		B --> G[Financial Agents\nLLM Orchestration Layer]
-		B --> S[Event Stream\nRedis Pub/Sub]
+		B --> C["Document Processing<br>Parse · OCR · Clean · Chunk"]
+		B --> D["Embeddings & Vector Store<br>ChromaDB / FAISS"]
+		B --> E["RAG & Retrieval<br>Semantic Search & Reranking"]
+		B --> G["Financial Agents<br>LLM Orchestration Layer"]
+		B --> S["Event Stream<br>Redis Pub/Sub"]
 		
 		C --> D
 		D --> E
@@ -173,9 +173,9 @@ flowchart TB
 	end
 
 	subgraph Storage & External Services
-		B --> M[(MongoDB\nPersistent State)]
-		B --> V[(Vector Store\nKnowledge Base)]
-		B --> L[(LLM Provider\nOpenAI / Groq / Anthropic)]
+		B --> M[("MongoDB<br>Persistent State")]
+		B --> V[("Vector Store<br>Knowledge Base")]
+		B --> L[("LLM Provider<br>OpenAI / Groq / Anthropic")]
 	end
 
 	D --> V
