@@ -1,8 +1,8 @@
 <div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=3b82f6&height=200&section=header&text=AstraFinance-AI&fontSize=50&fontAlignY=35&fontColor=ffffff&desc=Multi-Agent%20Financial%20Research%20System&descAlignY=55&descAlign=50" alt="Header animation" width="100%"/>
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=3b82f6&height=200&section=header&text=AstraFinance-AI&fontSize=50&fontAlignY=35&fontColor=ffffff&desc=Multi-Agent%20Financial%20Research%20Workspace&descAlignY=55&descAlign=50" alt="Header animation" width="100%"/>
 
   <a href="https://github.com/VivekChaurasiya95/AstraFinance-AI">
-    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=24&pause=1000&color=22C55E&center=true&vCenter=true&width=800&lines=Upload+documents,+ask+questions,+get+cited+answers;Built+for+financial+research,+comparison,+and+risk+analysis;Powered+by+specialized+AI+Agents" alt="AstraFinance-AI animated subtitle" />
+    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=24&pause=1000&color=22C55E&center=true&vCenter=true&width=800&lines=Upload+financial+documents;Ask+questions,+get+cited+answers;Automate+company+comparison;Detect+red-flags+instantly;Powered+by+specialized+AI+Agents" alt="AstraFinance-AI animated subtitle" />
   </a>
 
   <p align="center">
@@ -14,7 +14,7 @@
 
   <h3>
     <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Magnifying%20Glass%20Tilted%20Right.png" alt="Magnifying Glass" width="30" height="30" />
-    A documentation-first, multi-agent financial research platform that turns uploaded reports into searchable knowledge, cited answers, comparison outputs, red-flag insights, and polished reports.
+    A production-grade, multi-agent financial research platform that turns massive 10-Ks and Annual Reports into searchable knowledge, cited answers, comparison outputs, red-flag insights, and polished reports.
   </h3>
 </div>
 
@@ -24,10 +24,11 @@
   <img src="https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
   <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS_v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
   <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=white" alt="Firebase" />
 </div>
 
@@ -42,8 +43,8 @@
 4. [🔄 System Architecture & Workflow](#-system-architecture--workflow)
 5. [🛠️ Tech Stack](#️-tech-stack)
 6. [💻 Installation & Setup Guide](#-installation--setup-guide)
-7. [📂 Project Structure](#-project-structure)
-8. [📚 Documentation Index](#-documentation-index)
+7. [🌍 Deployment Guide](#-deployment-guide)
+8. [📂 Project Structure](#-project-structure)
 9. [🤝 Contributing](#-contributing)
 
 </details>
@@ -64,7 +65,7 @@
 | :--- | :--- |
 | 🛡️ **Evidence Grounding** | Every generated answer, metric, and insight is strictly grounded in source evidence with precise citations pointing back to the original documents. |
 | 🧠 **Multi-Agent Delegation** | Work is intelligently split across specialized, fine-tuned agents (e.g., Extraction, Comparison, Red Flag) rather than relying on a single, hallucination-prone monolithic AI. |
-| 👁️ **Pipeline Transparency** | Long-running tasks like document OCR, text chunking, embedding generation, and report building are fully visible to the user via real-time UI updates. |
+| 👁️ **Pipeline Transparency** | Long-running tasks like document OCR, chunking, embeddings, and RAG pipelines stream real-time updates directly to the UI using **Server-Sent Events (SSE)**. |
 
 ---
 
@@ -89,11 +90,8 @@ Automatically surface anomalies, omitted risk factors, aggressive accounting pra
 ### 💬 5. Conversational Research Assistant
 A ChatGPT-like interface supercharged with **RAG (Retrieval-Augmented Generation)**. Ask complex questions and get answers complete with direct citations. **Multi-Modal Support:** Attach images and new files directly within the chat for dynamic context injection.
 
-### 📑 6. Automated Report Generation
-Package all your findings (metrics, flags, comparisons) into a polished, structured deliverable complete with auto-generated charts, executive summaries, and citation references. Exportable to PDF.
-
-### 🗂️ 7. Secure Workspace Isolation
-Users operate within dedicated Workspaces. Each workspace acts as a secure boundary grouping specific documents, chat histories, extracted metrics, and reports, ensuring data context is never crossed.
+### ⚡ 6. Real-Time Synchronization & Push Notifications
+Powered by **Redis Pub/Sub** and **Server-Sent Events (SSE)**, the platform pushes real-time notifications and ISO 8601-synchronized timestamps to the client, ensuring you see agent activity the millisecond it happens.
 
 ---
 
@@ -157,44 +155,33 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-	U[User / Analyst] --> F[Frontend Workspace\nNext.js + Tailwind + Spline3D]
-	F --> A[Auth Layer\nFirebase: Google OAuth · GitHub OAuth · JWT]
-	F --> B[Backend API\nFastAPI (Python)]
+	U[User / Analyst] --> F[Frontend Workspace\nNext.js + Tailwind v4 + Spline3D]
+	F --> A[Auth Layer\nFirebase: Google OAuth · GitHub OAuth · Email]
+	F -->|REST / SSE| B[Backend API\nFastAPI (Python)]
 
 	subgraph Backend Core
 		B --> C[Document Processing\nParse · OCR · Clean · Chunk]
-		B --> D[Embeddings & Vector Store\nFAISS / ChromaDB]
+		B --> D[Embeddings & Vector Store\nChromaDB / FAISS]
 		B --> E[RAG & Retrieval\nSemantic Search & Reranking]
 		B --> G[Financial Agents\nLLM Orchestration Layer]
-		B --> H[Reporting Layer\nCharts · PDF Builder · Templates]
+		B --> S[Event Stream\nRedis Pub/Sub]
 		
 		C --> D
 		D --> E
 		E --> G
-		G --> H
+		G --> S
 	end
 
 	subgraph Storage & External Services
 		B --> M[(MongoDB\nPersistent State)]
 		B --> V[(Vector Store\nKnowledge Base)]
-		B --> L[(LLM Provider\nOpenAI / Anthropic)]
-		H --> R[(Reports Output\nPDF / HTML)]
+		B --> L[(LLM Provider\nOpenAI / Groq / Anthropic)]
 	end
 
 	D --> V
 	G --> L
 	A --> M
 ```
-
-### 📈 Typical User Workflow
-
-1. 👤 **Upload:** User uploads a financial document (e.g., 2024 Apple 10-K) into a newly created Workspace.
-2. ⚙️ **Process:** The **Document Agent** parses, cleans, and semantically chunks the text.
-3. 🧠 **Embed:** Chunks are vectorized and stored for high-speed similarity search.
-4. 💬 **Query:** The user asks the **Research Agent**: *"What are the primary supply chain risks mentioned?"*
-5. 🔍 **Retrieve & Reason:** The system retrieves the most relevant chunks, and the LLM synthesizes an answer.
-6. 🎯 **Respond:** The UI displays the answer with exact citations highlighting the source document.
-7. 📑 **Report:** The user triggers the **Report Agent** to generate a comprehensive risk analysis PDF based on the findings.
 
 ---
 
@@ -205,24 +192,20 @@ flowchart TB
 </div>
 
 ### Frontend (User Interface)
-- **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
+- **Framework:** [Next.js](https://nextjs.org/) (App Router, Turbopack)
 - **Language:** [TypeScript](https://www.typescriptlang.org/)
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **Animations:** [Framer Motion](https://www.framer.com/motion/) & [GSAP](https://gsap.com/) & [Spline 3D](https://spline.design/)
-- **State Management:** [Zustand](https://github.com/pmndrs/zustand)
-- **Charts:** [Chart.js](https://www.chartjs.org/) & [Recharts](https://recharts.org/)
-- **UI Components:** [shadcn/ui](https://ui.shadcn.com/)
+- **Animations:** [Framer Motion](https://www.framer.com/motion/), GSAP, [Spline 3D](https://spline.design/)
+- **State Management:** React Hooks, Context API
+- **Charts & UI:** Chart.js, Recharts, [shadcn/ui](https://ui.shadcn.com/), Lucide Icons
 
 ### Backend (API & AI Orchestration)
 - **Framework:** [FastAPI](https://fastapi.tiangolo.com/) (Python)
 - **Database:** [MongoDB](https://www.mongodb.com/) (Motor Async Driver)
-- **Vector Store:** FAISS / ChromaDB (Configurable)
-- **AI/LLM:** LangChain / OpenAI / Anthropic integrations
-- **Document Parsing:** PyMuPDF, OCR integrations
-
-### Infrastructure & Security
-- **Authentication:** [Firebase Auth](https://firebase.google.com/) (Email, Google, GitHub)
-- **Security:** JWT Tokens, Rate Limiting, CORS, Pydantic Schema Validation
+- **Cache/PubSub:** [Redis](https://redis.io/)
+- **Vector Store:** [ChromaDB](https://www.trychroma.com/) / FAISS
+- **AI/LLM:** LangChain, LiteLLM, OpenAI API, Groq
+- **Real-Time:** Server-Sent Events (SSE)
 
 ---
 
@@ -232,14 +215,13 @@ flowchart TB
   <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Wrench.png" alt="Wrench" width="40" height="40" />
 </div>
 
-Follow these steps to get a local development environment running.
-
 ### 📋 Prerequisites
 - **Node.js** (v20+ recommended)
 - **Python** (v3.10+ recommended)
-- **MongoDB** (Local instance or MongoDB Atlas cluster)
+- **MongoDB** (Local instance or MongoDB Atlas)
+- **Redis** (Local instance or Upstash/Render Redis)
 - **Firebase Project** (For authentication credentials)
-- **OpenAI API Key** (or equivalent LLM provider key)
+- **OpenAI/Groq API Key** 
 
 ### 1️⃣ Clone the Repository
 ```bash
@@ -252,26 +234,22 @@ cd AstraFinance-AI
 # Navigate to the backend directory
 cd backend
 
-# Create a virtual environment
-python -m venv venv
-
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
+# Create and activate a virtual environment
+python -m venv .venv
+# On Windows: .venv\Scripts\activate
+# On macOS/Linux: source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Create your environment variables file
 cp .env.example .env
-# Edit .env and add your MONGODB_URL, LLM API keys, and JWT secrets
+# Edit .env and add MONGODB_URL, REDIS_URL, LLM API keys
 
 # Start the FastAPI server
 uvicorn app.main:app --reload --port 8000
 ```
-*The backend API will be available at `http://localhost:8000`. You can view the Swagger UI at `http://localhost:8000/docs`.*
+*The backend API will be available at `http://localhost:8000`.*
 
 ### 3️⃣ Frontend Setup
 ```bash
@@ -280,7 +258,6 @@ cd frontend
 
 # Install dependencies
 npm install
-# or yarn install / pnpm install
 
 # Create your environment variables file
 cp .env.example .env.local
@@ -294,9 +271,35 @@ npm run dev
 
 ---
 
-## 📂 Project Structure
+## 🌍 Deployment Guide
 
-A high-level overview of the monorepo architecture:
+### Deploying the Backend to Render
+1. Sign in to [Render](https://render.com/) and create a new **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the settings:
+   - **Root Directory**: `backend`
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Add all your backend environment variables from your `.env` file.
+5. Click **Deploy**. Copy the live URL once it's finished (e.g., `https://astrafinance-api.onrender.com`).
+
+### Deploying the Frontend to Vercel
+1. Sign in to [Vercel](https://vercel.com/) and create a new **Project**.
+2. Import your GitHub repository.
+3. Configure the settings:
+   - **Root Directory**: `frontend`
+   - **Framework Preset**: Next.js
+4. Add your frontend environment variables. **Set `NEXT_PUBLIC_API_URL` to your live Render backend URL** (e.g., `https://astrafinance-api.onrender.com/api/v1`).
+5. Click **Deploy**.
+
+### Post-Deployment Integration
+1. **Firebase**: Go to your Firebase Console -> Authentication -> Settings -> Authorized Domains. Add your live Vercel domain (e.g., `astrafinance-ai.vercel.app`) so login works in production.
+2. **CORS**: Ensure your FastAPI `CORSMiddleware` in `backend/app/main.py` allows your live Vercel domain in the `allow_origins` list.
+
+---
+
+## 📂 Project Structure
 
 ```text
 AstraFinance-AI/
@@ -311,55 +314,21 @@ AstraFinance-AI/
 │   │   ├── rag/             # Retrieval logic & Citation generation
 │   │   ├── report/          # PDF & HTML Report builders
 │   │   ├── repositories/    # MongoDB data access layer
-│   │   └── models/          # Pydantic & DB schemas
+│   │   └── schemas/         # Pydantic & DB schemas
 │   ├── tests/               # Backend unit & integration tests
 │   └── requirements.txt     # Python dependencies
 │
 ├── frontend/                # ⚛️ Next.js Web Application
-│   ├── app/                 # Next.js App Router pages (Dashboard, Workspace, Settings)
-│   ├── components/          # Reusable UI (Features, Layouts, Dashboard Widgets)
-│   ├── hooks/               # Custom React hooks (Settings, Agent Orchestration)
-│   ├── lib/                 # Utility functions & API clients
+│   ├── app/                 # Next.js App Router pages (Dashboard, Workspace)
+│   ├── components/          # Reusable UI (Features, Dashboard Widgets)
+│   ├── hooks/               # Custom React hooks
+│   ├── lib/                 # Utility functions, SSE stream handling, Timestamps
 │   └── public/              # Static assets (Images, SVGs, Models)
 │
-├── docs/                    # 📚 Extensive Architectural Documentation (DFDs, Sequence diagrams)
+├── docs/                    # 📚 Extensive Architectural Documentation
 ├── scripts/                 # 🛠️ Utility scripts for DB seeding & testing
-├── datasets/                # 📊 Sample financial reports for testing
-└── uploads/                 # 📁 Local storage for processed documents (Dev mode)
+└── datasets/                # 📊 Sample financial reports for testing
 ```
-
----
-
-## 📚 Documentation Index
-
-Our `docs/` folder contains extensive architectural blueprints. If you are contributing to the core logic, please review these first!
-
-<details>
-<summary><b>Click to expand Documentation Links</b></summary>
-<br>
-
-### 📄 Product Requirements
-- [Product Requirements Document (PRD)](docs/prd/)
-- [Multiagent System Requirements Specification (SRS)](docs/diagrams/Mutiagent%20SRS.pdf)
-
-### 📐 System Design & Architecture
-- [System Architecture Overview](docs/architecture/)
-- [High Level Design (HLD)](docs/HLD/)
-- [Low Level Design (LLD)](docs/LLD/)
-- [API Flow Definitions](docs/api/)
-- [Database Architecture](docs/Database%20Architecture/)
-- [Multi-Agent Architecture Blueprint](docs/Multiagent%20Architecture/)
-
-### 🖼️ Diagram Gallery
-- [Authentication Flow Diagram](docs/diagrams/Authentication%20Flow%20Diagram.pdf)
-- [Company Comparison Sequence Diagram](docs/diagrams/Company%20Comparison%20Sequence%20Diagram.pdf)
-- [System Component Diagram](docs/diagrams/Component%20Diagram%20%E2%80%93%20MultiAgent%20Financial%20Research%20System.pdf)
-- [DFD Level 0 Diagram](docs/diagrams/DFD%20Level%200%20Diagram%20.png)
-- [RAG Pipeline Architecture (Production)](docs/diagrams/RAG%20Pipeline%20Architecture%20%28Production-Level%29%20Diagram.pdf)
-- [Document Upload & Indexing Sequence](docs/diagrams/Document%20Upload%20%26%20Indexing%20Sequence%20Diagram.pdf)
-- *...and [many more in the docs/diagrams/ folder](docs/diagrams/)*
-
-</details>
 
 ---
 
@@ -372,13 +341,10 @@ Our `docs/` folder contains extensive architectural blueprints. If you are contr
 We welcome contributions! Whether you're fixing a bug, improving the RAG pipeline, or designing a new frontend component.
 
 1. **Fork the repository** and create your feature branch: `git checkout -b feature/my-new-feature`
-2. **Review the architecture docs** to ensure your approach aligns with the multi-agent design.
-3. **Keep changes domain-focused.** (e.g., Don't mix authentication logic into the document parsing service).
-4. **Commit your changes:** `git commit -am 'Add some feature'`
-5. **Push to the branch:** `git push origin feature/my-new-feature`
-6. **Submit a pull request!**
-
-> ⚠️ **Note:** Please update this `README.md` and the `MEMORY.md` file whenever a new workflow, screen, or agent is fundamentally altered.
+2. **Review the architecture docs** in `docs/` to ensure your approach aligns with the multi-agent design.
+3. **Commit your changes:** `git commit -am 'Add some feature'`
+4. **Push to the branch:** `git push origin feature/my-new-feature`
+5. **Submit a pull request!**
 
 ---
 
