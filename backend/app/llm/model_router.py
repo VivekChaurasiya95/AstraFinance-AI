@@ -14,6 +14,9 @@ class LLMRouter:
     def __init__(self):
         self.retry_policy = RetryPolicy()
         self.circuit_breakers: Dict[str, CircuitBreaker] = {}
+        self.cache: Dict[str, Any] = {}
+        import hashlib
+        self._hashlib = hashlib
 
     def _get_circuit_breaker(self, provider_name: str, model_name: str) -> CircuitBreaker:
         key = f"{provider_name}_{model_name}"
@@ -25,6 +28,15 @@ class LLMRouter:
         cb = self._get_circuit_breaker(provider_name, model_name)
         if not cb.can_execute():
             raise LLMError(f"Circuit breaker is OPEN for {provider_name}/{model_name}")
+
+        # Cache key generation
+        msg_str = "".join([m.content for m in messages if hasattr(m, 'content') and isinstance(m.content, str)])
+        schema_str = schema.__name__ if schema else "none"
+        cache_key = self._hashlib.md5(f"{provider_name}_{model_name}_{method}_{schema_str}_{msg_str}".encode()).hexdigest()
+        
+        if cache_key in self.cache:
+            logger.info(f"[LLM_ROUTER] CACHE HIT Provider={provider_name} Model={model_name}")
+            return self.cache[cache_key]
 
         provider = registry.get_provider(provider_name)
         
@@ -73,6 +85,9 @@ class LLMRouter:
                         elif isinstance(part, str):
                             text_parts.append(part)
                     result.content = "".join(text_parts)
+                
+                # Save to cache
+                self.cache[cache_key] = result
                 
                 return result
 

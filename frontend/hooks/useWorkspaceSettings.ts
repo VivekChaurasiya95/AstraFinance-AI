@@ -49,16 +49,16 @@ export function useWorkspaceSettings() {
       // Fetch members for this workspace
       const wsMembers = await fetcher<WorkspaceMember[]>(`/workspaces/${currentWs.id}/members`);
       setMembers(wsMembers);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Unable to load workspace. We couldn't retrieve your workspace information.");
+      setError((err instanceof Error ? (err instanceof Error ? err.message : String(err)) : String(err)) || "Unable to load workspace. We couldn't retrieve your workspace information.");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchWorkspaceAndMembers();
+    queueMicrotask(() => { fetchWorkspaceAndMembers(); });
   }, [fetchWorkspaceAndMembers]);
 
   const updateWorkspace = async (updates: { name?: string; description?: string; defaults?: WorkspaceDefaults }) => {
@@ -70,8 +70,8 @@ export function useWorkspaceSettings() {
       });
       setWorkspace(updatedWs);
       return updatedWs;
-    } catch (err: any) {
-      throw new Error(err.message || "Failed to update workspace.");
+    } catch (err: unknown) {
+      throw new Error((err instanceof Error ? (err instanceof Error ? err.message : String(err)) : String(err)) || "Failed to update workspace.");
     }
   };
 
@@ -88,8 +88,8 @@ export function useWorkspaceSettings() {
       // Also refresh workspace to update member count
       const updatedWs = await fetcher<Workspace>(`/workspaces/${workspace.id}`);
       setWorkspace(updatedWs);
-    } catch (err: any) {
-      throw new Error(err.message || "Unable to send invitation.");
+    } catch (err: unknown) {
+      throw new Error((err instanceof Error ? (err instanceof Error ? err.message : String(err)) : String(err)) || "Unable to send invitation.");
     }
   };
 
@@ -102,8 +102,8 @@ export function useWorkspaceSettings() {
       });
       // Update local state instead of full refetch for snappiness
       setMembers(members.map(m => m.user_id === memberId ? { ...m, role } : m));
-    } catch (err: any) {
-      throw new Error(err.message || "Failed to update role.");
+    } catch (err: unknown) {
+      throw new Error((err instanceof Error ? (err instanceof Error ? err.message : String(err)) : String(err)) || "Failed to update role.");
     }
   };
 
@@ -117,8 +117,8 @@ export function useWorkspaceSettings() {
       
       const updatedWs = await fetcher<Workspace>(`/workspaces/${workspace.id}`);
       setWorkspace(updatedWs);
-    } catch (err: any) {
-      throw new Error(err.message || "Unable to remove member.");
+    } catch (err: unknown) {
+      throw new Error((err instanceof Error ? (err instanceof Error ? err.message : String(err)) : String(err)) || "Unable to remove member.");
     }
   };
 

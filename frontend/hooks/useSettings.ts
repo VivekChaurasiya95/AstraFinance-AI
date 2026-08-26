@@ -12,7 +12,7 @@ export type Settings = {
     enforce_citations: boolean;
     risk_warnings: boolean;
   };
-  notifications: Record<string, unknown>;
+  notifications: Record<string, any>;
   appearance: {
     theme: string;
     density: string;
@@ -39,7 +39,7 @@ export function useSettings() {
       const data = await fetcher<Settings>("/settings");
       setSettings(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch settings");
+      setError(err instanceof Error ? (err instanceof Error ? err.message : String(err)) : "Failed to fetch settings");
     } finally {
       setLoading(false);
     }
@@ -55,7 +55,7 @@ export function useSettings() {
           setError(null);
         }
       } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : "Failed to fetch settings");
+        if (mounted) setError(err instanceof Error ? (err instanceof Error ? err.message : String(err)) : "Failed to fetch settings");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -64,7 +64,7 @@ export function useSettings() {
     return () => { mounted = false; };
   }, []);
 
-  const updateSetting = async (updates: Record<string, unknown>) => {
+  const updateSetting = async (updates: Record<string, any>) => {
     try {
       setIsSaving(true);
       const data = await fetcher<Settings>("/settings", {
@@ -75,7 +75,7 @@ export function useSettings() {
       return { success: true };
     } catch (err) {
       console.error("Failed to update settings:", err);
-      return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+      return { success: false, error: err instanceof Error ? (err instanceof Error ? err.message : String(err)) : "Unknown error" };
     } finally {
       setIsSaving(false);
     }

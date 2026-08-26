@@ -6,6 +6,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+import threading
+chroma_lock = threading.Lock()
+
 os.makedirs(settings.CHROMA_DB_PATH, exist_ok=True)
 
 try:

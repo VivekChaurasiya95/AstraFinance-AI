@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from loguru import logger
 from ..database.mongo_client import db
 from ..services.notification_bus import notification_bus
+from ..utils.timestamps import utc_now, to_iso_utc
 
 # We use a dedicated collection for notifications
 notifications_collection = db["notifications"]
@@ -54,7 +55,7 @@ async def create_notification(
             "metadata": metadata or {},
             "read": False,
             "reference_id": reference_id,
-            "created_at": datetime.now(timezone.utc)
+            "created_at": utc_now()
         }
         
         await notifications_collection.insert_one(notification)
@@ -63,7 +64,7 @@ async def create_notification(
         # Convert _id to id to match API response schema
         event_payload: Dict[str, Any] = {**notification}
         event_payload["id"] = event_payload.pop("_id")
-        event_payload["created_at"] = event_payload["created_at"].isoformat()
+        event_payload["created_at"] = to_iso_utc(event_payload["created_at"])
         
         logger.info(f"[Notifications] Notification created type={type_id} uid={user_id[:8]}")
         await notification_bus.publish(user_id, {"type": "new_notification", "data": event_payload})
@@ -84,6 +85,9 @@ async def get_user_notifications(user_id: str, limit: int = 50, unread_only: boo
     notifications = []
     async for notif in cursor:
         notif["id"] = notif.pop("_id")
+        # Serialize created_at to ISO UTC with Z suffix for consistent frontend parsing
+        if isinstance(notif.get("created_at"), datetime):
+            notif["created_at"] = to_iso_utc(notif["created_at"])
         notifications.append(notif)
         
     return notifications

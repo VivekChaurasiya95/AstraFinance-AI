@@ -8,12 +8,14 @@ import {
   X,
   AlertTriangle,
   RotateCcw,
-  Info,
   FileSearch,
-  Sparkles,
-  Scissors,
-  Binary,
+  BarChart2,
+  ShieldAlert,
+  GitCompareArrows,
+  Search,
+  FileBarChart2,
   Database,
+  Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetcher } from "@/lib/api";
@@ -22,33 +24,39 @@ import type { Document } from "./types";
 // ── Processing Pipeline Steps ─────────────────────────────────────────────────
 const PIPELINE_STEPS = [
   {
-    label: "Parsing Document",
-    description: "Extracting text and structure from PDF...",
+    label: "Document Agent",
+    description: "Parsing, cleaning and indexing the document...",
     icon: FileSearch,
     color: "blue",
   },
   {
-    label: "Cleaning Content",
-    description: "Removing noise, headers, footers and formatting...",
-    icon: Sparkles,
+    label: "Extraction Agent",
+    description: "Extracting financial metrics and KPIs...",
+    icon: BarChart2,
     color: "blue",
   },
   {
-    label: "Chunking Text",
-    description: "Splitting content into semantic chunks...",
-    icon: Scissors,
+    label: "Red Flag Agent",
+    description: "Scanning for risks and anomalies...",
+    icon: ShieldAlert,
     color: "blue",
   },
   {
-    label: "Generating Embeddings",
-    description: "Converting chunks into vector representations...",
-    icon: Binary,
+    label: "Comparison Agent",
+    description: "Benchmarking against industry standards...",
+    icon: GitCompareArrows,
     color: "blue",
   },
   {
-    label: "Indexing in Vector Database",
-    description: "Storing vectors and metadata for retrieval...",
-    icon: Database,
+    label: "Research Agent",
+    description: "Gathering contextual market data...",
+    icon: Search,
+    color: "blue",
+  },
+  {
+    label: "Report Agent",
+    description: "Synthesizing final analysis report...",
+    icon: FileBarChart2,
     color: "blue",
   },
 ];
@@ -56,7 +64,7 @@ const PIPELINE_STEPS = [
 // ── 3D Processing Animation (CSS-based for reliability) ───────────────────────
 function ProcessingAnimation({ currentStep }: { currentStep: number }) {
   return (
-    <div className="relative w-full max-w-2xl mx-auto h-48 flex items-center justify-center overflow-hidden select-none">
+    <div className="relative w-full max-w-2xl mx-auto h-36 flex items-center justify-center overflow-hidden select-none">
       {/* Background gradient orbs */}
       <div className="absolute inset-0">
         <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/50/30 rounded-full blur-3xl animate-pulse" />
@@ -80,7 +88,7 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
           )}
         >
           <div
-            className="w-20 h-24 bg-card rounded-lg shadow-lg border border-border flex flex-col items-center justify-center relative overflow-hidden"
+            className="w-16 h-20 bg-card rounded-lg shadow-lg border border-border flex flex-col items-center justify-center relative overflow-hidden"
             style={{
               animation: "float 3s ease-in-out infinite",
             }}
@@ -149,7 +157,7 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
             currentStep >= 4 ? "opacity-100 scale-100" : "opacity-40 scale-90"
           )}
         >
-          <div className="relative w-24 h-24">
+          <div className="relative w-20 h-20">
             {/* Central node */}
             <div
               className={cn(
@@ -172,8 +180,8 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
             {/* Orbiting nodes */}
             {[0, 60, 120, 180, 240, 300].map((angle, i) => {
               const rad = (angle * Math.PI) / 180;
-              const x = Math.cos(rad) * 38;
-              const y = Math.sin(rad) * 38;
+              const x = Math.cos(rad) * 32;
+              const y = Math.sin(rad) * 32;
               return (
                 <div
                   key={i}
@@ -200,17 +208,17 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
             {currentStep >= 4 && (
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none"
-                viewBox="0 0 96 96"
+                viewBox="0 0 80 80"
               >
                 {[0, 60, 120, 180, 240, 300].map((angle, i) => {
                   const rad = (angle * Math.PI) / 180;
-                  const x = 48 + Math.cos(rad) * 38;
-                  const y = 48 + Math.sin(rad) * 38;
+                  const x = 40 + Math.cos(rad) * 32;
+                  const y = 40 + Math.sin(rad) * 32;
                   return (
                     <line
                       key={i}
-                      x1="48"
-                      y1="48"
+                      x1="40"
+                      y1="40"
                       x2={x}
                       y2={y}
                       stroke={currentStep >= 5 ? "#10b981" : "#818cf8"}
@@ -228,7 +236,7 @@ function ProcessingAnimation({ currentStep }: { currentStep: number }) {
   );
 }
 
-// ── Vertical Stepper ──────────────────────────────────────────────────────────
+// ── Compact Vertical Stepper ──────────────────────────────────────────────────────────
 function VerticalStepper({
   currentStep,
   failedStep,
@@ -243,7 +251,7 @@ function VerticalStepper({
   onRetry?: () => void;
 }) {
   return (
-    <div className="relative w-full max-w-xl mx-auto">
+    <div className="relative w-full max-w-3xl mx-auto">
       {PIPELINE_STEPS.map((step, idx) => {
         const stepNum = idx + 1;
         let state: "complete" | "active" | "pending" | "failed" = "pending";
@@ -256,7 +264,7 @@ function VerticalStepper({
         const isLast = idx === PIPELINE_STEPS.length - 1;
 
         return (
-          <div key={idx} className="flex gap-4 relative">
+          <div key={idx} className={cn("flex items-center gap-4 relative", isLast ? "" : "pb-4")}>
             {/* Vertical line */}
             {!isLast && (
               <div className="absolute left-[19px] top-10 bottom-0 w-0.5">
@@ -300,33 +308,31 @@ function VerticalStepper({
             </div>
 
             {/* Step content */}
-            <div className={cn("flex-1 pb-8", isLast && "pb-0")}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "text-sm font-bold",
-                        state === "complete"
-                          ? "text-foreground"
-                          : state === "active"
-                            ? "text-primary"
-                            : state === "failed"
-                              ? "text-destructive"
-                              : "text-muted-foreground"
-                      )}
-                    >
-                      {stepNum} {step.label}
-                    </span>
-                  </div>
+            <div className="flex-1 flex flex-col justify-center">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex flex-col gap-0.5 sm:gap-1">
+                  <span
+                    className={cn(
+                      "text-sm font-bold",
+                      state === "complete"
+                        ? "text-foreground"
+                        : state === "active"
+                          ? "text-primary"
+                          : state === "failed"
+                            ? "text-destructive"
+                            : "text-muted-foreground"
+                    )}
+                  >
+                    {stepNum}. {step.label}
+                  </span>
                   <p
                     className={cn(
-                      "text-xs mt-0.5",
+                      "text-xs sm:text-sm leading-relaxed",
                       state === "active"
                         ? "text-muted-foreground"
                         : state === "failed"
                           ? "text-destructive"
-                          : "text-muted-foreground"
+                          : "text-muted-foreground/60"
                     )}
                   >
                     {step.description}
@@ -335,23 +341,23 @@ function VerticalStepper({
 
                 <div className="flex items-center gap-2 shrink-0">
                   {state === "complete" && (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 border border-success/50 px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 border border-success/50 px-2 py-0.5 rounded-full">
                       Complete
                     </span>
                   )}
                   {state === "active" && (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 border border-primary/50 px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 border border-primary/50 px-2 py-0.5 rounded-full">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       In Progress
                     </span>
                   )}
                   {state === "failed" && (
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/50 px-2.5 py-1 rounded-full">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/50 px-2 py-0.5 rounded-full">
                       Failed
                     </span>
                   )}
                   {timer !== undefined && state !== "pending" && (
-                    <span className="text-xs text-muted-foreground tabular-nums">
+                    <span className="text-xs text-muted-foreground tabular-nums min-w-[36px] text-right">
                       {String(Math.floor(timer / 60)).padStart(2, "0")}:
                       {String(timer % 60).padStart(2, "0")}
                     </span>
@@ -361,22 +367,19 @@ function VerticalStepper({
 
               {/* Failed state inline actions */}
               {state === "failed" && failReason && (
-                <div className="mt-3 bg-destructive/10 border border-destructive/50 rounded-xl p-3">
-                  <p className="text-xs text-destructive leading-relaxed">
+                <div className="mt-2 bg-destructive/10 border border-destructive/50 rounded-lg p-2.5 flex items-center justify-between">
+                  <p className="text-xs text-destructive leading-relaxed truncate pr-4">
                     {failReason}
                   </p>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex gap-2 shrink-0">
                     {onRetry && (
                       <button
                         onClick={onRetry}
-                        className="text-xs font-medium text-destructive hover:text-red-900 bg-card border border-destructive/50 px-3 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors flex items-center gap-1"
+                        className="text-xs font-medium text-destructive hover:text-red-900 bg-card border border-destructive/50 px-2.5 py-1 rounded-md hover:bg-destructive/10 transition-colors flex items-center gap-1"
                       >
                         <RotateCcw className="w-3 h-3" /> Retry
                       </button>
                     )}
-                    <button className="text-xs font-medium text-muted-foreground hover:text-foreground bg-card border border-border px-3 py-1.5 rounded-lg hover:bg-surface transition-colors">
-                      Contact Support
-                    </button>
                   </div>
                 </div>
               )}
@@ -452,7 +455,7 @@ export function DocumentProcessingView({
   }, [timerTick, documents]);
 
   useEffect(() => {
-    let timer = setInterval(async () => {
+    const timer = setInterval(async () => {
       try {
         const res = await fetcher<{ documents: Document[] }>(
           `/workspaces/${workspaceId}/documents`

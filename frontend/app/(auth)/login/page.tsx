@@ -28,7 +28,7 @@ function LoginContent() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const getFirebaseErrorMessage = (err: unknown): string => {
+  const getFirebaseErrorMessage = (err: any): string => {
     const error = err as FirebaseAuthError;
     const code = error?.code || "";
     switch (code) {
@@ -63,7 +63,7 @@ function LoginContent() {
       toast.success("Successfully logged in!");
       router.push(callbackUrl);
       router.refresh();
-    } catch (err: unknown) {
+    } catch (err: any) {
       const msg = getFirebaseErrorMessage(err);
       if (msg) toast.error(msg);
     } finally {
@@ -81,7 +81,7 @@ function LoginContent() {
       toast.success("Successfully logged in!");
       router.push(callbackUrl);
       router.refresh();
-    } catch (err: unknown) {
+    } catch (err: any) {
       const msg = getFirebaseErrorMessage(err);
       if (msg) toast.error(msg);
     } finally {

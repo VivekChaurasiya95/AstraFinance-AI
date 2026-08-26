@@ -42,7 +42,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState(false);
 
-  const getFirebaseErrorMessage = (err: unknown): string => {
+  const getFirebaseErrorMessage = (err: any): string => {
     const error = err as FirebaseAuthError;
     const code = error?.code || "";
     switch (code) {
@@ -67,7 +67,7 @@ export default function RegisterPage() {
       toast.success("Account created successfully!");
       router.push("/dashboard");
       router.refresh();
-    } catch (err: unknown) {
+    } catch (err: any) {
       const error = err as FirebaseAuthError;
       if (error.code === "auth/email-already-in-use") {
         setEmailError(true);
@@ -88,7 +88,7 @@ export default function RegisterPage() {
       toast.success("Successfully logged in!");
       router.push("/dashboard");
       router.refresh();
-    } catch (err: unknown) {
+    } catch (err: any) {
       toast.error(getFirebaseErrorMessage(err));
     } finally {
       setLoading(false);

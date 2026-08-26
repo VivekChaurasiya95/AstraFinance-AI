@@ -64,7 +64,7 @@ async def get_current_user(
         )
 
     short_uid = uid[:8] if uid else "unknown"
-    logger.debug(f"[Auth] Token verified uid={short_uid}")
+    logger.trace(f"[Auth] Token verified uid={short_uid}")
 
     # Upsert user in MongoDB (ASYNC – must be awaited)
     user = await user_repository.upsert_firebase_user(

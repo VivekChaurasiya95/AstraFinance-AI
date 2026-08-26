@@ -8,6 +8,65 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+// Compact Toggle Item Component
+const NotificationSettingRow = ({ 
+  title, 
+  desc, 
+  icon: Icon, 
+  checked, 
+  onChange, 
+  iconColor = "text-muted-foreground", 
+  bgColor = "bg-transparent" 
+}: { [key: string]: any }) => (
+  <div className={cn(
+    "grid items-center p-3.5 sm:p-4 hover:bg-surface transition-colors border-b border-border-subtle last:border-0 group gap-[14px]",
+    Icon ? "grid-cols-[36px_minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_auto]"
+  )}>
+    {Icon && (
+      <div className={cn("w-[36px] h-[36px] rounded-lg flex items-center justify-center shrink-0 shadow-sm", bgColor, iconColor)}>
+        <Icon className="w-[18px] h-[18px]" />
+      </div>
+    )}
+    <div className="min-w-0 w-full">
+      <h4 className="text-[14px] sm:text-[15px] font-semibold text-foreground leading-tight">{title as string}</h4>
+      <p className="text-[13px] text-muted-foreground mt-1 leading-[1.45] whitespace-normal break-words overflow-wrap-break-word">{desc as string}</p>
+    </div>
+    <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
+      <input 
+        type="checkbox" 
+        className="sr-only peer" 
+        checked={(checked as boolean) || false} 
+        onChange={(e) => (onChange as (val: boolean) => void)(e.target.checked)} 
+      />
+      <div className="w-[44px] h-[24px] bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/30 rounded-full peer peer-checked:after:translate-x-[20px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-[20px] after:w-[20px] after:transition-transform after:duration-200 peer-checked:bg-primary"></div>
+    </label>
+  </div>
+);
+
+const CustomRadio = ({ checked, label, desc, onClick }: { [key: string]: any }) => (
+  <div onClick={onClick as () => void} className="flex items-start gap-[14px] p-3.5 sm:p-4 hover:bg-surface transition-colors border-b border-border-subtle last:border-0 cursor-pointer group">
+    <div className="flex items-center justify-center h-5 mt-0.5 shrink-0">
+      <div className={cn(
+        "w-4 h-4 rounded-full border flex items-center justify-center transition-colors",
+        checked ? "border-primary" : "border-border group-hover:border-primary"
+      )}>
+        {checked && <div className="w-2 h-2 rounded-full bg-primary" />}
+      </div>
+    </div>
+    <div className="min-w-0 w-full">
+      <span className={cn(
+        "text-[14px] sm:text-[15px] font-semibold capitalize leading-tight transition-colors",
+        checked ? "text-primary" : "text-foreground"
+      )}>
+        {label as string}
+      </span>
+      <p className="text-[13px] text-muted-foreground mt-1 leading-[1.45] whitespace-normal break-words overflow-wrap-break-word">
+        {desc as string}
+      </p>
+    </div>
+  </div>
+);
+
 export default function NotificationsPage() {
   const { settings, isSaving, updateSetting, loading } = useSettings();
   const [showSaved, setShowSaved] = useState(false);
@@ -15,7 +74,7 @@ export default function NotificationsPage() {
   
   useEffect(() => {
     if (typeof window !== "undefined" && "Notification" in window) {
-      setBrowserPermission(Notification.permission);
+      setTimeout(() => setBrowserPermission(Notification.permission), 0);
     }
   }, []);
 
@@ -37,7 +96,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (!isSaving && settings) {
-      setShowSaved(true);
+      setTimeout(() => setShowSaved(true), 0);
       const t = setTimeout(() => setShowSaved(false), 2000);
       return () => clearTimeout(t);
     }
@@ -57,65 +116,6 @@ export default function NotificationsPage() {
     await updateSetting({ [`notifications.${key}`]: value });
   };
 
-  // Compact Toggle Item Component
-  const NotificationSettingRow = ({ 
-    title, 
-    desc, 
-    icon: Icon, 
-    checked, 
-    onChange, 
-    iconColor = "text-muted-foreground", 
-    bgColor = "bg-transparent" 
-  }: any) => (
-    <div className={cn(
-      "grid items-center p-3.5 sm:p-4 hover:bg-surface transition-colors border-b border-border-subtle last:border-0 group gap-[14px]",
-      Icon ? "grid-cols-[36px_minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_auto]"
-    )}>
-      {Icon && (
-        <div className={cn("w-[36px] h-[36px] rounded-lg flex items-center justify-center shrink-0 shadow-sm", bgColor, iconColor)}>
-          <Icon className="w-[18px] h-[18px]" />
-        </div>
-      )}
-      <div className="min-w-0 w-full">
-        <h4 className="text-[14px] sm:text-[15px] font-semibold text-foreground leading-tight">{title}</h4>
-        <p className="text-[13px] text-muted-foreground mt-1 leading-[1.45] whitespace-normal break-words overflow-wrap-break-word">{desc}</p>
-      </div>
-      <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-2">
-        <input 
-          type="checkbox" 
-          className="sr-only peer" 
-          checked={checked || false} 
-          onChange={(e) => onChange(e.target.checked)} 
-        />
-        <div className="w-[44px] h-[24px] bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/30 rounded-full peer peer-checked:after:translate-x-[20px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-[20px] after:w-[20px] after:transition-transform after:duration-200 peer-checked:bg-primary"></div>
-      </label>
-    </div>
-  );
-
-  const CustomRadio = ({ checked, label, desc, onClick }: any) => (
-    <div onClick={onClick} className="flex items-start gap-[14px] p-3.5 sm:p-4 hover:bg-surface transition-colors border-b border-border-subtle last:border-0 cursor-pointer group">
-      <div className="flex items-center justify-center h-5 mt-0.5 shrink-0">
-        <div className={cn(
-          "w-4 h-4 rounded-full border flex items-center justify-center transition-colors",
-          checked ? "border-primary" : "border-border group-hover:border-primary"
-        )}>
-          {checked && <div className="w-2 h-2 rounded-full bg-primary" />}
-        </div>
-      </div>
-      <div className="min-w-0 w-full">
-        <span className={cn(
-          "text-[14px] sm:text-[15px] font-semibold capitalize leading-tight transition-colors",
-          checked ? "text-primary" : "text-foreground"
-        )}>
-          {label}
-        </span>
-        <p className="text-[13px] text-muted-foreground mt-1 leading-[1.45] whitespace-normal break-words overflow-wrap-break-word">
-          {desc}
-        </p>
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-6 pb-12 relative max-w-[1000px] mx-auto">
       {/* Header */}
@@ -125,10 +125,10 @@ export default function NotificationsPage() {
             <h2 className="text-[24px] font-bold text-foreground tracking-tight">Notifications</h2>
             <div className={cn(
               "flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider shadow-sm border",
-              notifs.in_app !== false ? "bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]" : "bg-surface text-muted-foreground border-border"
+              (notifs as any).in_app !== false ? "bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]" : "bg-surface text-muted-foreground border-border"
             )}>
-              <span className={cn("w-1.5 h-1.5 rounded-full", notifs.in_app !== false ? "bg-[#10B981] animate-pulse" : "bg-muted")} />
-              {notifs.in_app !== false ? "ENABLED" : "PAUSED"}
+              <span className={cn("w-1.5 h-1.5 rounded-full", (notifs as any).in_app !== false ? "bg-[#10B981] animate-pulse" : "bg-muted")} />
+              {(notifs as any).in_app !== false ? "ENABLED" : "PAUSED"}
             </div>
           </div>
           <p className="text-[14px] text-muted-foreground font-medium mt-1">Choose what AstraFinance should notify you about and where.</p>
@@ -164,7 +164,7 @@ export default function NotificationsPage() {
             icon={LayoutDashboard}
             iconColor="text-primary"
             bgColor="bg-primary/10"
-            checked={notifs.in_app !== false}
+            checked={(notifs as any).in_app !== false}
             onChange={(v: boolean) => handleUpdate("in_app", v)}
           />
           <NotificationSettingRow
@@ -173,7 +173,7 @@ export default function NotificationsPage() {
             icon={Mail}
             iconColor="text-purple-600"
             bgColor="bg-purple-50"
-            checked={notifs.email !== false}
+            checked={(notifs as any).email !== false}
             onChange={(v: boolean) => handleUpdate("email", v)}
           />
           <div className="grid items-center p-3.5 sm:p-4 hover:bg-surface transition-colors border-b border-border-subtle last:border-0 group gap-[14px] grid-cols-[36px_minmax(0,1fr)_auto]">
@@ -187,7 +187,7 @@ export default function NotificationsPage() {
             <div className="shrink-0 flex items-center justify-end ml-2">
               {browserPermission === "granted" ? (
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={notifs.browser || false} onChange={(e) => handleUpdate("browser", e.target.checked)} />
+                  <input type="checkbox" className="sr-only peer" checked={(notifs as any).browser || false} onChange={(e) => handleUpdate("browser", e.target.checked)} />
                   <div className="w-[44px] h-[24px] bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/30 rounded-full peer peer-checked:after:translate-x-[20px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-[20px] after:w-[20px] after:transition-transform after:duration-200 peer-checked:bg-primary"></div>
                 </label>
               ) : (
@@ -219,19 +219,19 @@ export default function NotificationsPage() {
               <NotificationSettingRow
                 title="Report Generation"
                 desc="Notify me when a financial report is ready."
-                checked={notifs.report_generation !== false}
+                checked={(notifs as any).report_generation !== false}
                 onChange={(v: boolean) => handleUpdate("report_generation", v)}
               />
               <NotificationSettingRow
                 title="Report Failed"
                 desc="Notify me when report generation fails."
-                checked={notifs.report_failed !== false}
+                checked={(notifs as any).report_failed !== false}
                 onChange={(v: boolean) => handleUpdate("report_failed", v)}
               />
               <NotificationSettingRow
                 title="Research Complete"
                 desc="Notify me when research processing completes."
-                checked={notifs.research_complete !== false}
+                checked={(notifs as any).research_complete !== false}
                 onChange={(v: boolean) => handleUpdate("research_complete", v)}
               />
             </div>
@@ -248,13 +248,13 @@ export default function NotificationsPage() {
               <NotificationSettingRow
                 title="Risk Anomalies"
                 desc="Notify me when the Red Flag Agent detects significant anomalies."
-                checked={notifs.risk_anomalies !== false}
+                checked={(notifs as any).risk_anomalies !== false}
                 onChange={(v: boolean) => handleUpdate("risk_anomalies", v)}
               />
               <NotificationSettingRow
                 title="High Risk Finding"
                 desc="Notify me when a high-severity financial risk is detected."
-                checked={notifs.high_risk_finding !== false}
+                checked={(notifs as any).high_risk_finding !== false}
                 onChange={(v: boolean) => handleUpdate("high_risk_finding", v)}
               />
             </div>
@@ -274,25 +274,25 @@ export default function NotificationsPage() {
               <NotificationSettingRow
                 title="Agent Started"
                 desc="Notify me when an agent begins processing."
-                checked={notifs.agent_started === true} // Default false
+                checked={(notifs as any).agent_started === true} // Default false
                 onChange={(v: boolean) => handleUpdate("agent_started", v)}
               />
               <NotificationSettingRow
                 title="Agent Completed"
                 desc="Notify me when an agent completes."
-                checked={notifs.agent_completed !== false}
+                checked={(notifs as any).agent_completed !== false}
                 onChange={(v: boolean) => handleUpdate("agent_completed", v)}
               />
               <NotificationSettingRow
                 title="Agent Failed"
                 desc="Notify me when an agent fails."
-                checked={notifs.agent_failed !== false}
+                checked={(notifs as any).agent_failed !== false}
                 onChange={(v: boolean) => handleUpdate("agent_failed", v)}
               />
               <NotificationSettingRow
                 title="Pipeline Completed"
                 desc="Notify me when the complete analysis pipeline finishes."
-                checked={notifs.pipeline_completed !== false}
+                checked={(notifs as any).pipeline_completed !== false}
                 onChange={(v: boolean) => handleUpdate("pipeline_completed", v)}
               />
             </div>
@@ -309,13 +309,13 @@ export default function NotificationsPage() {
               <NotificationSettingRow
                 title="Document Processed"
                 desc="Notify me when uploaded documents finish processing."
-                checked={notifs.document_processed !== false}
+                checked={(notifs as any).document_processed !== false}
                 onChange={(v: boolean) => handleUpdate("document_processed", v)}
               />
               <NotificationSettingRow
                 title="Workspace Updates"
                 desc="Notify me about important workspace activity."
-                checked={notifs.workspace_updates === true}
+                checked={(notifs as any).workspace_updates === true}
                 onChange={(v: boolean) => handleUpdate("workspace_updates", v)}
               />
             </div>
@@ -334,19 +334,19 @@ export default function NotificationsPage() {
           </div>
           <div className="divide-y divide-border">
             <CustomRadio
-              checked={(notifs.priority || "important") === "all"}
+              checked={((notifs as any).priority || "important") === "all"}
               label="All Alerts"
               desc="Receive all enabled notifications."
               onClick={() => handleUpdate("priority", "all")}
             />
             <CustomRadio
-              checked={(notifs.priority || "important") === "important"}
+              checked={((notifs as any).priority || "important") === "important"}
               label="Important Only"
               desc="Suppress low-priority activity."
               onClick={() => handleUpdate("priority", "important")}
             />
             <CustomRadio
-              checked={(notifs.priority || "important") === "critical"}
+              checked={((notifs as any).priority || "important") === "critical"}
               label="Critical Only"
               desc="Only show security, severe risk and failed pipeline alerts."
               onClick={() => handleUpdate("priority", "critical")}
@@ -354,7 +354,7 @@ export default function NotificationsPage() {
           </div>
         </section>
 
-        <section className={cn("bg-card rounded-xl shadow-sm border border-border overflow-hidden transition-all duration-300", !notifs.quiet_hours?.enabled && "opacity-60 grayscale-[0.2]")}>
+        <section className={cn("bg-card rounded-xl shadow-sm border border-border overflow-hidden transition-all duration-300", !(notifs as any).quiet_hours?.enabled && "opacity-60 grayscale-[0.2]")}>
           <div className="px-5 py-3 border-b border-border-subtle bg-surface/50 flex items-center justify-between">
             <h3 className="text-[15px] font-semibold text-foreground flex items-center gap-2">
               <Clock className="w-4 h-4 text-muted-foreground" />
@@ -364,7 +364,7 @@ export default function NotificationsPage() {
               <input 
                 type="checkbox" 
                 className="sr-only peer" 
-                checked={notifs.quiet_hours?.enabled || false} 
+                checked={(notifs as any).quiet_hours?.enabled || false} 
                 onChange={(e) => handleUpdate("quiet_hours.enabled", e.target.checked)} 
               />
               <div className="w-[44px] h-[24px] bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500/30 rounded-full peer peer-checked:after:translate-x-[20px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-[20px] after:w-[20px] after:transition-transform after:duration-200 peer-checked:bg-primary"></div>
@@ -378,9 +378,9 @@ export default function NotificationsPage() {
                 <div className="relative">
                   <input
                     type="time"
-                    disabled={!notifs.quiet_hours?.enabled}
+                    disabled={!(notifs as any).quiet_hours?.enabled}
                     className="w-full text-[14px] rounded-lg border-border bg-surface focus:bg-card text-foreground shadow-sm disabled:opacity-50"
-                    value={notifs.quiet_hours?.start || "22:00"}
+                    value={(notifs as any).quiet_hours?.start || "22:00"}
                     onChange={(e) => handleUpdate("quiet_hours.start", e.target.value)}
                   />
                   <Clock className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -391,9 +391,9 @@ export default function NotificationsPage() {
                 <div className="relative">
                   <input
                     type="time"
-                    disabled={!notifs.quiet_hours?.enabled}
+                    disabled={!(notifs as any).quiet_hours?.enabled}
                     className="w-full text-[14px] rounded-lg border-border bg-surface focus:bg-card text-foreground shadow-sm disabled:opacity-50"
-                    value={notifs.quiet_hours?.end || "08:00"}
+                    value={(notifs as any).quiet_hours?.end || "08:00"}
                     onChange={(e) => handleUpdate("quiet_hours.end", e.target.value)}
                   />
                   <Clock className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -401,13 +401,13 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            <label className={cn("flex items-start gap-3 mt-5", !notifs.quiet_hours?.enabled ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
+            <label className={cn("flex items-start gap-3 mt-5", !(notifs as any).quiet_hours?.enabled ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
               <div className="flex items-center h-5 mt-0.5">
                 <input
                   type="checkbox"
-                  disabled={!notifs.quiet_hours?.enabled}
+                  disabled={!(notifs as any).quiet_hours?.enabled}
                   className="w-4 h-4 text-[#2563EB] border-border rounded focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50"
-                  checked={notifs.quiet_hours?.allow_critical ?? true}
+                  checked={(notifs as any).quiet_hours?.allow_critical ?? true}
                   onChange={(e) => handleUpdate("quiet_hours.allow_critical", e.target.checked)}
                 />
               </div>

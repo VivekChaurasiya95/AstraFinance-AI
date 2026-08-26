@@ -5,22 +5,8 @@ import { fetcher } from "@/lib/api";
 import { BellIcon, CheckCircleIcon, InfoIcon, AlertTriangleIcon, XCircleIcon, Loader2, CheckCheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotificationStore } from "@/hooks/useNotificationStore";
+import { formatRelativeTime } from "@/lib/timestamps";
 
-function timeAgo(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-  if (diffInSeconds < 60) return "just now";
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}h ago`;
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 30) return `${diffInDays}d ago`;
-  
-  return date.toLocaleDateString();
-}
 
 interface Notification {
   id: string;
@@ -150,7 +136,7 @@ export function NotificationsPanel({ onClose }: NotificationsPanelProps) {
                         {notif.title}
                       </p>
                       <span className="text-[10px] font-medium text-muted-foreground shrink-0 mt-0.5 whitespace-nowrap">
-                        {timeAgo(notif.created_at)}
+                        {formatRelativeTime(notif.created_at)}
                       </span>
                     </div>
                     <p className={cn("text-[13px] mt-1 line-clamp-2", !notif.read ? "text-muted-foreground font-medium" : "text-muted-foreground")}>

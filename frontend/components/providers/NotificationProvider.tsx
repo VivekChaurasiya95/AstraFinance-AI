@@ -10,9 +10,8 @@ import { InfoIcon, CheckCircleIcon, AlertTriangleIcon } from "lucide-react";
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { setInitialData, addRealTimeNotification, isInitialized } = useNotificationStore();
-  const eventSourceRef = useRef<EventSource | null>(null);
   
-  // Reconnect timeout for exponential backoff
+  const abortControllerRef = useRef<AbortController | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
 
@@ -34,102 +33,137 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     loadInitial();
   }, [user, loading, isInitialized, setInitialData]);
 
-  // 2. Establish SSE connection
+  // 2. Establish SSE connection using fetch (enables auth headers and status codes)
   useEffect(() => {
     if (!user || loading) return;
 
     let isMounted = true;
+    const MAX_RECONNECT_ATTEMPTS = 10;
 
     async function connectSSE() {
+      if (!isMounted) return;
+
+      // Stop retrying after too many failures
+      if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+        console.warn(`[SSE] Stopped reconnecting after ${MAX_RECONNECT_ATTEMPTS} failed attempts. Reload the page to retry.`);
+        return;
+      }
+
+      // Create a local AbortController for this specific connection attempt.
+      // This prevents React Strict Mode remounts from sharing/orphaning controllers.
+      const localAbort = new AbortController();
+      
+      // Abort any previous connection before establishing a new one
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = localAbort;
+
       try {
-        console.log("[SSE] Connecting...");
         const token = await user?.getIdToken(false);
-        if (!token || typeof token !== "string" || token.split(".").length !== 3) {
-          console.log("[SSE] Waiting for authentication");
-          return;
-        }
-        if (!isMounted) return;
+        // Re-check after async operation — component may have unmounted
+        if (!isMounted || localAbort.signal.aborted) return;
 
-        // Close any existing connection to prevent duplicates
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-          eventSourceRef.current = null;
+        if (!token) {
+          return; // Still waiting for auth — don't log, just bail
         }
 
-        const url = `${API_BASE_URL}/notifications/stream?token=${encodeURIComponent(token)}`;
-        
-        const eventSource = new EventSource(url);
-        eventSourceRef.current = eventSource;
+        if (reconnectAttempts.current === 0) {
+          console.log("[SSE] Connecting...");
+        }
 
-        eventSource.onopen = () => {
-          if (!isMounted) {
-            eventSource.close();
-            return;
-          }
-          console.log("[SSE] Notifications stream connected");
-          reconnectAttempts.current = 0; // Reset attempts on successful connection
-        };
-
-        // Listen for named 'notification' event
-        eventSource.addEventListener("notification", (event: MessageEvent) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === "new_notification" && data.data) {
-              const notif = data.data as Notification;
-              console.log(`[SSE] Notification received: ${notif.id}`);
-              addRealTimeNotification(notif);
-              showToast(notif);
-            }
-          } catch (err) {
-            // Ignore parse errors silently to avoid console spam
-          }
+        const url = `${API_BASE_URL}/notifications/stream`;
+        const response = await fetch(url, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Accept": "text/event-stream",
+          },
+          signal: localAbort.signal
         });
 
-        eventSource.onerror = async (error) => {
-          if (!isMounted) return;
-          eventSource.close();
-          eventSourceRef.current = null;
-          
-          if (reconnectAttempts.current === 0) {
-            // If it failed immediately, it might be an expired token (401). Force refresh it once.
-            try {
-              console.log("[SSE] Token refresh attempted");
-              const freshToken = await user?.getIdToken(true);
-              if (!freshToken) throw new Error("No token returned");
-              
-              reconnectAttempts.current += 1;
-              if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-              reconnectTimeoutRef.current = setTimeout(() => {
-                if (isMounted) connectSSE();
-              }, 1000);
-              return;
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : "Unknown";
-              if (msg.toLowerCase().includes("closing") || msg.toLowerCase().includes("hidden")) {
-                console.log(`[SSE] Connection aborted (page closing/hidden)`);
-                return;
-              }
-              console.warn(`[SSE] Token refresh failed\nreason=${msg}`);
-            }
-          }
-          
-          // Exponential backoff reconnect
-          const timeout = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
-          console.log(`[SSE] Reconnecting in ${timeout}ms...`);
-          
-          reconnectAttempts.current += 1;
-          
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          
-          reconnectTimeoutRef.current = setTimeout(() => {
-            if (isMounted) connectSSE();
-          }, timeout);
-        };
+        if (!isMounted || localAbort.signal.aborted) return;
 
-      } catch (err) {
-        console.error("Failed to initialize SSE connection:", err);
+        if (response.status === 401) {
+          console.warn("[SSE] Authentication failed, refreshing token...");
+          const freshToken = await user?.getIdToken(true);
+          if (freshToken && isMounted) {
+            reconnectAttempts.current += 1;
+            reconnectTimeoutRef.current = setTimeout(() => {
+              if (isMounted) connectSSE();
+            }, 1000);
+          }
+          return;
+        } else if (!response.ok) {
+          throw new Error(`${response.status}`);
+        }
+
+        console.log("[SSE] Notifications stream connected");
+        reconnectAttempts.current = 0; // Reset on successful connection
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No reader");
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          let boundary = buffer.indexOf('\n\n');
+          
+          while (boundary !== -1) {
+            const chunk = buffer.slice(0, boundary);
+            buffer = buffer.slice(boundary + 2);
+            
+            let dataStr = "";
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                dataStr += line.slice(6);
+              }
+            }
+
+            if (dataStr) {
+              try {
+                const data = JSON.parse(dataStr);
+                if (data.type === "new_notification" && data.data) {
+                  const notif = data.data as Notification;
+                  console.log(`[SSE] Notification received: ${notif.id}`);
+                  addRealTimeNotification(notif);
+                  showToast(notif);
+                }
+              } catch {
+                // Ignore non-JSON SSE messages (heartbeats, etc.)
+              }
+            }
+            boundary = buffer.indexOf('\n\n');
+          }
+        }
+        
+        // Server closed the connection — reconnect
+        throw new Error("Connection closed by server");
+        
+      } catch (err: any) {
+        if (!isMounted || localAbort.signal.aborted) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
+
+        reconnectAttempts.current += 1;
+        const timeout = Math.min(1000 * Math.pow(2, reconnectAttempts.current - 1), 30000);
+
+        // Only log the first few attempts; after that stay quiet  
+        if (reconnectAttempts.current <= 3) {
+          console.warn(`[SSE] Disconnected (attempt ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS}), retrying in ${timeout / 1000}s`);
+        }
+        
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+        
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (isMounted) connectSSE();
+        }, timeout);
       }
     }
 
@@ -137,18 +171,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     return () => {
       isMounted = false;
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
     };
   }, [user, loading, addRealTimeNotification]);
 
   const showToast = (notif: Notification) => {
-    // Determine icon and colors based on severity
     let icon = <InfoIcon className="w-5 h-5 text-blue-500" />;
     
     if (notif.type.includes("success") || notif.type.includes("completed")) {

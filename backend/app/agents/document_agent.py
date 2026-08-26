@@ -50,7 +50,7 @@ class DocumentAgent:
                 raise ValueError(f"No parseable text could be extracted from the document: {file_name}. Ensure it is a valid text-based PDF.")
 
             from ..embeddings.embedding_router import embedding_router
-            from ..embeddings.chroma_client import get_collection_for_provider
+            from ..embeddings.chroma_client import get_collection_for_provider, chroma_lock
             from typing import Any, cast
             
             # Generate embeddings via the resilient router
@@ -64,12 +64,13 @@ class DocumentAgent:
             
             collection = get_collection_for_provider(provider, model_name)
             
-            collection.upsert(
-                ids=ids,
-                documents=chunks,
-                metadatas=cast(Any, metadata_list),
-                embeddings=cast(Any, embeddings_list)
-            )
+            with chroma_lock:
+                collection.upsert(
+                    ids=ids,
+                    documents=chunks,
+                    metadatas=cast(Any, metadata_list),
+                    embeddings=cast(Any, embeddings_list)
+                )
             
             logger.info(f"Indexed {len(chunks)} chunks for document {document_id} using {provider} ({model_name})")
             return {"chunks": len(chunks)}

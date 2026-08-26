@@ -12,6 +12,7 @@ import aiofiles
 import traceback
 import re
 from loguru import logger
+from ...utils.timestamps import to_iso_utc, utc_now
 
 from ...schemas.workspace_schema import (
     WorkspaceCreate,
@@ -92,10 +93,18 @@ async def maybe_notify_user(user_id: str, setting_key: str, category: str, prior
 def format_workspace(ws: dict) -> dict:
     if "_id" in ws:
         ws["id"] = ws.pop("_id")
+    
+    # Format updated_at using canonical UTC serializer
     if "updated_at" in ws and isinstance(ws["updated_at"], datetime):
-        ws["updatedAt"] = ws["updated_at"].isoformat()
+        ws["updatedAt"] = to_iso_utc(ws["updated_at"])
     elif "updatedAt" not in ws:
-        ws["updatedAt"] = datetime.now(timezone.utc).isoformat()
+        ws["updatedAt"] = to_iso_utc(utc_now())
+        
+    # Format created_at if present
+    if "created_at" in ws and isinstance(ws["created_at"], datetime):
+        ws["createdAt"] = to_iso_utc(ws["created_at"])
+    elif "createdAt" not in ws:
+        ws["createdAt"] = ws.get("updatedAt") # Fallback for old workspaces
     
     ws["defaults"] = ws.get("defaults", {"ai_provider": "Groq", "response_style": "Professional"})
     
@@ -155,7 +164,7 @@ async def update_workspace(workspace_id: str, update_req: WorkspaceUpdateRequest
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
         
-    update_data: Dict[str, Any] = {"updated_at": datetime.now(timezone.utc)}
+    update_data: Dict[str, Any] = {"updated_at": utc_now()}
     if update_req.name is not None:
         update_data["name"] = update_req.name
     if update_req.description is not None:
@@ -235,7 +244,7 @@ async def invite_workspace_member(workspace_id: str, invite: WorkspaceInviteRequ
     new_member = {
         "user_id": target_id,
         "role": invite.role,
-        "added_at": datetime.now(timezone.utc)
+        "added_at": utc_now()
     }
     
     await workspaces_collection.update_one(
@@ -319,8 +328,8 @@ async def create_workspace(workspace: WorkspaceCreate, current_user: dict = Depe
         "icon": "Building2",
         "iconColor": color_pair[0],
         "iconBg": color_pair[1],
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc)
+        "created_at": utc_now(),
+        "updated_at": utc_now()
     }
     
     await workspaces_collection.insert_one(new_ws)
@@ -335,7 +344,7 @@ async def rename_workspace(workspace_id: str, workspace: WorkspaceCreate, curren
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
         
-    update_data = {"name": workspace.name, "updated_at": datetime.now(timezone.utc)}
+    update_data = {"name": workspace.name, "updated_at": utc_now()}
     if workspace.description:
         update_data["description"] = workspace.description
         
@@ -358,8 +367,8 @@ async def duplicate_workspace(workspace_id: str, current_user: dict = Depends(ge
     new_ws = dict(ws)
     new_ws["_id"] = str(uuid.uuid4())
     new_ws["name"] = ws["name"] + " (Copy)"
-    new_ws["created_at"] = datetime.now(timezone.utc)
-    new_ws["updated_at"] = datetime.now(timezone.utc)
+    new_ws["created_at"] = utc_now()
+    new_ws["updated_at"] = utc_now()
     new_ws["docs"] = 0
     new_ws["chats"] = 0
     new_ws["reports"] = 0
@@ -947,7 +956,7 @@ async def get_workspace_agent_activity(workspace_id: str, current_user: dict = D
         log["details"] = log.get("details", "")
         
         if "timestamp" in log and isinstance(log["timestamp"], datetime):
-            log["timestamp"] = log["timestamp"].strftime("%I:%M:%S %p")
+            log["timestamp"] = to_iso_utc(log["timestamp"])
         logs.append(log)
         
     return {"timeline": logs}

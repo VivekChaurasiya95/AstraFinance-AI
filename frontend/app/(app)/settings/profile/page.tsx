@@ -83,7 +83,7 @@ export default function ProfileConfigurationPage() {
     } catch (e: any) {
       console.error(e);
       setSaveState("error");
-      setNameError(e.message || "Failed to save name.");
+      setNameError((e instanceof Error ? e.message : String(e)) || "Failed to save name.");
       setTimeout(() => setSaveState("idle"), 3000);
     }
   }, [name, updateDbUser]);
@@ -127,7 +127,7 @@ export default function ProfileConfigurationPage() {
           });
           updateDbUser({ profile_picture: base64 });
         } catch (err: any) {
-          setPhotoError(err.message || "Failed to upload photo.");
+          setPhotoError((err instanceof Error ? err.message : String(err)) || "Failed to upload photo.");
         } finally {
           setPhotoUploading(false);
         }
@@ -148,7 +148,7 @@ export default function ProfileConfigurationPage() {
       await fetcher("/auth/profile/photo", { method: "DELETE" });
       updateDbUser({ profile_picture: null });
     } catch (err: any) {
-      setPhotoError(err.message || "Failed to remove photo.");
+      setPhotoError((err instanceof Error ? err.message : String(err)) || "Failed to remove photo.");
     } finally {
       setPhotoUploading(false);
     }

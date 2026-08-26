@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Search,
   Upload,
@@ -27,7 +28,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fetcher, API_BASE_URL } from "@/lib/api";
+import { fetcher, API_BASE_URL, uploadMultipart } from "@/lib/api";
 import type { Document, Metric, RedFlag } from "./types";
 import { DocumentProcessingView } from "./DocumentProcessingView";
 
@@ -352,14 +353,19 @@ function DeleteConfirmModal({
   onClose: () => void;
   onConfirm: () => void;
 }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-card rounded-2xl shadow-2xl border border-border w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center gap-3 mb-4">
+      <div className="relative bg-card rounded-2xl shadow-xl border border-border w-[90vw] sm:w-[350px] shrink-0 p-5 animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
             <AlertTriangle className="w-5 h-5 text-destructive" />
           </div>
@@ -369,33 +375,38 @@ function DeleteConfirmModal({
             </h3>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground leading-relaxed mb-1">
-          This will permanently delete{" "}
-          <span className="font-semibold text-foreground">
+        
+        <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+          Permanently delete{" "}
+          <span className="font-semibold text-foreground break-all">
             &quot;{doc.name}&quot;
           </span>
-          .
+          ?
         </p>
-        <p className="text-xs text-muted-foreground mb-6">
-          All associated metrics, red flags, chat citations, and embeddings tied
-          only to this document will be removed.
-        </p>
-        <div className="flex justify-end gap-3">
+        
+        <div className="bg-orange-50 border border-orange-100/50 rounded-xl p-3 mb-5">
+          <p className="text-[13px] text-orange-800/80 leading-relaxed">
+            All associated metrics, red flags, and citations will be erased. This action cannot be undone.
+          </p>
+        </div>
+
+        <div className="flex justify-end gap-2.5">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-muted-foreground bg-surface rounded-xl hover:bg-surface transition-colors"
+            className="px-4 py-2 text-sm font-medium text-foreground bg-surface rounded-xl hover:bg-surface-hover transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-destructive rounded-xl hover:bg-destructive/90 transition-colors shadow-sm"
           >
             Delete
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -412,7 +423,6 @@ export function DocumentsTab({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [companyFilter, setCompanyFilter] = useState("all");
   const [layoutMode, setLayoutMode] = useState<"table" | "grid">("table");
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [deleteDoc, setDeleteDoc] = useState<Document | null>(null);
@@ -443,10 +453,8 @@ export function DocumentsTab({
     const formData = new FormData();
     files.forEach((f) => formData.append("files", f));
     try {
-      await fetch(`${API_BASE_URL}/workspaces/${workspaceId}/documents`, {
-        method: "POST",
-        body: formData,
-      });
+      await uploadMultipart(`/workspaces/${workspaceId}/documents`, formData);
+      loadDocuments();
     } catch (e) {
       console.error("Upload failed", e);
       setView("list");
@@ -458,13 +466,17 @@ export function DocumentsTab({
       await fetcher(`/workspaces/${workspaceId}/documents/${docId}`, {
         method: "DELETE",
       });
-      setDocuments((prev) => prev.filter((d) => d.id !== docId));
-      onDocCountChange(documents.length - 1);
-      if (selectedDoc?.id === docId) setSelectedDoc(null);
-      setDeleteDoc(null);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Delete failed:", e);
+      if (!e.message?.includes("404")) {
+        return;
+      }
     }
+    
+    setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    onDocCountChange(documents.length - 1);
+    if (selectedDoc?.id === docId) setSelectedDoc(null);
+    setDeleteDoc(null);
   };
 
   const handleProcessingComplete = useCallback(() => {
@@ -537,26 +549,28 @@ export function DocumentsTab({
       {/* Main content */}
       <div className="flex-1 flex flex-col p-6 min-w-0">
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
           <div>
-            <h3 className="text-lg font-bold text-foreground">Documents</h3>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <h3 className="text-xl font-bold text-foreground tracking-tight">Documents</h3>
+            <p className="text-sm text-muted-foreground mt-1">
               {documents.length} document{documents.length !== 1 ? "s" : ""} in
               this workspace
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 bg-card p-1.5 rounded-2xl border border-border shadow-sm">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 border border-border rounded-lg text-sm bg-card focus:ring-2 focus:ring-blue-500 outline-none w-56 shadow-sm"
+                className="w-full pl-9 pr-4 py-2 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
             </div>
+
+            <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
 
             {/* Status filter */}
             <div className="relative">
@@ -564,7 +578,7 @@ export function DocumentsTab({
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="pl-9 pr-8 py-2 border border-border rounded-lg text-sm bg-card text-foreground outline-none cursor-pointer hover:bg-surface shadow-sm appearance-none"
+                className="pl-9 pr-8 py-2 text-sm bg-transparent text-foreground outline-none cursor-pointer appearance-none font-medium hover:bg-surface rounded-xl transition-colors"
               >
                 <option value="all">Status: All</option>
                 <option value="ready">Ready</option>
@@ -574,27 +588,17 @@ export function DocumentsTab({
               <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Company filter */}
-            <div className="relative">
-              <select
-                value={companyFilter}
-                onChange={(e) => setCompanyFilter(e.target.value)}
-                className="pl-3 pr-8 py-2 border border-border rounded-lg text-sm bg-card text-foreground outline-none cursor-pointer hover:bg-surface shadow-sm appearance-none"
-              >
-                <option value="all">Company: All</option>
-              </select>
-              <ChevronDown className="w-4 h-4 text-muted-foreground absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+            <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
 
             {/* Layout toggle */}
-            <div className="flex border border-border rounded-lg overflow-hidden shadow-sm">
+            <div className="flex bg-surface/50 rounded-xl p-1">
               <button
                 onClick={() => setLayoutMode("grid")}
                 className={cn(
-                  "p-2 transition-colors",
+                  "p-1.5 rounded-lg transition-all",
                   layoutMode === "grid"
-                    ? "bg-primary/10 text-primary"
-                    : "bg-card text-muted-foreground hover:text-foreground"
+                    ? "bg-card text-primary shadow-sm ring-1 ring-border"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface"
                 )}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -602,10 +606,10 @@ export function DocumentsTab({
               <button
                 onClick={() => setLayoutMode("table")}
                 className={cn(
-                  "p-2 transition-colors",
+                  "p-1.5 rounded-lg transition-all",
                   layoutMode === "table"
-                    ? "bg-primary/10 text-primary"
-                    : "bg-card text-muted-foreground hover:text-foreground"
+                    ? "bg-card text-primary shadow-sm ring-1 ring-border"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface"
                 )}
               >
                 <LayoutList className="w-4 h-4" />
@@ -615,7 +619,7 @@ export function DocumentsTab({
             {/* Upload button */}
             <button
               onClick={() => setView("upload")}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+              className="ml-1 flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/90 transition-all shadow-sm shrink-0 whitespace-nowrap"
             >
               <Upload className="w-4 h-4" />
               Upload PDF
@@ -628,11 +632,10 @@ export function DocumentsTab({
           <div className="flex-1 bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
             {/* Header */}
             <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border-subtle bg-surface text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              <div className="col-span-4">Document</div>
+              <div className="col-span-5">Document</div>
               <div className="col-span-1">Pages</div>
               <div className="col-span-2">Uploaded</div>
-              <div className="col-span-2">Status</div>
-              <div className="col-span-3 text-right">Actions</div>
+              <div className="col-span-4 text-right">Status & Actions</div>
             </div>
             {/* Body */}
             <div className="flex-1 overflow-y-auto divide-y divide-border">
@@ -656,7 +659,7 @@ export function DocumentsTab({
                     onClick={() => setSelectedDoc(doc)}
                   >
                     {/* Document info */}
-                    <div className="col-span-4 flex items-center gap-3">
+                    <div className="col-span-5 flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-destructive/10 border border-red-100 flex items-center justify-center shrink-0">
                         <FileText className="w-4 h-4 text-destructive" />
                       </div>
@@ -689,72 +692,55 @@ export function DocumentsTab({
                       {doc.uploaded_at}
                     </div>
 
-                    {/* Status */}
-                    <div className="col-span-2">
-                      {doc.status === "ready" ||
-                      doc.status === "processed" ? (
-                        <div>
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 border border-success/50 px-2.5 py-1 rounded-full">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Ready
-                          </span>
-                          <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Indexed
-                          </p>
-                        </div>
-                      ) : doc.status === "processing" ? (
-                        <div>
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 border border-primary/50 px-2.5 py-1 rounded-full">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
-                            Processing
-                          </span>
-                          <div className="mt-1.5">
-                            <p className="text-[10px] text-muted-foreground mb-1">
-                              {doc.processing_step || 1} of 5 steps
-                            </p>
-                            <div className="h-1.5 bg-surface rounded-full overflow-hidden w-24">
-                              <div
-                                className="h-full bg-primary rounded-full transition-all duration-500"
-                                style={{
-                                  width: `${doc.progress || ((doc.processing_step || 1) / 5) * 100}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/50 px-2.5 py-1 rounded-full">
-                            <XCircle className="w-3.5 h-3.5" /> Failed
-                          </span>
-                          <p className="text-[10px] text-red-400 mt-1 italic">
-                            Parsing failed
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
+                    {/* Status and Actions */}
                     <div
-                      className="col-span-3 flex items-center justify-end gap-2"
+                      className="col-span-4 flex items-center justify-end gap-3"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {(doc.status === "ready" ||
-                        doc.status === "processed") && (
-                        <>
-                          <button className="flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 border border-primary/50 px-2.5 py-1.5 rounded-lg hover:bg-primary/20 transition-colors">
-                            <BarChart2 className="w-3 h-3" /> View Metrics
-                          </button>
-                          <button className="flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 px-2.5 py-1.5 rounded-lg hover:bg-orange-100 transition-colors">
-                            <ShieldAlert className="w-3 h-3" /> View Red Flags
-                          </button>
-                        </>
-                      )}
+                      {/* Status */}
+                      <div>
+                        {doc.status === "ready" || doc.status === "processed" ? (
+                          <div className="flex flex-col items-end">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-success bg-success/10 border border-success/50 px-2.5 py-1 rounded-full shadow-sm">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Ready
+                            </span>
+                          </div>
+                        ) : doc.status === "processing" ? (
+                          <div className="flex flex-col items-end">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 border border-primary/50 px-2.5 py-1 rounded-full shadow-sm">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
+                              Processing
+                            </span>
+                            <div className="mt-1.5 w-24">
+                              <div className="h-1.5 bg-surface rounded-full overflow-hidden w-full border border-border-subtle">
+                                <div
+                                  className="h-full bg-primary rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${doc.progress || ((doc.processing_step || 1) / 5) * 100}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-end">
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/50 px-2.5 py-1 rounded-full shadow-sm">
+                              <XCircle className="w-3.5 h-3.5" /> Failed
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="w-[1px] h-8 bg-border-subtle mx-1" />
+
+                      {/* Delete Button */}
                       <button
                         onClick={() => setDeleteDoc(doc)}
-                        className="p-1.5 text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
-                        title="Delete"
+                        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-destructive bg-surface hover:bg-destructive/10 border border-border-subtle hover:border-destructive/20 px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+                        title="Delete Document"
                       >
-                        <MoreVertical className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
                       </button>
                     </div>
                   </div>

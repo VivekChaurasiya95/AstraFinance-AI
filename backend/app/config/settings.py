@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     VISION_FALLBACK_MODEL: str = "gemini-3.5-flash"
 
     FIREBASE_SERVICE_ACCOUNT_KEY: str = "app/config/astrafinance-ai-firebase-adminsdk-fbsvc-78efa35b8d.json"
+    REDIS_URL: str = "redis://localhost:6380/0"
 
     # JWT_SECRET_KEY: str
     # JWT_ALGORITHM: str

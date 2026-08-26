@@ -1,18 +1,7 @@
 import { auth } from "./firebase";
 import { getIdToken } from "firebase/auth";
 
-let baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
-
-if (typeof window !== "undefined") {
-  const host = window.location.hostname;
-  if (host !== "localhost" && host !== "127.0.0.1") {
-    const portMatch = baseUrl.match(/:(\d+)/);
-    const backendPort = portMatch ? portMatch[1] : "8000";
-    baseUrl = `http://${host}:${backendPort}/api/v1`;
-  }
-}
-
-export const API_BASE_URL = baseUrl.replace(/\/$/, "");
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "/api/backend").replace(/\/$/, "");
 
 export async function fetcher<T>(
   endpoint: string,
@@ -43,33 +32,33 @@ export async function fetcher<T>(
   }
 
   let response: Response;
-  console.debug("[AgentOrchestration] API request:", url);
+  const method = options?.method || "GET";
+  
   try {
     response = await fetch(url, {
       ...options,
       headers,
     });
-  } catch (error) {
-    const method = options?.method || "GET";
-    console.warn(`[API] Backend unavailable\nmethod=${method}\nendpoint=${endpoint}\nreason=network_error`);
+  } catch (error: any) {
+    if (error.name !== "AbortError") {
+      console.warn(`[API] Backend unavailable\nmethod=${method}\nendpoint=${endpoint}\nreason=network_error`);
+    }
     throw error;
   }
 
   // Token refresh logic
   if (!response.ok && response.status === 401 && typeof window !== "undefined" && auth.currentUser) {
-    console.warn(`[API] 401 on ${url}, attempting token refresh...`);
     try {
       const freshToken = await getIdToken(auth.currentUser, true);
       headers["Authorization"] = `Bearer ${freshToken}`;
       response = await fetch(url, { ...options, headers });
-    } catch (refreshError) {
-      console.warn(`[API] Token refresh failed:`, refreshError);
+    } catch {
+      // Refresh failed silently
     }
   }
 
   if (!response.ok) {
     let errorMsg = `API error: ${response.status} ${response.statusText}`;
-    const method = options?.method || "GET";
     
     if (response.status === 401) {
       errorMsg = "Authentication problem: Not authenticated";
@@ -79,7 +68,9 @@ export async function fetcher<T>(
       console.warn(`[API] Authorization required\nmethod=${method}\nendpoint=${endpoint}\nstatus=403`);
     } else if (response.status >= 500) {
       errorMsg = "Backend error: Server encountered an error";
-      console.error(`[API] Server error\nmethod=${method}\nendpoint=${endpoint}\nstatus=${response.status}`);
+      console.warn(`[API] Server error\nmethod=${method}\nendpoint=${endpoint}\nstatus=${response.status}`);
+    } else if (response.status === 404) {
+      console.warn(`[API] Not found\nmethod=${method}\nendpoint=${endpoint}\nstatus=404`);
     }
 
     try {
@@ -120,6 +111,7 @@ export async function uploadMultipart<T>(
   }
 
   let response: Response;
+  const method = "POST";
   try {
     response = await fetch(url, {
       method: "POST",
@@ -127,19 +119,18 @@ export async function uploadMultipart<T>(
       headers,
     });
   } catch (error) {
-    console.warn(`[API] Backend unavailable\nmethod=POST\nendpoint=${endpoint}\nreason=network_error`);
+    console.warn(`[API] Backend unavailable\nmethod=${method}\nendpoint=${endpoint}\nreason=network_error`);
     throw error;
   }
 
   // Token refresh logic
   if (!response.ok && response.status === 401 && typeof window !== "undefined" && auth.currentUser) {
-    console.warn(`[API] 401 on ${url}, attempting token refresh...`);
     try {
       const freshToken = await getIdToken(auth.currentUser, true);
       headers["Authorization"] = `Bearer ${freshToken}`;
       response = await fetch(url, { method: "POST", body: formData, headers });
-    } catch (refreshError) {
-      console.warn("[API] Token refresh failed:", refreshError);
+    } catch {
+      // Refresh failed
     }
   }
 
@@ -148,10 +139,13 @@ export async function uploadMultipart<T>(
     
     if (response.status === 401) {
       errorMsg = "Authentication problem: Not authenticated";
-      console.warn(`[API] Authentication required\nmethod=POST\nendpoint=${endpoint}\nstatus=401`);
+      console.warn(`[API] Authentication required\nmethod=${method}\nendpoint=${endpoint}\nstatus=401`);
+    } else if (response.status === 403) {
+      errorMsg = "Authorization problem: Access denied";
+      console.warn(`[API] Authorization required\nmethod=${method}\nendpoint=${endpoint}\nstatus=403`);
     } else if (response.status >= 500) {
       errorMsg = "Backend error: Server encountered an error";
-      console.error(`[API] Server error\nmethod=POST\nendpoint=${endpoint}\nstatus=${response.status}`);
+      console.warn(`[API] Server error\nmethod=${method}\nendpoint=${endpoint}\nstatus=${response.status}`);
     }
 
     try {
@@ -194,39 +188,40 @@ export async function fetchBlob(
   }
 
   let response: Response;
+  const method = options?.method || "GET";
   try {
     response = await fetch(url, {
       ...options,
       headers,
     });
   } catch (error) {
-    const method = options?.method || "GET";
     console.warn(`[API] Backend unavailable\nmethod=${method}\nendpoint=${endpoint}\nreason=network_error`);
     throw error;
   }
 
   // Token refresh logic
   if (!response.ok && response.status === 401 && typeof window !== "undefined" && auth.currentUser) {
-    console.warn(`[API] 401 on ${url}, attempting token refresh...`);
     try {
       const freshToken = await getIdToken(auth.currentUser, true);
       headers["Authorization"] = `Bearer ${freshToken}`;
       response = await fetch(url, { ...options, headers });
-    } catch (refreshError) {
-      console.warn("[API] Token refresh failed:", refreshError);
+    } catch {
+      // Silent
     }
   }
 
   if (!response.ok) {
     let errorMsg = `API error: ${response.status} ${response.statusText}`;
-    const method = options?.method || "GET";
     
     if (response.status === 401) {
       errorMsg = "Authentication problem: Not authenticated";
       console.warn(`[API] Authentication required\nmethod=${method}\nendpoint=${endpoint}\nstatus=401`);
+    } else if (response.status === 403) {
+      errorMsg = "Authorization problem: Access denied";
+      console.warn(`[API] Authorization required\nmethod=${method}\nendpoint=${endpoint}\nstatus=403`);
     } else if (response.status >= 500) {
       errorMsg = "Backend error: Server encountered an error";
-      console.error(`[API] Server error\nmethod=${method}\nendpoint=${endpoint}\nstatus=${response.status}`);
+      console.warn(`[API] Server error\nmethod=${method}\nendpoint=${endpoint}\nstatus=${response.status}`);
     }
 
     try {

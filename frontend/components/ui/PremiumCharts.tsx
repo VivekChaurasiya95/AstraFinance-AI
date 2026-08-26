@@ -35,7 +35,7 @@ const parseNum = (val: string | number | undefined | null): number => {
 };
 
 // ── 1. Recharts Donut ────────────────────────────────────────────────────────
-export function DonutChart({ segments }: { segments: any[] }) {
+export function DonutChart({ segments }: { segments: Record<string, any>[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   if (!segments || !Array.isArray(segments) || segments.length === 0) {
@@ -102,7 +102,7 @@ export function DonutChart({ segments }: { segments: any[] }) {
 }
 
 // ── 2. Recharts Area Trend ─────────────────────────────────────────────
-export function QuarterlyTrendChart({ trendData }: { trendData: any[] }) {
+export function QuarterlyTrendChart({ trendData }: { trendData: Record<string, any>[] }) {
   if (!trendData || !Array.isArray(trendData) || trendData.length === 0 || trendData[0].quarter == null) {
     return <div className="w-full h-40 flex items-center justify-center text-muted-foreground">No data</div>;
   }
@@ -178,7 +178,7 @@ export function QuarterlyTrendChart({ trendData }: { trendData: any[] }) {
 }
 
 // ── 3. Recharts Geography Bar (Replacing Polar) ────────────────────────
-export function GeographySplitChart({ splitData }: { splitData: any[] }) {
+export function GeographySplitChart({ splitData }: { splitData: Record<string, any>[] }) {
   if (!splitData || !Array.isArray(splitData) || splitData.length === 0) {
     return <div className="w-full h-40 flex items-center justify-center text-muted-foreground">No data</div>;
   }
@@ -204,7 +204,7 @@ export function GeographySplitChart({ splitData }: { splitData: any[] }) {
 }
 
 // ── 4. Recharts Key Metrics Bar (Log Scale Alternative) ────────────────────────
-export function KeyMetricsBarChart({ metrics }: { metrics: any[] }) {
+export function KeyMetricsBarChart({ metrics }: { metrics: Record<string, any>[] }) {
   const validMetrics = metrics
     .map(m => ({ name: m.label, Value: parseNum(m.value) }))
     .filter(m => Number.isFinite(m.Value) && m.Value > 0);
@@ -285,7 +285,7 @@ export function CircularGauge({ value, label }: { value: number | string; label:
 }
 
 // ── 6. Recharts Key Metrics Radar ───────────────────────────────────────────
-export function KeyMetricsRadarChart({ metrics }: { metrics: any[] }) {
+export function KeyMetricsRadarChart({ metrics }: { metrics: Record<string, any>[] }) {
   const validMetrics = metrics
     .map(m => ({ label: m.label, numVal: parseNum(m.value) }))
     .filter(m => Number.isFinite(m.numVal) && m.numVal > 0);

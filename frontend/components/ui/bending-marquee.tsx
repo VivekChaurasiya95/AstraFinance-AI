@@ -21,7 +21,7 @@ export function BendingMarquee({
   useAnimationFrame((t, delta) => {
     // Increase offset. Speed controls how fast. 
     // Decrease speed further as requested (divided by 120)
-    let moveBy = speed * (delta / 120);
+    const moveBy = speed * (delta / 120);
     
     // We'll map the offset from 0 to 50% since we duplicate the text twice.
     // If it exceeds 50%, we wrap it back to 0.

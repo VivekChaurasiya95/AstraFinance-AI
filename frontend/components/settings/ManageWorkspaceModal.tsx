@@ -46,7 +46,7 @@ export function ManageWorkspaceModal({ isOpen, onClose, workspace, onSave }: Man
       });
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to update workspace.");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to update workspace.");
     } finally {
       setLoading(false);
     }

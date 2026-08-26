@@ -13,7 +13,11 @@ import {
   X,
   FileText,
   ChevronRight,
-  Plus
+  Plus,
+  Sparkles,
+  TrendingUp,
+  DollarSign,
+  Percent
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetcher, API_BASE_URL, uploadMultipart } from "@/lib/api";
@@ -134,7 +138,7 @@ export default function ComparePage() {
       })
       .catch((err) => {
         console.error("[Compare] Load failed:", err);
-        setError(err.message || "Failed to load comparison data.");
+        setError((err instanceof Error ? err.message : String(err)) || "Failed to load comparison data.");
       })
       .finally(() => setLoading(false));
   };
@@ -408,12 +412,14 @@ export default function ComparePage() {
         ) : (
           <>
             {/* Comparison Table */}
-            <div className="bg-card border border-border rounded-xl shadow-sm overflow-x-auto">
+            <div className="bg-card border border-border rounded-2xl shadow-sm overflow-x-auto overflow-y-hidden mb-6">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border-subtle bg-background/80">
-                    <th className="text-left py-3.5 px-5 text-xs font-bold text-muted-foreground uppercase tracking-wider min-w-[160px] sticky left-0 bg-surface/95 backdrop-blur z-10 border-r border-border-subtle">
-                      Metric
+                  <tr className="border-b border-border bg-surface/30">
+                    <th className="text-left px-6 pt-12 pb-5 align-bottom min-w-[180px] sticky left-0 bg-slate-50/90 dark:bg-slate-900/80 backdrop-blur z-20 border-r border-border-subtle shadow-[1px_0_0_0_rgba(0,0,0,0.05)]">
+                      <span className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-widest">
+                        Metric
+                      </span>
                     </th>
                     {data.financial_metrics?.map((p, i) => {
                       const c = COLORS[i % COLORS.length];
@@ -423,14 +429,15 @@ export default function ComparePage() {
                         <th
                           key={`${ticker}-${i}`}
                           className={cn(
-                            "text-center py-3.5 px-4 font-bold text-sm min-w-[140px]",
-                            isBase ? "bg-primary/10/60" : ""
+                            "text-center py-4 px-5 min-w-[160px] relative align-bottom",
+                            isBase ? "bg-primary/5" : ""
                           )}
                         >
-                          <div className="flex flex-col items-center gap-1">
+                          {isBase && <div className="absolute inset-x-0 top-0 h-1 bg-primary" />}
+                          <div className="flex flex-col items-center gap-1.5 mt-2">
                             <span
                               className={cn(
-                                "text-[11px] font-extrabold px-2.5 py-0.5 rounded-full",
+                                "text-[11px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider shadow-sm",
                                 isBase
                                   ? "bg-primary text-white"
                                   : `${c.bg} ${c.text}`
@@ -438,11 +445,11 @@ export default function ComparePage() {
                             >
                               {ticker}
                             </span>
-                            <span className={isBase ? "text-primary text-xs" : "text-foreground text-xs"}>
+                            <span className={cn("text-xs font-bold leading-tight max-w-[140px]", isBase ? "text-primary" : "text-foreground")}>
                               {p.company_name}
                             </span>
                             {isBase && (
-                              <span className="text-[10px] text-primary font-normal flex items-center gap-0.5">
+                              <span className="text-[10px] text-primary/80 font-semibold flex items-center gap-1 mt-0.5 bg-primary/10 px-2.5 py-0.5 rounded-full">
                                 <Crown className="w-3 h-3" /> Base
                               </span>
                             )}
@@ -452,15 +459,16 @@ export default function ComparePage() {
                     })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
-                  {METRIC_ROWS.map((row) => {
+                <tbody>
+                  {METRIC_ROWS.map((row, rowIdx) => {
                     const winner = bestForMetric(row.key, row.higherBetter);
+                    const isLast = rowIdx === METRIC_ROWS.length - 1;
                     return (
                       <tr
                         key={row.key}
-                        className="hover:bg-surface/60 transition-colors"
+                        className={cn("hover:bg-surface/60 transition-colors group", !isLast && "border-b border-border-subtle")}
                       >
-                        <td className="py-3 px-5 text-xs font-semibold text-muted-foreground sticky left-0 bg-card/95 backdrop-blur z-10 border-r border-border-subtle">
+                        <td className="py-4 px-6 text-[13px] font-bold text-foreground/90 sticky left-0 bg-slate-50/90 dark:bg-slate-900/80 backdrop-blur z-10 border-r border-border-subtle shadow-[1px_0_0_0_rgba(0,0,0,0.05)] group-hover:bg-slate-100 dark:group-hover:bg-slate-800 transition-colors">
                           {row.label}
                         </td>
                         {data.financial_metrics?.map((p, i) => {
@@ -472,15 +480,15 @@ export default function ComparePage() {
                             <td
                               key={`${p.company_name}-${i}`}
                               className={cn(
-                                "py-3 px-4 text-center font-semibold text-sm",
-                                isBase ? "bg-primary/10/30" : "",
-                                isWinner ? "text-success" : "text-foreground"
+                                "py-4 px-5 text-center text-[13px]",
+                                isBase ? "bg-primary/5" : "",
+                                isWinner ? "font-bold text-success" : "font-semibold text-foreground/90"
                               )}
                             >
-                              <div className="flex items-center justify-center gap-1">
+                              <div className="flex items-center justify-center gap-1.5">
                                 {display}
                                 {isWinner && (
-                                  <Trophy className="w-3 h-3 text-amber-500" />
+                                  <Trophy className="w-3.5 h-3.5 text-amber-500 drop-shadow-sm" />
                                 )}
                               </div>
                             </td>
@@ -504,42 +512,77 @@ export default function ComparePage() {
                     value: numVal !== null ? numVal : 0,
                   };
                 }) || [];
-                const maxVal = Math.max(...vals.map((v) => v.value));
+                const maxAbs = Math.max(...vals.map(v => Math.abs(v.value)), 1);
+                const hasNegative = vals.some(v => v.value < 0);
+                
                 return (
                   <div
                     key={cm.key}
-                    className="bg-card border border-border rounded-xl p-4 shadow-sm"
+                    className="bg-card border border-border rounded-xl p-5 shadow-sm hover:border-primary/40 transition-colors group"
                   >
-                    <h5 className="text-xs font-bold text-muted-foreground mb-3">
+                    <h5 className="text-[12px] font-bold text-muted-foreground mb-6 text-center uppercase tracking-wider">
                       {cm.label}
                     </h5>
-                    <div className="flex items-end gap-2 h-28">
-                      {vals.map((v, i) => {
-                        const c = COLORS[i % COLORS.length];
-                        const hPct = maxVal > 0 ? (v.value / maxVal) * 100 : 0;
-                        return (
-                          <div
-                            key={`${v.ticker}-${i}`}
-                            className="flex-1 flex flex-col items-center gap-1"
-                          >
-                            <span className="text-[10px] font-bold text-muted-foreground">
-                              {v.value}
-                            </span>
-                            <div className="w-full flex items-end" style={{ height: "72px" }}>
-                              <div
-                                className="w-full rounded-t-md transition-all duration-500"
-                                style={{
-                                  height: `${Math.max(5, hPct)}%`,
-                                  backgroundColor: c.bar,
-                                }}
-                              />
+                    <div className="relative w-full h-32 mb-2">
+                      {/* Zero Line */}
+                      {hasNegative && (
+                        <div className="absolute top-1/2 left-0 right-0 h-px bg-border-strong border-dashed z-0 opacity-60" />
+                      )}
+                      
+                      <div className="absolute inset-0 flex justify-around items-end h-full">
+                        {vals.map((v, i) => {
+                          const c = COLORS[i % COLORS.length];
+                          const isNeg = v.value < 0;
+                          const baseline = hasNegative ? '50%' : '0%';
+                          const heightPct = hasNegative 
+                            ? (Math.abs(v.value) / maxAbs) * 40 
+                            : (Math.abs(v.value) / maxAbs) * 85;
+                            
+                          return (
+                            <div key={`${v.ticker}-${i}`} className="relative w-12 h-full flex justify-center z-10">
+                              {isNeg ? (
+                                <>
+                                  <div
+                                    className="absolute w-8 sm:w-10 rounded-b-md transition-all duration-700 shadow-sm"
+                                    style={{
+                                      top: '50%',
+                                      height: `${Math.max(1.5, heightPct)}%`,
+                                      backgroundColor: 'var(--destructive)',
+                                    }}
+                                  />
+                                  <span
+                                    className="absolute text-[11px] font-bold text-destructive"
+                                    style={{ top: `calc(50% + ${Math.max(1.5, heightPct)}% + 6px)` }}
+                                  >
+                                    {v.value}
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <div
+                                    className="absolute w-8 sm:w-10 rounded-t-md transition-all duration-700 shadow-sm"
+                                    style={{
+                                      bottom: baseline,
+                                      height: `${Math.max(1.5, heightPct)}%`,
+                                      backgroundColor: c.bar,
+                                    }}
+                                  />
+                                  <span
+                                    className="absolute text-[11px] font-bold text-foreground"
+                                    style={{ bottom: `calc(${baseline} + ${Math.max(1.5, heightPct)}% + 6px)` }}
+                                  >
+                                    {v.value}
+                                  </span>
+                                </>
+                              )}
+                              
+                              <span className="absolute -bottom-6 text-[10px] font-bold text-foreground/80 uppercase tracking-widest">
+                                {v.ticker}
+                              </span>
                             </div>
-                            <span className="text-[9px] font-bold text-muted-foreground">
-                              {v.ticker}
-                            </span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 );
@@ -548,38 +591,69 @@ export default function ComparePage() {
 
             {/* Comparison Analysis */}
             {data.comparison_analysis && (
-              <div className="bg-card border border-border rounded-xl p-6 shadow-sm mt-6">
-                <h4 className="text-sm font-bold text-foreground mb-6 flex items-center gap-2">
-                  <GitCompareArrows className="w-5 h-5 text-primary" />
-                  AI Comparison Analysis
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {data.comparison_analysis.revenue_analysis && (
-                    <div className="space-y-2">
-                      <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Revenue</h5>
-                      <p className="text-sm text-foreground leading-relaxed">{data.comparison_analysis.revenue_analysis}</p>
-                    </div>
-                  )}
-                  {data.comparison_analysis.profit_analysis && (
-                    <div className="space-y-2">
-                      <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Profitability</h5>
-                      <p className="text-sm text-foreground leading-relaxed">{data.comparison_analysis.profit_analysis}</p>
-                    </div>
-                  )}
-                  {data.comparison_analysis.ratio_analysis && (
-                    <div className="space-y-2">
-                      <h5 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Financial Ratios</h5>
-                      <p className="text-sm text-foreground leading-relaxed">{data.comparison_analysis.ratio_analysis}</p>
-                    </div>
-                  )}
-                  {data.comparison_analysis.financial_health_analysis && (
-                    <div className="space-y-2 bg-primary/10/50 p-4 rounded-lg border border-primary/50">
-                      <h5 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
-                        <Trophy className="w-4 h-4" /> Financial Health Summary
-                      </h5>
-                      <p className="text-sm text-foreground leading-relaxed">{data.comparison_analysis.financial_health_analysis}</p>
-                    </div>
-                  )}
+              <div className="bg-card border border-border rounded-2xl p-6 shadow-sm mt-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-foreground">AI Comparison Analysis</h4>
+                    <p className="text-sm text-muted-foreground">Synthesized insights across key financial dimensions.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column - General Analysis */}
+                  <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {data.comparison_analysis.revenue_analysis && (
+                      <div className="bg-surface/50 border border-border-subtle rounded-xl p-5 hover:border-primary/30 transition-colors">
+                        <div className="flex items-center gap-2 mb-3">
+                          <TrendingUp className="w-4 h-4 text-blue-500" />
+                          <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">Revenue</h5>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{data.comparison_analysis.revenue_analysis}</p>
+                      </div>
+                    )}
+                    {data.comparison_analysis.profit_analysis && (
+                      <div className="bg-surface/50 border border-border-subtle rounded-xl p-5 hover:border-primary/30 transition-colors">
+                        <div className="flex items-center gap-2 mb-3">
+                          <DollarSign className="w-4 h-4 text-emerald-500" />
+                          <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">Profitability</h5>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{data.comparison_analysis.profit_analysis}</p>
+                      </div>
+                    )}
+                    {data.comparison_analysis.ratio_analysis && (
+                      <div className="bg-surface/50 border border-border-subtle rounded-xl p-5 hover:border-primary/30 transition-colors md:col-span-2">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Percent className="w-4 h-4 text-violet-500" />
+                          <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">Financial Ratios</h5>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{data.comparison_analysis.ratio_analysis}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column - Summary */}
+                  <div className="lg:col-span-1">
+                    {data.comparison_analysis.financial_health_analysis && (
+                      <div className="h-full bg-gradient-to-br from-primary/10 to-indigo-500/10 p-6 rounded-xl border border-primary/20 shadow-inner flex flex-col relative overflow-hidden">
+                        <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary/20 rounded-full blur-2xl" />
+                        <div className="flex items-center gap-2 mb-4 relative z-10">
+                          <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+                            <Trophy className="w-4 h-4" />
+                          </div>
+                          <h5 className="text-sm font-bold text-primary uppercase tracking-wider">
+                            Health Summary
+                          </h5>
+                        </div>
+                        <p className="text-sm text-foreground/90 leading-relaxed relative z-10 flex-1">
+                          {data.comparison_analysis.financial_health_analysis}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

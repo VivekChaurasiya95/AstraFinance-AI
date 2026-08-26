@@ -40,7 +40,7 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
       toast?.success && toast.success("Name updated successfully");
       setIsEditing(false);
     } catch (error: any) {
-      toast?.error && toast.error(error.message || "Failed to update name");
+      toast?.error && toast.error((error instanceof Error ? error.message : String(error)) || "Failed to update name");
     } finally {
       setIsSavingName(false);
     }

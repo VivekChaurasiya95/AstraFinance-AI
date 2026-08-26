@@ -146,7 +146,7 @@ export function ThreeDScene() {
   // --- Framer Motion UI Animation ---
   useEffect(() => {
     let animationFrameId: number;
-    let startTime = performance.now();
+    const startTime = performance.now();
     
     const animateUI = (time: number) => {
       const elapsed = time - startTime;

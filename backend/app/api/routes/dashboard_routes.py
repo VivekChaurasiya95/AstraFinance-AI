@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 import io
 from fpdf import FPDF
+from ...utils.timestamps import to_iso_utc
 
 from .auth_routes import get_current_user
 from ...database.mongo_client import (
@@ -54,11 +55,23 @@ def time_ago(dt: Optional[datetime]) -> str:
     except Exception:
         return "Unknown"
 
+import json
+from ...database.redis_client import redis_client
 
 # ── Dashboard Stats ────────────────────────────────────────────────────────────
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
+    cache_key = f"dashboard_stats:{user_id}"
+    
+    try:
+        cached = await redis_client.get(cache_key)
+        if cached:
+            print(f"[Redis] Cache HIT for {cache_key}")
+            return json.loads(cached)
+    except Exception:
+        pass
+
     now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
     thirty_days_ago = now - timedelta(days=30)
@@ -133,6 +146,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
                 "action": log.get("action", "Did something"),
                 "workspace_name": ws_map.get(log.get("workspace_id", ""), "Workspace"),
                 "time_ago": time_ago(parse_dt(log.get("timestamp"))),
+                "timestamp": to_iso_utc(parse_dt(log.get("timestamp"))),
             }
         )
 
@@ -164,7 +178,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
             }
         )
 
-    return {
+    result = {
         "active_workspaces": workspaces_count,
         "active_workspaces_trend": ws_trend,
         "documents_processed": documents_count,
@@ -175,12 +189,28 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "agent_activity": agent_activity,
         "red_flags": recent_flags,
     }
-
+    
+    try:
+        await redis_client.setex(cache_key, 300, json.dumps(result))
+    except Exception:
+        pass
+        
+    return result
 
 # ── Notifications ──────────────────────────────────────────────────────────────
 @router.get("/notifications", response_model=NotificationResponse)
 async def get_dashboard_notifications(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
+    cache_key = f"dashboard_notifs:{user_id}"
+    
+    try:
+        cached = await redis_client.get(cache_key)
+        if cached:
+            print(f"[Redis] Cache HIT for {cache_key}")
+            return json.loads(cached)
+    except Exception:
+        pass
+
     last_read: datetime = current_user.get("last_read_notifications", datetime.min)
     if isinstance(last_read, str):
         try:
@@ -225,6 +255,7 @@ async def get_dashboard_notifications(current_user: dict = Depends(get_current_u
                 "message": rf.get("title", rf.get("description", "Unknown Issue"))[:100],
                 "type": "error" if rf.get("severity") == "Critical" else "warning",
                 "time_ago": time_ago(dt),
+                "created_at": to_iso_utc(dt) if isinstance(dt, datetime) else dt,
                 "is_read": not is_unread,
                 "_raw_dt": dt,
             }
@@ -254,6 +285,7 @@ async def get_dashboard_notifications(current_user: dict = Depends(get_current_u
                 "message": log.get("action", "Activity"),
                 "type": ntype,
                 "time_ago": time_ago(dt),
+                "created_at": to_iso_utc(dt) if isinstance(dt, datetime) else dt,
                 "is_read": not is_unread,
                 "_raw_dt": dt,
             }
@@ -264,15 +296,28 @@ async def get_dashboard_notifications(current_user: dict = Depends(get_current_u
     for n in notifications:
         del n["_raw_dt"]
 
-    return {
+    result = {
         "notifications": notifications[:10],
         "has_unread": has_unread,
     }
+    
+    try:
+        await redis_client.setex(cache_key, 60, json.dumps(result)) # 1 minute cache
+    except Exception:
+        pass
+        
+    return result
 
 
 @router.post("/notifications/mark-read")
 async def mark_notifications_read(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
+    
+    try:
+        await redis_client.delete(f"dashboard_notifs:{user_id}")
+    except Exception:
+        pass
+        
     await users_collection.update_one(
         {"_id": user_id},
         {"$set": {"last_read_notifications": datetime.now(timezone.utc)}},

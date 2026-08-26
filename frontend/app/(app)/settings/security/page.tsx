@@ -147,7 +147,7 @@ export default function SecurityPage() {
       const res = await fetcher<SecurityData>("/settings/security");
       setData(res);
     } catch (e: any) {
-      setError(e.message || "Failed to load security information.");
+      setError((e instanceof Error ? e.message : String(e)) || "Failed to load security information.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -172,7 +172,7 @@ export default function SecurityPage() {
             : prev
         );
       } catch (e: any) {
-        setError(e.message || "Failed to revoke session.");
+        setError((e instanceof Error ? e.message : String(e)) || "Failed to revoke session.");
       } finally {
         setRevokingId(null);
       }
@@ -190,7 +190,7 @@ export default function SecurityPage() {
           : prev
       );
     } catch (e: any) {
-      setError(e.message || "Failed to revoke other sessions.");
+      setError((e instanceof Error ? e.message : String(e)) || "Failed to revoke other sessions.");
     } finally {
       setRevokingAll(false);
     }

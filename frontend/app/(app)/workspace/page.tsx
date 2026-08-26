@@ -21,7 +21,8 @@ import {
   ChevronRight,
   FileTextIcon
 } from "lucide-react";
-import { cn, timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/timestamps";
 import { fetcher } from "@/lib/api";
 import { CreateWorkspaceModal } from "@/components/workspace/CreateWorkspaceModal";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -41,6 +42,7 @@ interface Workspace {
   reports: number;
   owner_name: string;
   owner_initial: string;
+  createdAt: string;
   updatedAt: string;
   icon: string;
   iconColor: string;
@@ -132,7 +134,7 @@ function DeleteModal({ workspace, onClose, onConfirm }: { workspace: Workspace; 
                 await onConfirm();
                 onClose();
               } catch (e: any) {
-                setError(e.message || "Failed to delete workspace");
+                setError((e instanceof Error ? e.message : String(e)) || "Failed to delete workspace");
                 setLoading(false);
               }
             }}
@@ -216,7 +218,7 @@ function RenameModal({ workspace, onClose, onConfirm }: { workspace: Workspace; 
               try {
                 await onConfirm(input.trim());
               } catch (e: any) {
-                setError(e.message || "Failed to rename workspace");
+                setError((e instanceof Error ? e.message : String(e)) || "Failed to rename workspace");
                 setLoading(false);
               }
             }}
@@ -277,7 +279,7 @@ function WorkspaceCard({
               </h3>
             </Link>
             <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
-              <span>{timeAgo(ws.updatedAt)}</span>
+              <span>{formatRelativeTime(ws.updatedAt)}</span>
               <span className="hidden sm:inline">•</span>
               <span className="hidden sm:inline">{ws.docs} Docs</span>
               <span className="hidden sm:inline">•</span>
@@ -345,7 +347,7 @@ function WorkspaceCard({
               {ws.name}
             </h3>
           </Link>
-          <p className="text-xs text-muted-foreground mt-1.5">{timeAgo(ws.updatedAt)}</p>
+          <p className="text-xs text-muted-foreground mt-1.5">{formatRelativeTime(ws.updatedAt)}</p>
         </div>
         
         {/* 3-dot Menu */}
@@ -415,6 +417,7 @@ export default function WorkspacesPage() {
   const { dbUser } = useAuth();
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sortOpen, setSortOpen] = useState(false);
@@ -430,11 +433,14 @@ export default function WorkspacesPage() {
   const sortOptions = ["Recent", "Name (A–Z)", "Most Documents"];
 
   const loadWorkspaces = async () => {
+    setError(null);
     try {
       const data = await fetcher<Workspace[]>("/workspaces");
       setWorkspaces(data);
-    } catch (error) {
-      console.error("Failed to load workspaces:", error);
+    } catch (err: any) {
+      // Only show error in UI, don't spam console with full stack traces
+      const isNetworkError = err?.message?.includes("network") || err?.message?.includes("Backend error");
+      setError(isNetworkError ? "Backend is currently unavailable. Please ensure the server is running." : (err?.message || "Failed to load workspaces"));
     } finally {
       setLoading(false);
     }
@@ -586,6 +592,20 @@ export default function WorkspacesPage() {
         <div className="flex-1">
           {loading ? (
              <div className="flex items-center justify-center py-24 text-muted-foreground">Loading workspaces...</div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-24 gap-4 text-center w-full">
+              <div className="w-16 h-16 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center">
+                <AlertTriangle className="w-8 h-8 text-destructive" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">Unable to load workspaces</h3>
+              <p className="text-sm text-muted-foreground max-w-md px-4">{error}</p>
+              <button suppressHydrationWarning
+                onClick={() => { setLoading(true); loadWorkspaces(); }}
+                className="mt-2 px-5 py-2.5 rounded-xl bg-primary/10 border border-primary/30 text-primary hover:bg-primary/20 transition-colors text-sm font-medium"
+              >
+                Retry
+              </button>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4 text-center w-full">
               <div className="w-16 h-16 rounded-2xl bg-card border border-border flex items-center justify-center">

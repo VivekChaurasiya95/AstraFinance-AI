@@ -247,7 +247,7 @@ export function CreateWorkspaceModal({
         try {
           const formData = new FormData();
           pendingFiles.forEach((file) => formData.append("files", file.file));
-          await uploadMultipart<{ uploaded: unknown[] }>(
+          await uploadMultipart<{ uploaded: any[] }>(
             `/workspaces/${workspace.id}/documents`,
             formData,
           );
@@ -280,7 +280,7 @@ export function CreateWorkspaceModal({
       onClose();
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : "Failed to create workspace.",
+        err instanceof Error ? (err instanceof Error ? err.message : String(err)) : "Failed to create workspace.",
       );
       console.error("Failed to create workspace:", err);
     } finally {

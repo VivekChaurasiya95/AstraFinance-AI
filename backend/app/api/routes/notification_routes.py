@@ -56,7 +56,7 @@ async def get_user_from_query_token(token: str = Query(...)) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 @router.get("/stream")
-async def sse_notifications(current_user: dict = Depends(get_user_from_query_token)):
+async def sse_notifications(current_user: dict = Depends(get_current_user)):
     """Server-Sent Events endpoint for real-time notifications."""
     user_id = str(current_user["_id"])
     
@@ -76,7 +76,7 @@ async def sse_notifications(current_user: dict = Depends(get_user_from_query_tok
                 except asyncio.TimeoutError:
                     yield ": heartbeat\n\n"
         except asyncio.CancelledError:
-            logger.info(f"[Notifications] SSE disconnected user={user_id}")
+            pass # Disconnect log is handled by notification_bus.unsubscribe
         except Exception as e:
             logger.error(f"SSE stream error for {user_id}: {e}")
         finally:

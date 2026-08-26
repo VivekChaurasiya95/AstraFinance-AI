@@ -55,9 +55,14 @@ async def lifespan(app: FastAPI):
         await notifications_repository.ensure_indexes()
         logger.info("[Notifications] Ready")
         logger.info("[API] Listening on http://127.0.0.1:8000")
-        logger.info("[Startup] Ready")
     except Exception as e:
         logger.error(f"MongoDB connection/index failed: {e}")
+
+    # 3. Init Redis
+    from .database.redis_client import init_redis
+    await init_redis()
+
+    logger.info("[Startup] Ready")
 
     yield
 
@@ -68,6 +73,12 @@ async def lifespan(app: FastAPI):
         logger.info("✓ MongoDB connection closed")
     except Exception as e:
         logger.error(f"Error closing MongoDB connection: {e}")
+
+    try:
+        from .database.redis_client import close_redis
+        await close_redis()
+    except Exception as e:
+        logger.error(f"Error closing Redis connection: {e}")
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -90,11 +101,10 @@ class UvicornAccessLogFilter(logging.Filter):
                 new_args[2] = re.sub(r'token=[^& ]+', 'token=[REDACTED]', path)
                 record.args = tuple(new_args)
                 
-            # Downgrade routine polling and common GET requests to DEBUG if successful
+            # Filter out routine polling and common GET requests to reduce log spam
             if isinstance(status, int) and status < 400 and method == "GET" and isinstance(path, str):
-                if any(x in path for x in ["/agents", "/me", "/documents", "/notifications"]):
-                    record.levelno = logging.DEBUG
-                    record.levelname = "DEBUG"
+                if any(x in path for x in ["/agents", "/me", "/documents", "/notifications", "/dashboard", "/workspaces"]):
+                    return False
                     
         return True
 

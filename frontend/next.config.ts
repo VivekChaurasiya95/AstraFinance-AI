@@ -16,6 +16,14 @@ const nextConfig: NextConfig = {
     ];
   },
   allowedDevOrigins: ['10.23.69.37', 'localhost', '127.0.0.1'],
+  async rewrites() {
+    return [
+      {
+        source: '/api/backend/:path*',
+        destination: 'http://127.0.0.1:8000/api/v1/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

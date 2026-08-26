@@ -7,9 +7,12 @@ client = AsyncIOMotorClient(
     settings.MONGODB_URI, 
     tlsCAFile=certifi.where(),
     tlsAllowInvalidCertificates=True,
-    serverSelectionTimeoutMS=5000,
-    connectTimeoutMS=10000,
-    socketTimeoutMS=10000
+    serverSelectionTimeoutMS=30000,
+    connectTimeoutMS=30000,
+    socketTimeoutMS=45000,
+    maxIdleTimeMS=50000,
+    retryWrites=True,
+    retryReads=True
 )
 db = client[settings.DATABASE_NAME]
 

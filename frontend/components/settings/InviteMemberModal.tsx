@@ -27,7 +27,7 @@ export function InviteMemberModal({ isOpen, onClose, onInvite, workspaceName }: 
       setRole("Editor");
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to invite member.");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to invite member.");
     } finally {
       setLoading(false);
     }

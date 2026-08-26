@@ -241,7 +241,7 @@ export default function CreateWorkspacePage() {
           const formData = new FormData();
           pendingFiles.forEach((f) => formData.append("files", f.file));
 
-          await uploadMultipart<{ uploaded: unknown[] }>(
+          await uploadMultipart<{ uploaded: any[] }>(
             `/workspaces/${ws.id}/documents`,
             formData,
           );
@@ -270,7 +270,7 @@ export default function CreateWorkspacePage() {
       router.push(`/workspace/${ws.id}`);
     } catch (err) {
       setSubmitError(
-        err instanceof Error ? err.message : "Failed to create workspace.",
+        err instanceof Error ? (err instanceof Error ? err.message : String(err)) : "Failed to create workspace.",
       );
       console.error("Failed to create workspace:", err);
     } finally {

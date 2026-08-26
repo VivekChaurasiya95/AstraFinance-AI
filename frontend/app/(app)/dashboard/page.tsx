@@ -40,27 +40,7 @@ const ICON_MAP: Record<string, any> = {
   BotIcon
 };
 
-function formatRelativeTime(detectedAt: string | undefined, now: number | null): string {
-  if (!detectedAt || !now) return "...";
-  const detectedTime = new Date(detectedAt).getTime();
-  if (isNaN(detectedTime)) return "time unavailable";
-
-  const diffSeconds = Math.floor((now - detectedTime) / 1000);
-  if (diffSeconds < 0) return "just now";
-  if (diffSeconds < 60) return "just now";
-  
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return new Date(detectedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
+import { formatRelativeTime } from "@/lib/timestamps";
 // Types
 interface AgentActivity {
   id: string;
@@ -69,6 +49,7 @@ interface AgentActivity {
   action: string;
   workspace_name: string;
   time_ago: string;
+  timestamp: string;
 }
 
 interface RedFlag {
@@ -327,7 +308,7 @@ export default function DashboardPage() {
                         : "Unknown"}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
-                      Detected {formatRelativeTime(flag.detected_at, currentTime)}
+                      Detected {currentTime && formatRelativeTime(flag.detected_at)}
                     </span>
                   </div>
                 </div>
@@ -422,7 +403,7 @@ export default function DashboardPage() {
                       <span className={cn("text-[11px] font-bold tracking-wider uppercase flex items-center gap-1", color.text)}>
                         {color.icon} {activity.agent_name}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">{activity.time_ago}</span>
+                      <span className="text-[11px] text-muted-foreground">{formatRelativeTime(activity.timestamp)}</span>
                     </div>
                     <p className="text-sm text-foreground mt-1 font-medium">{activity.action}</p>
                     <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full bg-surface text-muted-foreground text-[10px] font-medium">

@@ -26,6 +26,7 @@ import {
   Filter,
   Search
 } from "lucide-react";
+import { formatLocalTime } from "@/lib/timestamps";
 import { cn } from "@/lib/utils";
 import { useAgentOrchestration } from "@/hooks/useAgentOrchestration";
 
@@ -455,7 +456,7 @@ export default function AgentActivityPage() {
                       {/* Time */}
                       <div className="col-span-2 text-right">
                         <span className="text-[11px] font-semibold text-muted-foreground flex items-center justify-end gap-1.5">
-                          {activity.timestamp}
+                          {formatLocalTime(activity.timestamp)}
                         </span>
                       </div>
                     </motion.div>
