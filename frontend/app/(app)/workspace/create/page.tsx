@@ -266,8 +266,11 @@ export default function CreateWorkspacePage() {
           setUploadLoading(false);
         }
       }
-
-      router.push(`/workspace/${ws.id}`);
+      if (pendingFiles.length > 0) {
+        router.push(`/workspace/${ws.id}/documents`);
+      } else {
+        router.push(`/workspace/${ws.id}`);
+      }
     } catch (err) {
       setSubmitError(
         err instanceof Error ? (err instanceof Error ? err.message : String(err)) : "Failed to create workspace.",

@@ -45,12 +45,23 @@ async def upsert_firebase_user(
     short_uid = firebase_uid[:8] if firebase_uid else "unknown"
 
     user = await users_collection.find_one({"firebase_uid": firebase_uid})
+    if not user:
+        # Fallback to matching by email to prevent DuplicateKeyError if the user 
+        # signed in with a different provider using the same email
+        user = await users_collection.find_one({"email": email})
+
     if user:
         needs_update = False
         updates: Dict[str, Any] = {}
+        
+        if user.get("firebase_uid") != firebase_uid:
+            updates["firebase_uid"] = firebase_uid
+            needs_update = True
+            
         if user.get("provider") != provider:
             updates["provider"] = provider
             needs_update = True
+            
         if user.get("email_verified") != email_verified:
             updates["email_verified"] = email_verified
             needs_update = True
@@ -62,7 +73,10 @@ async def upsert_firebase_user(
             logger.info(f"[User] Profile updated uid={short_uid}")
             return await users_collection.find_one({"_id": user["_id"]})
             
+        # Update last_login even if nothing else changed
+        await users_collection.update_one({"_id": user["_id"]}, {"$set": {"last_login": now_iso}})
         logger.debug(f"[User] Existing user verified uid={short_uid}")
+        user["last_login"] = now_iso
         return user
 
     new_user = {

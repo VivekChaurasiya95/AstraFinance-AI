@@ -30,7 +30,7 @@ export function HeroSection() {
         <div className="w-full md:w-[520px] lg:w-[560px] flex flex-col gap-8">
 
           {/* Badge */}
-          <div className="group flex items-center gap-2 w-fit px-4 py-2 rounded-full bg-primary/10 border border-primary/20 shadow-sm transition-all duration-300 hover:bg-primary/15 cursor-default hover:shadow-md hover:border-primary/30">
+          <div className="group flex items-center gap-2 w-fit px-4 py-2 rounded-full bg-primary/10 dark:bg-transparent border border-primary/30 dark:border-primary/20 shadow-sm transition-all duration-300 hover:bg-primary/20 dark:hover:bg-primary/10 cursor-default hover:shadow-md">
             <CheckCircle2 className="w-4 h-4 text-primary group-hover:scale-110 transition-transform duration-300" />
             <span className="text-xs font-bold tracking-widest text-primary uppercase">
               Zero hallucinated figures
@@ -38,31 +38,33 @@ export function HeroSection() {
           </div>
 
           {/* Headline */}
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight text-foreground transition-theme">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.05] tracking-tight text-slate-900 dark:text-white transition-theme">
             Ask your financial reports{" "}
-            <span className="bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(67,198,188,0.2)]">anything</span>
+            <span className="bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent drop-shadow-[0_0_30px_rgba(67,198,188,0.2)] dark:drop-shadow-[0_0_40px_rgba(67,198,188,0.4)]">anything</span>
           </h1>
 
           {/* Sub-copy */}
-          <p className="text-lg md:text-xl text-muted-foreground leading-[1.65] max-w-[560px] transition-theme font-medium">
-            <span className="text-foreground font-semibold">Expert analysis with verifiable citations.</span> Zero hallucinations, total
+          <p className="text-lg md:text-xl text-slate-500 dark:text-slate-400 leading-[1.65] max-w-[560px] transition-theme font-medium">
+            <span className="text-slate-800 dark:text-white font-bold">Expert analysis with verifiable citations.</span> Zero hallucinations, total
             transparency. Experience Bloomberg-level precision powered by advanced AI.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-row items-center gap-4 flex-wrap pt-4">
             <Link href="/register">
-              <Button className="group bg-primary hover:bg-primary-hover text-primary-foreground font-bold px-8 py-6 rounded-xl border border-primary/35 shadow-[0_8px_20px_rgba(67,198,188,0.2)] hover:shadow-[0_12px_30px_rgba(67,198,188,0.4)] transition-all duration-300 text-base flex items-center gap-2 hover:-translate-y-1">
+              <Button className="group bg-primary hover:bg-primary-hover text-primary-foreground font-bold px-8 py-6 rounded-xl border-none shadow-lg shadow-primary/25 dark:shadow-[0_0_30px_rgba(67,198,188,0.3)] hover:shadow-xl hover:shadow-primary/30 dark:hover:shadow-[0_0_40px_rgba(67,198,188,0.5)] transition-all duration-300 text-base flex items-center gap-2 hover:-translate-y-1">
                 Get Started
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Button
-              variant="outline"
-              className="bg-background/50 border border-border-strong text-foreground hover:border-primary/50 hover:bg-primary/5 hover:text-primary-hover font-bold px-8 py-6 rounded-xl transition-all duration-300 text-base backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-1"
-            >
-              Watch Demo
-            </Button>
+            <Link href="#workflow">
+              <Button
+                variant="outline"
+                className="bg-white dark:bg-[#09090b] border border-slate-200 dark:border-border text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-border/30 font-bold px-8 py-6 rounded-xl transition-all duration-300 text-base shadow-sm hover:shadow-md hover:-translate-y-1 backdrop-blur-md"
+              >
+                Watch Demo
+              </Button>
+            </Link>
           </div>
 
         </div>

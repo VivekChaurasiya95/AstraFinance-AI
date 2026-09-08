@@ -32,6 +32,12 @@ class GeographySplit(BaseModel):
     region: str = Field(description="Region name")
     percentage: str = Field(description="Percentage string (e.g. 60%)")
 
+class DocumentAnalysis(BaseModel):
+    revenue_analysis: str = Field(description="Insightful analysis of revenue trends")
+    profit_analysis: str = Field(description="Insightful analysis of profitability")
+    ratio_analysis: str = Field(description="Insightful analysis of financial ratios and health")
+    financial_health_analysis: str = Field(description="Summary of overall financial health")
+
 class ExtractionSchema(BaseModel):
     period: str = Field(description="e.g. Q1 2026")
     company: str = Field(description="Company Name")
@@ -39,6 +45,8 @@ class ExtractionSchema(BaseModel):
     revenue_breakdown: List[RevenueBreakdown]
     quarterly_trend: List[QuarterlyTrend]
     geography_split: List[GeographySplit]
+    analysis: DocumentAnalysis = Field(description="AI synthesized insights across key financial dimensions")
+    insights: List[str] = Field(description="Top 3 to 5 key bullet-point insights (Dynamic Document Insights)")
 
 class ExtractionAgent:
     def __init__(self):
@@ -64,6 +72,7 @@ CRITICAL INSTRUCTIONS:
 - CRITICAL: Revenue must be Total Revenue or Revenue from Operations. NEVER use Segment Revenue.
 - Prefer Consolidated over Standalone. Do not mix reporting years.
 - If data is partially available, make reasonable estimations based on the text. If completely unavailable, omit the metric or return 0.
+- Provide thoughtful, executive-level summaries for the `analysis` fields and 3-5 bullet points for `insights` highlighting major financial takeaways.
 """),
             ("human", "Context chunks:\n{context}")
         ])

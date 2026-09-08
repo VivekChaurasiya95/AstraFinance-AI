@@ -22,6 +22,10 @@ import {
   FileText,
   Building2,
   Calendar,
+  Sparkles,
+  DollarSign,
+  Trophy,
+  Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetcher } from "@/lib/api";
@@ -59,6 +63,13 @@ interface Geo {
   region: string;
   percentage: number | string;
 }
+interface DocumentAnalysis {
+  revenue_analysis?: string;
+  profit_analysis?: string;
+  ratio_analysis?: string;
+  financial_health_analysis?: string;
+}
+
 interface MetricsData {
   status?: string;
   period?: string;
@@ -67,6 +78,8 @@ interface MetricsData {
   revenue_breakdown?: Segment[];
   quarterly_trend?: Quarter[];
   geography_split?: Geo[];
+  analysis?: DocumentAnalysis;
+  insights?: string[];
 }
 
 /* ── colour palette for segments ────────────────────────────────────── */
@@ -548,6 +561,101 @@ export default function MetricsPage() {
             </div>
           </div>
         )}
+
+        {/* ── Document Analysis ──────────────────────────── */}
+        {data?.analysis && (
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm mb-8 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500" />
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-foreground">AI Document Analysis</h4>
+                <p className="text-sm text-muted-foreground">Synthesized insights across key financial dimensions.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - General Analysis */}
+              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                {data.analysis.revenue_analysis && (
+                  <div className="bg-surface/50 border border-border-subtle rounded-xl p-5 hover:border-primary/30 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingUp className="w-4 h-4 text-blue-500" />
+                      <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">Revenue</h5>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{data.analysis.revenue_analysis}</p>
+                  </div>
+                )}
+                {data.analysis.profit_analysis && (
+                  <div className="bg-surface/50 border border-border-subtle rounded-xl p-5 hover:border-primary/30 transition-colors">
+                    <div className="flex items-center gap-2 mb-3">
+                      <DollarSign className="w-4 h-4 text-emerald-500" />
+                      <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">Profitability</h5>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{data.analysis.profit_analysis}</p>
+                  </div>
+                )}
+                {data.analysis.ratio_analysis && (
+                  <div className="bg-surface/50 border border-border-subtle rounded-xl p-5 hover:border-primary/30 transition-colors md:col-span-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Percent className="w-4 h-4 text-violet-500" />
+                      <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">Financial Ratios</h5>
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{data.analysis.ratio_analysis}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Summary */}
+              <div className="lg:col-span-1">
+                {data.analysis.financial_health_analysis && (
+                  <div className="h-full bg-gradient-to-br from-primary/10 to-indigo-500/10 p-6 rounded-xl border border-primary/20 shadow-inner flex flex-col relative overflow-hidden">
+                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary/20 rounded-full blur-2xl" />
+                    <div className="flex items-center gap-2 mb-4 relative z-10">
+                      <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+                        <Trophy className="w-4 h-4" />
+                      </div>
+                      <h5 className="text-sm font-bold text-primary uppercase tracking-wider">
+                        Health Summary
+                      </h5>
+                    </div>
+                    <p className="text-sm text-foreground/90 leading-relaxed relative z-10 flex-1">
+                      {data.analysis.financial_health_analysis}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Dynamic Document Insights ──────────────────────────── */}
+        {data?.insights && data.insights.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm mb-8">
+            <h4 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+              <Crown className="w-4 h-4 text-amber-500" />
+              Dynamic Document Insights
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {data.insights.map((insight, idx) => (
+                <div
+                  key={idx}
+                  className="bg-amber-500/10 rounded-lg p-4 border border-amber-500/20 flex items-start gap-3"
+                >
+                  <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Trophy className="w-3 h-3 text-amber-500" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground leading-snug">
+                    {insight}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
           </>
         )}
       </div>

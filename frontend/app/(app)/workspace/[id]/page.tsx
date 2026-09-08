@@ -11,6 +11,8 @@ import {
 import { cn } from "@/lib/utils";
 import { fetcher, API_BASE_URL, uploadMultipart } from "@/lib/api";
 import { useAuth } from "@/components/providers/AuthProvider";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ChatMsg {
   role: "user" | "assistant" | "model";
@@ -565,7 +567,13 @@ export default function ChatPage() {
                     </div>
                   ) : (
                     <>
-                      {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
+                      {msg.content && (
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-black/5 dark:prose-pre:bg-white/5 prose-pre:border prose-pre:border-border">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      )}
                       {msg.citations && msg.citations.length > 0 && (
                         <div className="mt-4 flex flex-col gap-2">
                           {msg.citations.map((c, ci) => {

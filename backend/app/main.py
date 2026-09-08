@@ -165,3 +165,42 @@ def test_agents():
         "extracted": extracted_data,
         "risks": risk_analysis
     }
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from .llm.exceptions import LLMError, LLMErrorType
+
+@app.exception_handler(LLMError)
+async def llm_error_handler(request: Request, exc: LLMError):
+    if exc.error_type == LLMErrorType.RATE_LIMITED:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "LLM_RATE_LIMITED",
+                "message": "AI request capacity has temporarily been reached. Please try again shortly."
+            }
+        )
+    elif exc.error_type == LLMErrorType.QUOTA_EXCEEDED:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "LLM_QUOTA_EXCEEDED",
+                "message": "AI service quota has been exceeded. Please try again later."
+            }
+        )
+    elif exc.error_type in [LLMErrorType.PROVIDER_UNAVAILABLE, LLMErrorType.PROVIDER_SERVER_ERROR]:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "LLM_PROVIDER_UNAVAILABLE",
+                "message": "AI service is temporarily unavailable. Please try again shortly."
+            }
+        )
+    else:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "LLM_INTERNAL_ERROR",
+                "message": "An internal error occurred with the AI service. Please try again later."
+            }
+        )

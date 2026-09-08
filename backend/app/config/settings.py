@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     GROQ_API_KEY_2: Optional[str] = None
     GEMINI_API_KEY_1: Optional[str] = None
     GEMINI_API_KEY_2: Optional[str] = None
+
+    # OpenRouter (Fallback 2 - Last Resort)
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
     
     # Per-Agent Configs
     EXTRACTION_PRIMARY_PROVIDER: str = "groq"
@@ -58,7 +63,7 @@ class Settings(BaseSettings):
     # JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int
 
     # Embedding Configs
-    GEMINI_EMBEDDING_MODEL: str = "models/embedding-001"
+    GEMINI_EMBEDDING_MODEL: str = "models/gemini-embedding-001"
     HF_EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     EMBEDDING_PRIMARY_PROVIDER: str = "gemini"
     EMBEDDING_FALLBACK_PROVIDER: str = "huggingface"

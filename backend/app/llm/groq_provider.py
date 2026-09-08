@@ -4,7 +4,7 @@ import httpx
 from pydantic import BaseModel
 from langchain_groq import ChatGroq
 from langchain_core.messages import BaseMessage
-from .exceptions import RateLimitError, ProviderUnavailableError, AuthenticationError, InvalidRequestError, SchemaValidationError
+from .exceptions import RateLimitError, ProviderUnavailableError, AuthenticationError, InvalidRequestError, SchemaValidationError, ModelNotFoundError
 from ..config.settings import settings
 
 class GroqProvider:
@@ -45,23 +45,57 @@ class GroqProvider:
         return self.clients[client_key]
 
     def _map_error(self, e: Exception) -> Exception:
-        if isinstance(e, httpx.HTTPStatusError):
+        from .exceptions import LLMErrorType
+        
+        status = getattr(e, "status_code", None)
+        response = getattr(e, "response", None)
+        
+        if status is None and isinstance(e, httpx.HTTPStatusError):
             status = e.response.status_code
+            response = e.response
+            
+        if status is not None:
+            metadata = {"status": status}
+            headers = getattr(response, "headers", {}) if response else {}
+            
             if status == 429:
                 retry_after = 0.0
-                retry_header = e.response.headers.get("retry-after")
-                if retry_header and retry_header.isdigit():
+                retry_header = headers.get("retry-after") if hasattr(headers, "get") else None
+                if retry_header and str(retry_header).isdigit():
                     retry_after = float(retry_header)
-                return RateLimitError(f"Groq Rate Limit Hit: {e}", retry_after)
-            elif status in [401, 403]:
-                return AuthenticationError(f"Groq Auth Error: {e}")
-            elif status == 400:
-                return InvalidRequestError(f"Groq Bad Request: {e}")
-            elif status >= 500:
-                return ProviderUnavailableError(f"Groq Server Error: {e}")
                 
-        if isinstance(e, httpx.RequestError):
-            return ProviderUnavailableError(f"Groq Connection Error: {e}")
+                if hasattr(headers, "get"):
+                    for key in ["x-ratelimit-remaining-requests", "x-ratelimit-remaining-tokens", "x-ratelimit-limit-requests", "x-ratelimit-limit-tokens", "x-ratelimit-reset"]:
+                        val = headers.get(key)
+                        if val is not None:
+                            metadata[key.replace("x-ratelimit-", "").replace("-", "_")] = val
+
+                error_body = str(e).lower()
+                if response and hasattr(response, "text"):
+                    error_body += " " + str(response.text).lower()
+                elif hasattr(e, "body"):
+                    error_body += " " + str(getattr(e, "body")).lower()
+                    
+                if "quota" in error_body or "spending" in error_body or "insufficient_quota" in error_body:
+                    return RateLimitError(f"Groq Quota Exceeded: {e}", retry_after, error_type=LLMErrorType.QUOTA_EXCEEDED, metadata=metadata)
+                
+                return RateLimitError(f"Groq Rate Limit Hit: {e}", retry_after, error_type=LLMErrorType.RATE_LIMITED, metadata=metadata)
+                
+            elif status in [401, 403]:
+                error_type = LLMErrorType.AUTH_ERROR if status == 401 else LLMErrorType.PERMISSION_OR_ACCESS_ERROR
+                return AuthenticationError(f"Groq Auth Error: {e}", error_type=error_type, metadata=metadata)
+            elif status == 400:
+                return InvalidRequestError(f"Groq Bad Request: {e}", error_type=LLMErrorType.INVALID_REQUEST, metadata=metadata)
+            elif status == 404:
+                return ModelNotFoundError(f"Groq Model Not Found: {e}", error_type=LLMErrorType.MODEL_NOT_FOUND_OR_INACCESSIBLE, metadata=metadata)
+            elif status == 408:
+                return ProviderUnavailableError(f"Groq Timeout: {e}", error_type=LLMErrorType.TIMEOUT, metadata=metadata)
+            elif status >= 500:
+                error_type = LLMErrorType.PROVIDER_SERVER_ERROR if status in [500, 502] else LLMErrorType.PROVIDER_UNAVAILABLE
+                return ProviderUnavailableError(f"Groq Server Error: {e}", error_type=error_type, metadata=metadata)
+                
+        if isinstance(e, httpx.RequestError) or "timeout" in str(e).lower() or "connection" in str(e).lower():
+            return ProviderUnavailableError(f"Groq Connection Error: {e}", error_type=LLMErrorType.NETWORK_ERROR)
             
         return e
 

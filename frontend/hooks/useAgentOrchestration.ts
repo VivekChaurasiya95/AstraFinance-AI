@@ -110,6 +110,19 @@ export function useAgentOrchestration(workspaceId: string) {
     };
   }, [authLoading, user, workspaceId, loadData]);
 
+  // Listen for external refresh triggers (e.g. comparison run, retry)
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadData(false);
+    };
+    window.addEventListener("refresh-agents", handleRefresh);
+    window.addEventListener("agent-updated", handleRefresh);
+    return () => {
+      window.removeEventListener("refresh-agents", handleRefresh);
+      window.removeEventListener("agent-updated", handleRefresh);
+    };
+  }, [loadData]);
+
   // Intelligent polling
   const isActive = state.agents.some(a => a.status === 'Running' || a.status === 'Queued');
   

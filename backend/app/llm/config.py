@@ -14,6 +14,14 @@ class AgentModelConfig:
     fallback_provider: Optional[str]
     fallback_model: Optional[str]
     quality_tier: QualityTier
+    fallback_2_provider: Optional[str] = None
+    fallback_2_model: Optional[str] = None
+
+def _get_openrouter_fallback_2() -> tuple:
+    """Return (provider, model) for fallback 2, or (None, None) if not configured."""
+    if settings.OPENROUTER_API_KEY:
+        return "openrouter", settings.OPENROUTER_MODEL
+    return None, None
 
 def get_agent_config(agent_name: str) -> AgentModelConfig:
     """Retrieve model routing configuration for a specific agent based on settings."""
@@ -25,6 +33,9 @@ def get_agent_config(agent_name: str) -> AgentModelConfig:
     fallback_provider = getattr(settings, f"{name}_FALLBACK_PROVIDER", "gemini")
     fallback_model = getattr(settings, f"{name}_FALLBACK_MODEL", "gemini-3.5-flash")
     
+    # Fallback 2 is always OpenRouter (last resort), if configured
+    fb2_provider, fb2_model = _get_openrouter_fallback_2()
+    
     # Assign quality tiers
     tier = QualityTier.STANDARD
     if agent_name in ["extraction", "red_flag", "research"]:
@@ -35,11 +46,14 @@ def get_agent_config(agent_name: str) -> AgentModelConfig:
         primary_model=primary_model,
         fallback_provider=fallback_provider,
         fallback_model=fallback_model,
-        quality_tier=tier
+        quality_tier=tier,
+        fallback_2_provider=fb2_provider,
+        fallback_2_model=fb2_model,
     )
 
-GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.2-90b-vision-preview"]
+GROQ_MODELS = ["openai/gpt-oss-120b", "llama-3.1-8b-instant", "llama-3.2-90b-vision-preview"]
 GEMINI_MODELS = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.5-flash-lite"]
+OPENROUTER_MODELS = ["nvidia/nemotron-3-ultra-550b-a55b:free"]
 
 def get_user_agent_config(ai_settings: dict | None, agent_name: str) -> AgentModelConfig:
     """
@@ -86,11 +100,14 @@ def get_user_agent_config(ai_settings: dict | None, agent_name: str) -> AgentMod
     else:
         fallback_provider = None
         fallback_model = None
-        
+    
+    # 5. Fallback 2 is always OpenRouter (not user-configurable)
     return AgentModelConfig(
         primary_provider=primary_provider,
         primary_model=primary_model,
         fallback_provider=fallback_provider,
         fallback_model=fallback_model,
-        quality_tier=default_config.quality_tier
+        quality_tier=default_config.quality_tier,
+        fallback_2_provider=default_config.fallback_2_provider,
+        fallback_2_model=default_config.fallback_2_model,
     )

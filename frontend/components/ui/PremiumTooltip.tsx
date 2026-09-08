@@ -9,7 +9,7 @@ export function PremiumTooltip({ active, payload, label }: any) {
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-foreground border border-slate-700/50 rounded-xl shadow-xl px-4 py-3 min-w-[140px]"
+        className="bg-card border border-border rounded-xl shadow-xl px-4 py-3 min-w-[140px]"
       >
         <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider mb-2">
           {label}
@@ -26,7 +26,7 @@ export function PremiumTooltip({ active, payload, label }: any) {
                   {entry.name}
                 </span>
               </div>
-              <span className="text-white text-sm font-bold tracking-tight">
+              <span className="text-foreground text-sm font-bold tracking-tight">
                 {typeof entry.value === 'number' && entry.value > 100 
                   ? entry.value.toLocaleString() 
                   : entry.value}

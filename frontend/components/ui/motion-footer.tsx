@@ -331,21 +331,20 @@ export function CinematicFooter() {
                   <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </MagneticButton>
                 
-                <MagneticButton as="a" href="#" className="footer-glass-pill px-10 py-5 rounded-full text-foreground font-bold text-sm md:text-base flex items-center gap-3 group transition-theme">
+                <MagneticButton as="a" href="/#workflow" className="footer-glass-pill px-10 py-5 rounded-full text-foreground font-bold text-sm md:text-base flex items-center gap-3 group transition-theme">
                   Watch Demo
                   <Play className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </MagneticButton>
               </div>
 
-              {/* Secondary Text Links */}
               <div className="flex flex-wrap justify-center gap-3 md:gap-6 w-full mt-2">
-                <MagneticButton as="a" href="#" className="footer-glass-pill px-6 py-3 rounded-full text-muted-foreground font-medium text-xs md:text-sm hover:text-foreground transition-theme">
+                <MagneticButton as="a" href="/privacy" className="footer-glass-pill px-6 py-3 rounded-full text-muted-foreground font-medium text-xs md:text-sm hover:text-foreground transition-theme">
                   Privacy Policy
                 </MagneticButton>
-                <MagneticButton as="a" href="#" className="footer-glass-pill px-6 py-3 rounded-full text-muted-foreground font-medium text-xs md:text-sm hover:text-foreground transition-theme">
+                <MagneticButton as="a" href="/terms" className="footer-glass-pill px-6 py-3 rounded-full text-muted-foreground font-medium text-xs md:text-sm hover:text-foreground transition-theme">
                   Terms of Service
                 </MagneticButton>
-                <MagneticButton as="a" href="#" className="footer-glass-pill px-6 py-3 rounded-full text-muted-foreground font-medium text-xs md:text-sm hover:text-foreground transition-theme">
+                <MagneticButton as="a" href="/support" className="footer-glass-pill px-6 py-3 rounded-full text-muted-foreground font-medium text-xs md:text-sm hover:text-foreground transition-theme">
                   Support
                 </MagneticButton>
               </div>

@@ -21,6 +21,8 @@ interface NotificationState {
   addRealTimeNotification: (notification: Notification) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
+  removeNotification: (id: string) => void;
+  clearAllNotifications: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set) => ({
@@ -59,5 +61,20 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   markAllAsRead: () => set((state) => ({
     notifications: state.notifications.map(n => ({ ...n, read: true })),
     unreadCount: 0
-  }))
+  })),
+
+  removeNotification: (id) => set((state) => {
+    const notif = state.notifications.find(n => n.id === id);
+    if (!notif) return state;
+
+    return {
+      notifications: state.notifications.filter(n => n.id !== id),
+      unreadCount: notif.read ? state.unreadCount : Math.max(0, state.unreadCount - 1)
+    };
+  }),
+
+  clearAllNotifications: () => set({
+    notifications: [],
+    unreadCount: 0
+  })
 }));

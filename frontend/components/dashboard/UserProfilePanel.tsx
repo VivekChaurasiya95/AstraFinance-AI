@@ -5,6 +5,7 @@ import { User, Mail, LogOut, Check, Edit2, Upload, Trash, Image as ImageIcon } f
 import { useAuth } from "@/components/providers/AuthProvider";
 import { fetcher } from "@/lib/api";
 import { toast } from "sonner"; // Assuming sonner is used for toasts, standard in new nextjs
+import Link from "next/link";
 
 interface UserProfilePanelProps {
   onClose: () => void;
@@ -190,12 +191,20 @@ export function UserProfilePanel({ onClose, onSignOut }: UserProfilePanelProps) 
         </div>
 
         <div className="p-2">
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:bg-surface hover:text-foreground rounded-lg transition-colors">
+          <Link 
+            href="/settings/profile" 
+            onClick={onClose}
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:bg-surface hover:text-foreground rounded-lg transition-colors"
+          >
             <User className="w-4 h-4" /> My Account
-          </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:bg-surface hover:text-foreground rounded-lg transition-colors">
+          </Link>
+          <Link 
+            href="/settings/notifications" 
+            onClick={onClose}
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-muted-foreground hover:bg-surface hover:text-foreground rounded-lg transition-colors"
+          >
             <Mail className="w-4 h-4" /> Notification Preferences
-          </button>
+          </Link>
           <div className="h-px bg-surface my-1 mx-2" />
           <button
             onClick={onSignOut}

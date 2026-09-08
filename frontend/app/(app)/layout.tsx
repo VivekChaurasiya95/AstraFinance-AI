@@ -80,13 +80,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}>
         <div className="flex flex-col gap-2 mb-8 px-1">
           <div className="flex items-center gap-3 py-2">
-            <div className="w-8 h-8 rounded-xl bg-primary shadow-[0_4px_14px_0_rgb(37,99,235,0.39)] flex items-center justify-center overflow-hidden shrink-0">
-              <span className="text-white font-bold text-sm tracking-tighter">AF</span>
-            </div>
+            <img src="/logo.svg" alt="AstraFinance Logo" className="w-12 h-12 object-contain shrink-0 transition-theme scale-[1.35]" />
             {(!isSidebarCollapsed || mobileMenuOpen) && (
-              <div className="transition-opacity duration-300 whitespace-nowrap overflow-hidden">
-                <div className="text-[15px] font-bold text-foreground tracking-tight leading-none mb-1">AstraFinance AI</div>
-                <div className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase leading-none">Intelligence</div>
+              <div className="transition-opacity duration-300 whitespace-nowrap overflow-hidden flex items-center">
+                <span className="text-[17px] font-bold tracking-tight text-slate-800 dark:text-slate-100">
+                  AstraFinance
+                </span>
+                <span className="ml-1 text-[17px] font-extrabold text-primary">
+                  AI
+                </span>
               </div>
             )}
           </div>
@@ -208,7 +210,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="w-10 h-10 object-contain transition-theme"
               src="/logo.svg"
             />
-            <span className="text-lg font-bold text-foreground transition-theme">AstraFinance AI</span>
+            <div className="flex items-center">
+              <span className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100 transition-theme">
+                AstraFinance
+              </span>
+              <span className="ml-1 text-xl font-extrabold text-primary transition-theme">
+                AI
+              </span>
+            </div>
           </div>
           <div className="flex gap-4 items-center relative">
             <ThemeToggle />

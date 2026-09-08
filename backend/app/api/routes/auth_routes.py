@@ -66,19 +66,24 @@ async def get_current_user(
     short_uid = uid[:8] if uid else "unknown"
     logger.trace(f"[Auth] Token verified uid={short_uid}")
 
-    # Upsert user in MongoDB (ASYNC – must be awaited)
-    user = await user_repository.upsert_firebase_user(
-        firebase_uid=uid,
-        email=email,
-        name=decoded.get("name", "") or "",
-        picture=decoded.get("picture", "") or "",
-        provider=provider,
-        email_verified=decoded.get("email_verified", False),
-    )
+    try:
+        user = await user_repository.upsert_firebase_user(
+            firebase_uid=uid,
+            email=email,
+            name=decoded.get("name", "") or "",
+            picture=decoded.get("picture", "") or "",
+            provider=provider,
+            email_verified=decoded.get("email_verified", False),
+        )
+    except Exception as e:
+        import traceback
+        logger.error(f"Exception in upsert_firebase_user: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"User sync failed: {str(e)}")
 
     if user is None:
-        logger.error("User creation/update failed in MongoDB")
-        raise HTTPException(status_code=500, detail="User sync failed")
+        logger.error("User creation/update failed in MongoDB (returned None)")
+        raise HTTPException(status_code=500, detail="User sync failed (None)")
     return user
 
 

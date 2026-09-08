@@ -67,25 +67,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </p>
         </motion.div>
         
-        <motion.button 
-          initial={{ opacity: 0, scale: 0.9 }} 
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex items-center justify-center gap-2 px-3 py-1.5 bg-card hover:bg-surface text-muted-foreground rounded-lg transition-all border border-border hover:border-primary hover:shadow-[0_0_10px_rgba(59,130,246,0.15)] group"
-          onClick={() => {
-            // We will implement Cmd+K palette dispatch here later
-            const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
-            document.dispatchEvent(event);
-          }}
-        >
-          <Search className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-          <span className="text-xs font-bold">Search Settings</span>
-          <kbd className="ml-1.5 px-1.5 py-0.5 bg-surface border border-border rounded text-[9px] font-black text-muted-foreground font-sans shadow-sm group-hover:border-primary/50 group-hover:text-primary transition-colors">
-            ⌘K
-          </kbd>
-        </motion.button>
       </header>
 
       {/* ── Settings Content Area ──────────────────────────────────────── */}

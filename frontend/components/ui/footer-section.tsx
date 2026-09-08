@@ -34,14 +34,14 @@ const footerLinks: FooterSection[] = [
 		label: 'Company',
 		links: [
 			{ title: 'Company Info', href: '#' },
-			{ title: 'Privacy Policy', href: '#' },
-			{ title: 'Terms of Services', href: '#' },
+			{ title: 'Privacy Policy', href: '/privacy' },
+			{ title: 'Terms of Services', href: '/terms' },
 		],
 	},
 	{
 		label: 'Resources',
 		links: [
-			{ title: 'Help Center', href: '#' },
+			{ title: 'Help Center', href: '/support' },
 			{ title: 'Blog', href: '#' },
 			{ title: 'Contact', href: '#' },
 		],

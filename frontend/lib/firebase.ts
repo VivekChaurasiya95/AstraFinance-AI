@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, GithubAuthProvider } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, initializeAuth, browserLocalPersistence, browserPopupRedirectResolver } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,7 +14,15 @@ const firebaseConfig = {
 // Initialize Firebase only if it hasn't been initialized already
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-const auth = getAuth(app);
+// Fix for Next.js HMR: use localStorage instead of IndexedDB to avoid "Database is closing/hidden" error during rapid reloads.
+const auth = getApps().length > 0 
+  ? getAuth(app) 
+  : typeof window !== "undefined"
+    ? initializeAuth(app, {
+        persistence: browserLocalPersistence,
+        popupRedirectResolver: browserPopupRedirectResolver
+      })
+    : getAuth(app);
 
 // Providers
 const googleProvider = new GoogleAuthProvider();

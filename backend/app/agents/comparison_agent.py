@@ -42,6 +42,10 @@ class FinancialMetrics(BaseModel):
     document: Optional[str] = None
     page: Optional[int] = None
     reference_id: Optional[str] = None
+    fiscal_year: Optional[int] = None
+    reporting_period: Optional[str] = None
+    comparison_basis: Optional[str] = None
+    reporting_type: Optional[str] = None
 
 class BenchmarkResults(BaseModel):
     highest_revenue: str = ""
@@ -66,34 +70,220 @@ class ComparisonOutput(BaseModel):
     citations: List[dict] = []
 
 
+def normalize_fiscal_year(value: Any) -> Optional[int]:
+    """
+    Normalize various fiscal year representations to a 4-digit integer (e.g. 2025).
+    Handles formats like:
+      - 'FY2025', 'FY 2025', 'FY-2025', 'Fiscal Year 2025'
+      - 'FY2025 YOY', 'FY 2025 YOY', 'FY2025 YoY', '2025 YOY'
+      - '2025', 2025
+      - 'FY25', 'FY 25', 'FY-25'
+      - 'FY2024-25', 'FY 2024-2025'
+      - 'Q1 2025'
+    Returns None if no valid 4-digit fiscal year can be extracted.
+    """
+    if value is None:
+        return None
+
+    s = str(value).strip()
+    if not s or s.lower() in ("none", "null", "n/a", "nan", "-"):
+        return None
+
+    s_upper = s.upper()
+
+    # Detect year ranges like 'FY2024-25' or 'FY 2024-2025' -> financial year ends in 2025
+    range_match = re.search(r'(?<!\d)(19\d\d|20\d\d)\s*[-/]\s*(\d{2,4})(?!\d)', s_upper)
+    if range_match:
+        start_yr = int(range_match.group(1))
+        end_part = range_match.group(2)
+        if len(end_part) == 2:
+            century = (start_yr // 100) * 100
+            end_yr = century + int(end_part)
+            if end_yr < start_yr:
+                end_yr += 100
+            return end_yr
+        elif len(end_part) == 4:
+            return int(end_part)
+
+    # Detect 4-digit year (1900-2099) not immediately adjacent to other digits
+    four_digit_matches = re.findall(r'(?<!\d)(19\d\d|20\d\d)(?!\d)', s_upper)
+    if four_digit_matches:
+        return int(four_digit_matches[0])
+
+    # Detect 2-digit fiscal year preceded by FY/Fiscal Year, e.g. FY25, FY 25, FY-25
+    two_digit_match = re.search(r'(?:FY|FISCAL\s*YEAR)[\s\-_]*(\d{2})(?!\d)', s_upper)
+    if two_digit_match:
+        yy = int(two_digit_match.group(1))
+        return 2000 + yy if yy < 80 else 1900 + yy
+
+    logger.debug("Could not extract fiscal year from raw value: %r", value)
+    return None
+
+
+def normalize_reporting_type(reporting_type: Any, raw_period: Any = None) -> Optional[str]:
+    """
+    Normalize reporting period type (e.g. annual, quarterly, monthly, Q1, Q2, Q3, Q4).
+    Maps:
+      - 'Annual', 'annual', 'FY', 'Fiscal Year', 'Full Year' -> 'annual'
+      - 'Q1', '1Q', 'First Quarter' -> 'Q1'
+      - 'Q2', '2Q', 'Second Quarter' -> 'Q2'
+      - 'Q3', '3Q', 'Third Quarter' -> 'Q3'
+      - 'Q4', '4Q', 'Fourth Quarter' -> 'Q4'
+      - 'Quarterly', 'quarterly' -> 'quarterly'
+      - 'Monthly', 'monthly' -> 'monthly'
+    If reporting_type is not specified or is a generic scope ('Consolidated', 'Standalone'),
+    infers the type from raw_period. Defaults to 'annual' for typical FY/year periods.
+    """
+    t_str = str(reporting_type or "").strip().lower()
+    p_str = str(raw_period or "").strip().lower()
+
+    # Direct reporting_type checks
+    if t_str:
+        if t_str in ("annual", "fy", "fiscal year", "full year", "12m"):
+            return "annual"
+        if t_str in ("q1", "1q", "first quarter"):
+            return "Q1"
+        if t_str in ("q2", "2q", "second quarter"):
+            return "Q2"
+        if t_str in ("q3", "3q", "third quarter"):
+            return "Q3"
+        if t_str in ("q4", "4q", "fourth quarter"):
+            return "Q4"
+        if t_str in ("quarterly", "quarter"):
+            # Refine with quarter from period if present
+            if "q1" in p_str or "1q" in p_str: return "Q1"
+            if "q2" in p_str or "2q" in p_str: return "Q2"
+            if "q3" in p_str or "3q" in p_str: return "Q3"
+            if "q4" in p_str or "4q" in p_str: return "Q4"
+            return "quarterly"
+        if t_str in ("monthly", "month"):
+            return "monthly"
+
+    # Infer from raw_period
+    if p_str:
+        if re.search(r'\b(q1|1q|first\s*quarter)\b', p_str):
+            return "Q1"
+        if re.search(r'\b(q2|2q|second\s*quarter)\b', p_str):
+            return "Q2"
+        if re.search(r'\b(q3|3q|third\s*quarter)\b', p_str):
+            return "Q3"
+        if re.search(r'\b(q4|4q|fourth\s*quarter)\b', p_str):
+            return "Q4"
+        if re.search(r'\b(quarterly|quarter)\b', p_str):
+            return "quarterly"
+        if re.search(r'\b(monthly|month)\b', p_str):
+            return "monthly"
+        if re.search(r'\b(fy|fiscal\s*year|annual|full\s*year|\d{4})\b', p_str):
+            return "annual"
+
+    return "annual" if normalize_fiscal_year(raw_period) is not None else None
+
+
+def parse_reporting_details(raw_period: Any, raw_type: Any = None) -> Dict[str, Any]:
+    """
+    Parse period and reporting type into structured components:
+    - fiscal_year: int or None
+    - reporting_period: str (canonical, e.g. 'FY2025', 'Q1 2025')
+    - comparison_basis: Optional[str] (e.g. 'YOY', 'QOQ' or None)
+    - reporting_type: str (e.g. 'annual', 'Q1', 'quarterly', etc.)
+    """
+    fiscal_year = normalize_fiscal_year(raw_period)
+
+    raw_str = str(raw_period or "").strip()
+    raw_upper = raw_str.upper()
+
+    # Extract comparison basis if present without losing YoY info
+    comparison_basis = None
+    basis_match = re.search(r'\b(YOY|QOQ|MOM)\b', raw_upper)
+    if basis_match:
+        comparison_basis = basis_match.group(1).upper()
+
+    reporting_type = normalize_reporting_type(raw_type, raw_period)
+
+    # Clean reporting period label
+    clean_period = raw_str
+    if comparison_basis:
+        clean_period = re.sub(rf'\b{comparison_basis}\b', '', clean_period, flags=re.IGNORECASE).strip()
+    clean_period = re.sub(r'\s+', ' ', clean_period).strip(' -_')
+
+    if not clean_period and fiscal_year:
+        clean_period = f"FY{fiscal_year}"
+    elif fiscal_year and re.match(r'^(?:FY)?\s*[-_]?\s*(?:20)?\d{2}$', clean_period, re.IGNORECASE):
+        clean_period = f"FY{fiscal_year}"
+
+    return {
+        "fiscal_year": fiscal_year,
+        "reporting_period": clean_period or (f"FY{fiscal_year}" if fiscal_year else raw_str),
+        "comparison_basis": comparison_basis,
+        "reporting_type": reporting_type,
+    }
+
+
 def _normalize_year(year_str: str) -> str:
-    if not year_str:
-        return ""
-    year_str = year_str.strip().upper()
-    # E.g. 'FY25' -> 'FY2025', '2025' -> 'FY2025'
-    match = re.match(r'^(?:FY)?(?:20)?(\d{2})$', year_str)
-    if match:
-        return f"FY20{match.group(1)}"
-    return year_str
+    fy = normalize_fiscal_year(year_str)
+    if fy is not None:
+        return f"FY{fy}"
+    return (year_str or "").strip().upper()
+
 
 def _validate_year_and_type(companies_data: List[Dict[str, Any]]) -> bool:
-    """Ensure all companies share the same financial year and reporting type.
-    Returns True if valid, False otherwise (and logs a warning)."""
-    years = set()
+    """Ensure all companies share the same canonical financial year and reporting type.
+    Enriches each company dictionary with structured period metadata.
+    Returns True if valid, False otherwise (and logs diagnostic details)."""
     for c in companies_data:
-        raw_year = c.get("financial_year")
-        if raw_year:
-            years.add(_normalize_year(raw_year))
-            
-    types = {c.get("reporting_type") for c in companies_data if c.get("reporting_type")}
-    
-    if len(years) > 1 or len(types) > 1:
+        company_name = c.get("company_name", "Unknown Company")
+        raw_period = c.get("financial_year")
+        raw_type = c.get("reporting_type")
+
+        details = parse_reporting_details(raw_period, raw_type)
+        c["fiscal_year"] = details["fiscal_year"]
+        c["reporting_period"] = details["reporting_period"]
+        c["comparison_basis"] = details["comparison_basis"]
+        c["reporting_type"] = details["reporting_type"]
+
+        logger.info(
+            "[ComparisonAgent] Period validation\ncompany=%s\nraw_period=%s\nnormalized_year=%s",
+            company_name,
+            raw_period,
+            details["fiscal_year"],
+        )
+
+    # 1. Missing or invalid fiscal year check
+    missing_or_invalid = [c for c in companies_data if c.get("fiscal_year") is None]
+    if missing_or_invalid:
+        company_years = {c.get("company_name", "Unknown"): c.get("fiscal_year") for c in companies_data}
         logger.warning(
-            "Comparison aborted: mismatched years or reporting types – normalized years=%s types=%s",
-            years,
-            types,
+            "[ComparisonAgent] Comparison blocked\nreason=invalid_or_missing_fiscal_year\ncompany_years=%s",
+            json.dumps(company_years, indent=4),
         )
         return False
+
+    # 2. Fiscal year mismatch check
+    years = {c["fiscal_year"] for c in companies_data}
+    if len(years) > 1:
+        company_years = {c.get("company_name", "Unknown"): c.get("fiscal_year") for c in companies_data}
+        logger.warning(
+            "[ComparisonAgent] Comparison blocked\nreason=fiscal_year_mismatch\ncompany_years=%s",
+            json.dumps(company_years, indent=4),
+        )
+        return False
+
+    # 3. Reporting type mismatch check
+    types = {c["reporting_type"] for c in companies_data if c.get("reporting_type")}
+    if len(types) > 1:
+        company_types = {c.get("company_name", "Unknown"): c.get("reporting_type") for c in companies_data}
+        logger.warning(
+            "[ComparisonAgent] Comparison blocked\nreason=reporting_type_mismatch\ncompany_types=%s",
+            json.dumps(company_types, indent=4),
+        )
+        return False
+
+    normalized_years_list = sorted(list(years))
+    logger.info(
+        "[ComparisonAgent] Period validation passed\nnormalized_years=%s",
+        normalized_years_list,
+    )
+    logger.info("[ComparisonAgent] Normalized fiscal years=%s", normalized_years_list)
     return True
 
 def _score_company(m: FinancialMetrics) -> float:
@@ -218,6 +408,10 @@ def calculate_metrics(company_data: Dict[str, Any]) -> FinancialMetrics:
         document=meta.get("document"),
         page=meta.get("page"),
         reference_id=meta.get("reference_id"),
+        fiscal_year=company_data.get("fiscal_year"),
+        reporting_period=company_data.get("reporting_period"),
+        comparison_basis=company_data.get("comparison_basis"),
+        reporting_type=company_data.get("reporting_type"),
     )
 
 def compute_benchmarks(metrics_list: List[FinancialMetrics]) -> dict:
@@ -372,7 +566,7 @@ class ComparisonAgent:
             raise RuntimeError(f"LLM analysis failed: {e}")
 
     def compare(self, companies_data: List[Dict[str, Any]], user_settings: dict | None = None) -> str:
-        logger.info("Starting comparison for %d companies.", len(companies_data))
+        logger.info("[ComparisonAgent] Starting comparison for %d companies", len(companies_data))
         start_time = time.time()
 
         if len(companies_data) < 1:
@@ -386,6 +580,9 @@ class ComparisonAgent:
                 "message": "Companies have mismatched financial years or reporting types. Comparison aborted."
             })
 
+        logger.info("[ComparisonAgent] Reporting periods compatible")
+        logger.info("[ComparisonAgent] Comparison proceeding")
+
         metrics_list: List[FinancialMetrics] = []
         missing_metrics: Dict[str, List[str]] = {}
         for raw in companies_data:
@@ -394,7 +591,10 @@ class ComparisonAgent:
                 metrics_list.append(fm)
                 # Track which top‑level metrics are missing for this company
                 for field in FinancialMetrics.model_fields:
-                    if getattr(fm, field) is None and field not in {"company_name", "document", "page", "reference_id"}:
+                    if getattr(fm, field) is None and field not in {
+                        "company_name", "document", "page", "reference_id",
+                        "fiscal_year", "reporting_period", "comparison_basis", "reporting_type"
+                    }:
                         missing_metrics.setdefault(fm.company_name, []).append(field)
             except Exception as e:
                 logger.error("Failed to process company %s: %s", raw.get("company_name", "?"), e)

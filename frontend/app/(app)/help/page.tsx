@@ -231,16 +231,7 @@ export default function HelpSupportPage() {
             <p className="text-xs text-muted-foreground font-medium">Find answers, learn how AstraFinance works, or get help.</p>
           </div>
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setShowCommandPalette(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surface text-muted-foreground rounded-md text-sm transition-colors border border-border"
-            >
-              <Search className="w-4 h-4" />
-              <span>Search docs...</span>
-              <kbd className="hidden sm:inline-flex ml-2 items-center gap-1 bg-card border border-border px-1.5 rounded text-[10px] font-mono font-bold text-muted-foreground shadow-sm">
-                <Command className="w-3 h-3" /> K
-              </kbd>
-            </button>
+
             <div className="flex items-center gap-2 px-3 py-1 bg-success/10 text-success border border-emerald-100 rounded-full text-xs font-semibold shadow-sm">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>

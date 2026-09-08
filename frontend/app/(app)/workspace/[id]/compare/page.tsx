@@ -135,6 +135,9 @@ export default function ComparePage() {
       .then((d) => {
         setData(d);
         console.log("[Compare] Loaded data:", d?.companies_compared?.length, "companies,", d?.financial_metrics?.length, "metrics");
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("refresh-agents"));
+        }
       })
       .catch((err) => {
         console.error("[Compare] Load failed:", err);

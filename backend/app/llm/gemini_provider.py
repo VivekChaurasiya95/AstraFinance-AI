@@ -45,19 +45,41 @@ class GeminiProvider:
         return self.clients[client_key]
 
     def _map_error(self, e: Exception) -> Exception:
+        from .exceptions import LLMErrorType
+        
         # Handle Google API errors
         error_msg = str(e).lower()
-        if "429" in error_msg or "quota" in error_msg:
-            return RateLimitError(f"Gemini Rate Limit Hit: {e}", 5.0) # Default to 5s retry
-        elif "401" in error_msg or "403" in error_msg or "unauthenticated" in error_msg:
-            return AuthenticationError(f"Gemini Auth Error: {e}")
-        elif "400" in error_msg or "invalid argument" in error_msg:
-            return InvalidRequestError(f"Gemini Bad Request: {e}")
-        elif "500" in error_msg or "503" in error_msg:
-            return ProviderUnavailableError(f"Gemini Server Error: {e}")
+        metadata = {}
+        
+        status = getattr(e, "status_code", None)
+        if status is None and isinstance(e, httpx.HTTPStatusError):
+            status = e.response.status_code
+            if hasattr(e.response, "text"):
+                error_msg += " " + e.response.text.lower()
+                
+        if status:
+            metadata["status"] = status
+
+        if "429" in error_msg or "quota" in error_msg or status == 429:
+            if "quota" in error_msg:
+                return RateLimitError(f"Gemini Quota Exceeded: {e}", 5.0, error_type=LLMErrorType.QUOTA_EXCEEDED, metadata=metadata)
+            return RateLimitError(f"Gemini Rate Limit Hit: {e}", 5.0, error_type=LLMErrorType.RATE_LIMITED, metadata=metadata)
+        elif "401" in error_msg or "403" in error_msg or "unauthenticated" in error_msg or status in [401, 403]:
+            error_type = LLMErrorType.AUTH_ERROR if status == 401 or "unauthenticated" in error_msg else LLMErrorType.PERMISSION_OR_ACCESS_ERROR
+            return AuthenticationError(f"Gemini Auth Error: {e}", error_type=error_type, metadata=metadata)
+        elif "404" in error_msg or status == 404:
+            return InvalidRequestError(f"Gemini Model Not Found: {e}", error_type=LLMErrorType.MODEL_NOT_FOUND, metadata=metadata)
+        elif "400" in error_msg or "invalid argument" in error_msg or status == 400:
+            return InvalidRequestError(f"Gemini Bad Request: {e}", error_type=LLMErrorType.INVALID_REQUEST, metadata=metadata)
+        elif "503" in error_msg or status == 503:
+            if "high demand" in error_msg:
+                metadata["reason"] = "high_demand"
+            return ProviderUnavailableError(f"Gemini Temporarily Unavailable: {e}", error_type=LLMErrorType.PROVIDER_UNAVAILABLE, metadata=metadata)
+        elif "500" in error_msg or status == 500:
+            return ProviderUnavailableError(f"Gemini Server Error: {e}", error_type=LLMErrorType.PROVIDER_SERVER_ERROR, metadata=metadata)
             
-        if isinstance(e, httpx.RequestError):
-            return ProviderUnavailableError(f"Gemini Connection Error: {e}")
+        if isinstance(e, httpx.RequestError) or "timeout" in error_msg or "connection" in error_msg:
+            return ProviderUnavailableError(f"Gemini Connection Error: {e}", error_type=LLMErrorType.NETWORK_ERROR, metadata=metadata)
             
         return e
 

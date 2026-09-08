@@ -27,7 +27,7 @@ class EmbeddingRouter:
         # Initialize Primary
         self.primary_provider = settings.EMBEDDING_PRIMARY_PROVIDER
         self.primary_model_name = settings.GEMINI_EMBEDDING_MODEL
-        self.primary_dim = 768
+        self.primary_dim = 3072
         
         try:
             self.primary_embeddings = GoogleGenerativeAIEmbeddings(
