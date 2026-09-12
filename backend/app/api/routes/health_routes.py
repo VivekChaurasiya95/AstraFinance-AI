@@ -5,9 +5,10 @@ router = APIRouter()
 
 
 @router.get("/health", tags=["Health"])
-def health_check():
+async def health_check():
     from ...llm.provider_registry import registry
     from ...config.settings import settings
+    from ...database.redis_client import redis_client
 
     providers = {
         "groq": {
@@ -21,9 +22,17 @@ def health_check():
             "model": settings.OPENROUTER_MODEL if registry.is_provider_configured("openrouter") else None,
         },
     }
+    
+    redis_status = "disconnected"
+    try:
+        await redis_client.ping()
+        redis_status = "connected"
+    except Exception:
+        pass
 
     return {
         "status": "healthy",
         "message": "Backend is running successfully.",
         "providers": providers,
+        "redis": redis_status
     }
