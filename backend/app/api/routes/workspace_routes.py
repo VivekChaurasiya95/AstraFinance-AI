@@ -7,7 +7,7 @@ from pydantic import BaseModel
 import time
 import asyncio
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import aiofiles
 import traceback
 import re
@@ -39,6 +39,7 @@ from ...database.mongo_client import (
     reports_collection,
     users_collection,
     comparison_cache_collection,
+    invitations_collection,
     db
 )
 from ...repositories.settings_repository import get_user_settings
@@ -46,6 +47,8 @@ from ...repositories import notifications_repository
 from ...repositories import user_repository
 from ...agents.report_agent import report_agent
 from fastapi.responses import FileResponse
+from ...services.cache_service import CacheService
+from ...config.settings import settings
 
 router = APIRouter(prefix="/workspaces", tags=["Workspaces"])
 
@@ -120,10 +123,18 @@ def format_workspace(ws: dict) -> dict:
 @router.get("", response_model=List[dict])
 async def get_workspaces(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
+    cache_key = f"workspaces:user:{user_id}"
+    
+    cached = await CacheService.get_cached_data(cache_key)
+    if cached:
+        return cached
+        
     cursor = workspaces_collection.find({"owner_id": user_id}).sort("updated_at", -1)
     workspaces = []
     async for ws in cursor:
         workspaces.append(format_workspace(ws))
+        
+    await CacheService.set_cached_data(cache_key, workspaces, settings.REDIS_WORKSPACE_TTL)
     return workspaces
 
 @router.get("/current")
@@ -153,10 +164,21 @@ async def check_workspace_name(name: str, current_user: dict = Depends(get_curre
 @router.get("/{workspace_id}")
 async def get_workspace(workspace_id: str, current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
+    cache_key = f"workspace:{workspace_id}"
+    
+    cached = await CacheService.get_cached_data(cache_key)
+    if cached:
+        # Extra check: make sure it belongs to the user requesting it
+        if cached.get("owner_id") == user_id:
+            return cached
+            
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    return format_workspace(ws)
+        
+    formatted = format_workspace(ws)
+    await CacheService.set_cached_data(cache_key, formatted, settings.REDIS_WORKSPACE_TTL)
+    return formatted
 
 @router.patch("/{workspace_id}")
 async def update_workspace(workspace_id: str, update_req: WorkspaceUpdateRequest, current_user: dict = Depends(get_current_user)):
@@ -180,6 +202,8 @@ async def update_workspace(workspace_id: str, update_req: WorkspaceUpdateRequest
     updated_ws = await workspaces_collection.find_one({"_id": workspace_id})
     if not updated_ws:
         raise HTTPException(status_code=404, detail="Workspace not found after update")
+        
+    await CacheService.invalidate_cache([f"workspace:{workspace_id}", f"workspaces:user:{user_id}", f"dashboard_stats:{user_id}"])
     return format_workspace(updated_ws)
 
 # ── Workspace Members ─────────────────────────────────────────────────────────
@@ -229,31 +253,94 @@ async def invite_workspace_member(workspace_id: str, invite: WorkspaceInviteRequ
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
         
-    target_user = await users_collection.find_one({"email": invite.email})
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User with this email not found")
-        
-    target_id = str(target_user["_id"])
+    normalized_email = invite.email.strip().lower()
     
-    if target_id == user_id:
-        raise HTTPException(status_code=400, detail="Cannot invite the owner")
+    if current_user.get("email", "").lower() == normalized_email:
+        raise HTTPException(status_code=400, detail="Cannot invite yourself")
         
-    existing_members = ws.get("members", [])
-    if any(m["user_id"] == target_id for m in existing_members):
-        raise HTTPException(status_code=400, detail="User is already a member")
+    target_user = await users_collection.find_one({"email": normalized_email})
+    if target_user:
+        target_id = str(target_user["_id"])
+        existing_members = ws.get("members", [])
+        if any(m["user_id"] == target_id for m in existing_members):
+            raise HTTPException(status_code=409, detail="User is already a member of this workspace")
+            
+    existing_invite = await invitations_collection.find_one({
+        "workspace_id": workspace_id,
+        "invitee_email": normalized_email,
+        "status": "pending"
+    })
+    if existing_invite:
+        raise HTTPException(status_code=409, detail="An invitation is already pending for this user")
         
-    new_member = {
-        "user_id": target_id,
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=7)
+    
+    invitation = {
+        "_id": str(uuid.uuid4()),
+        "workspace_id": workspace_id,
+        "workspace_name": ws.get("name", "Workspace"),
+        "inviter_id": user_id,
+        "inviter_name": current_user.get("name", "A colleague"),
+        "invitee_email": normalized_email,
         "role": invite.role,
-        "added_at": utc_now()
+        "status": "pending",
+        "created_at": now.isoformat(),
+        "expires_at": expires_at.isoformat()
     }
     
-    await workspaces_collection.update_one(
-        {"_id": workspace_id},
-        {"$push": {"members": new_member}}
-    )
+    await invitations_collection.insert_one(invitation)
     
-    return {"message": "Invitation sent successfully"}
+    if target_user:
+        await maybe_notify_user(
+            user_id=str(target_user["_id"]),
+            setting_key="workspace_updates",
+            category="workspace",
+            priority="normal",
+            title="Workspace Invitation",
+            message=f"You have been invited to collaborate on {ws.get('name')} by {current_user.get('name', 'a colleague')}.",
+            workspace_id=workspace_id,
+            reference_id=invitation["_id"]
+        )
+        
+    return {"message": "Invitation sent successfully", "invitation_id": invitation["_id"]}
+
+@router.get("/{workspace_id}/invitations")
+async def get_workspace_invitations(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
+        
+    cursor = invitations_collection.find({
+        "workspace_id": workspace_id,
+        "status": "pending"
+    }).sort("created_at", -1)
+    
+    invitations = []
+    async for inv in cursor:
+        inv["id"] = inv.pop("_id")
+        invitations.append(inv)
+        
+    return invitations
+
+@router.delete("/{workspace_id}/invitations/{invitation_id}")
+async def revoke_workspace_invitation(workspace_id: str, invitation_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user["_id"])
+    ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
+    if not ws:
+        raise HTTPException(status_code=404, detail="Workspace not found or unauthorized")
+        
+    result = await invitations_collection.delete_one({
+        "_id": invitation_id,
+        "workspace_id": workspace_id,
+        "status": "pending"
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Invitation not found or already processed")
+        
+    return {"message": "Invitation revoked successfully"}
 
 
 @router.patch("/{workspace_id}/members/{member_id}")
@@ -334,6 +421,7 @@ async def create_workspace(workspace: WorkspaceCreate, current_user: dict = Depe
     }
     
     await workspaces_collection.insert_one(new_ws)
+    await CacheService.invalidate_cache([f"workspaces:user:{user_id}", f"dashboard_stats:{user_id}"])
     return format_workspace(new_ws)
 
 
@@ -390,7 +478,7 @@ async def delete_workspace(workspace_id: str, current_user: dict = Depends(get_c
     await metrics_collection.delete_many({"workspace_id": workspace_id})
     await red_flags_collection.delete_many({"workspace_id": workspace_id})
     await agent_logs_collection.delete_many({"workspace_id": workspace_id})
-    
+    await CacheService.invalidate_cache([f"workspace:{workspace_id}", f"workspaces:user:{user_id}", f"dashboard_stats:{user_id}"])
     return {"message": "Workspace deleted successfully"}
 
 
@@ -404,6 +492,11 @@ async def get_workspace_documents(workspace_id: str, current_user: dict = Depend
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
+    cache_key = f"documents:workspace:{workspace_id}"
+    cached = await CacheService.get_cached_data(cache_key)
+    if cached:
+        return cached
+
     docs_cursor = documents_collection.find({"workspace_id": workspace_id}).sort("uploaded_at", -1)
     docs = []
     async for doc in docs_cursor:
@@ -412,8 +505,9 @@ async def get_workspace_documents(workspace_id: str, current_user: dict = Depend
         if "uploaded_at" in doc and isinstance(doc["uploaded_at"], datetime):
             doc["uploaded_at"] = doc["uploaded_at"].strftime("%b %d, %Y")
         docs.append(doc)
-        
-    return {"documents": docs, "total": len(docs)}
+    result = {"documents": docs, "total": len(docs)}
+    await CacheService.set_cached_data(cache_key, result, settings.REDIS_DOCUMENT_TTL)
+    return result
 
 
 @router.get("/{workspace_id}/metrics")
@@ -422,6 +516,14 @@ async def get_workspace_metrics(workspace_id: str, document_id: Optional[str] = 
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    cache_key = f"metrics:workspace:{workspace_id}"
+    if document_id:
+        cache_key += f":doc:{document_id}"
+        
+    cached = await CacheService.get_cached_data(cache_key)
+    if cached:
+        return cached
         
     query = {"workspace_id": workspace_id}
     if document_id:
@@ -447,6 +549,7 @@ async def get_workspace_metrics(workspace_id: str, document_id: Optional[str] = 
             elif doc.get("status") == "failed":
                 metrics_data["status"] = "failed"
                 
+    await CacheService.set_cached_data(cache_key, metrics_data, settings.REDIS_METRICS_TTL)
     return metrics_data
 
 @router.get("/{workspace_id}/red-flags")
@@ -455,6 +558,14 @@ async def get_workspace_red_flags(workspace_id: str, document_id: Optional[str] 
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    cache_key = f"redflags:workspace:{workspace_id}"
+    if document_id:
+        cache_key += f":doc:{document_id}"
+        
+    cached = await CacheService.get_cached_data(cache_key)
+    if cached:
+        return cached
         
     query = {"workspace_id": workspace_id}
     if document_id:
@@ -494,13 +605,15 @@ async def get_workspace_red_flags(workspace_id: str, document_id: Optional[str] 
         if doc:
             filename = doc.get("name", filename)
             
-    return {
+    result = {
         "status": status,
         "total_flags": len(flags),
         "last_analyzed": last_analyzed,
         "flags": flags,
         "filename": filename
     }
+    await CacheService.set_cached_data(cache_key, result, settings.REDIS_REDFLAG_TTL)
+    return result
 
 async def add_agent_activity(workspace_id: str, document_id: str | None, agent_name: str, agent_type: str, status: str, action: str, details: str = "", metadata: dict | None = None):
     now = datetime.now(timezone.utc)
@@ -833,7 +946,7 @@ async def upload_document(
             {"_id": workspace_id}, 
             {"$inc": {"docs": 1}, "$set": {"updated_at": datetime.now(timezone.utc)}}
         )
-
+    await CacheService.invalidate_cache([f"documents:workspace:{workspace_id}", f"workspace:{workspace_id}", f"workspaces:user:{user_id}", f"dashboard_stats:{user_id}"])
     return {"uploaded": uploaded, "workspace_id": workspace_id}
 
 
@@ -870,6 +983,14 @@ async def delete_document(workspace_id: str, document_id: str, current_user: dic
     await metrics_collection.delete_many({"document_id": document_id})
     await red_flags_collection.delete_many({"document_id": document_id})
     await agent_logs_collection.delete_many({"document_id": document_id})
+    await CacheService.invalidate_cache([
+        f"documents:workspace:{workspace_id}",
+        f"metrics:workspace:{workspace_id}",
+        f"redflags:workspace:{workspace_id}",
+        f"workspace:{workspace_id}",
+        f"workspaces:user:{user_id}",
+        f"dashboard_stats:{user_id}"
+    ])
     
     return {"message": "Document deleted successfully"}
 
@@ -881,6 +1002,11 @@ async def get_workspace_agents(workspace_id: str, current_user: dict = Depends(g
     ws = await workspaces_collection.find_one({"_id": workspace_id, "owner_id": user_id})
     if not ws:
         raise HTTPException(status_code=404, detail="Workspace not found")
+        
+    cache_key = f"agents:workspace:{workspace_id}"
+    cached = await CacheService.get_cached_data(cache_key)
+    if cached:
+        return cached
         
     latest_doc = await documents_collection.find_one(
         {"workspace_id": workspace_id},
@@ -953,13 +1079,16 @@ async def get_workspace_agents(workspace_id: str, current_user: dict = Depends(g
             {"id": 6, "name": "Report Agent", "status": "Idle", "details": "Ready to generate"}
         ]
         
-    return {
+    result = {
         "pipeline_status": latest_doc.get("status", "idle") if latest_doc else "idle",
         "document_id": str(latest_doc["_id"]) if latest_doc else None,
         "document_name": latest_doc.get("file_name") if latest_doc else None,
         "agents": agents,
         "timeline": logs
     }
+    
+    await CacheService.set_cached_data(cache_key, result, settings.REDIS_AGENT_ACTIVITY_TTL)
+    return result
 
 @router.post("/{workspace_id}/agents/{agent_id}/retry")
 async def retry_agent(workspace_id: str, agent_id: int, background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
