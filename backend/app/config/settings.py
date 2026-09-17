@@ -57,6 +57,15 @@ class Settings(BaseSettings):
 
     FIREBASE_SERVICE_ACCOUNT_KEY: str = "app/config/astrafinance-ai-firebase-adminsdk-fbsvc-78efa35b8d.json"
     REDIS_URL: str = "redis://localhost:6380/0"
+    
+    # Redis Cache TTLs (in seconds)
+    REDIS_DASHBOARD_TTL: int = 300
+    REDIS_WORKSPACE_TTL: int = 120
+    REDIS_DOCUMENT_TTL: int = 180
+    REDIS_METRICS_TTL: int = 600
+    REDIS_COMPARISON_TTL: int = 600
+    REDIS_REDFLAG_TTL: int = 600
+    REDIS_AGENT_ACTIVITY_TTL: int = 30
 
     # JWT_SECRET_KEY: str
     # JWT_ALGORITHM: str
