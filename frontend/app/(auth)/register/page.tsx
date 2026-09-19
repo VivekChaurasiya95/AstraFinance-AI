@@ -113,7 +113,7 @@ export default function RegisterPage() {
               hidden: { opacity: 0 },
               show: { opacity: 1, transition: { staggerChildren: 0.08 } }
             }}
-            className="w-full max-w-[460px] bg-card rounded-[32px] shadow-sm border border-border-subtle p-6 sm:p-8 flex flex-col"
+            className="w-full max-w-[400px] bg-card rounded-[32px] shadow-sm border border-border-subtle p-6 sm:p-8 flex flex-col"
           >
             {/* Logo */}
             <motion.div variants={fadeUp} className="flex flex-col items-center mb-4">
@@ -134,7 +134,7 @@ export default function RegisterPage() {
                 <Input
                   id="fullName"
                   type="text"
-                  placeholder="Jane Doe"
+                  placeholder="Aarav Sharma"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required
@@ -150,7 +150,7 @@ export default function RegisterPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="name@company.com"
+                    placeholder="aarav@company.com"
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
