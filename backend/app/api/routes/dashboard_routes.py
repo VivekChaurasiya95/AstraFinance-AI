@@ -56,7 +56,8 @@ def time_ago(dt: Optional[datetime]) -> str:
         return "Unknown"
 
 import json
-from ...database.redis_client import redis_client
+from ...services.cache_service import CacheService
+from ...config.settings import settings
 
 # ── Dashboard Stats ────────────────────────────────────────────────────────────
 @router.get("/stats", response_model=DashboardStats)
@@ -64,13 +65,9 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
     cache_key = f"dashboard_stats:{user_id}"
     
-    try:
-        cached = await redis_client.get(cache_key)
-        if cached:
-            print(f"[Redis] Cache HIT for {cache_key}")
-            return json.loads(cached)
-    except Exception:
-        pass
+    cached = await CacheService.get_cached_data(cache_key)
+    if cached:
+        return cached
 
     now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
@@ -190,10 +187,7 @@ async def get_dashboard_stats(current_user: dict = Depends(get_current_user)):
         "red_flags": recent_flags,
     }
     
-    try:
-        await redis_client.setex(cache_key, 300, json.dumps(result))
-    except Exception:
-        pass
+    await CacheService.set_cached_data(cache_key, result, settings.REDIS_DASHBOARD_TTL)
         
     return result
 
@@ -203,13 +197,9 @@ async def get_dashboard_notifications(current_user: dict = Depends(get_current_u
     user_id = str(current_user["_id"])
     cache_key = f"dashboard_notifs:{user_id}"
     
-    try:
-        cached = await redis_client.get(cache_key)
-        if cached:
-            print(f"[Redis] Cache HIT for {cache_key}")
-            return json.loads(cached)
-    except Exception:
-        pass
+    cached = await CacheService.get_cached_data(cache_key)
+    if cached:
+        return cached
 
     last_read: datetime = current_user.get("last_read_notifications", datetime.min)
     if isinstance(last_read, str):
@@ -301,11 +291,7 @@ async def get_dashboard_notifications(current_user: dict = Depends(get_current_u
         "has_unread": has_unread,
     }
     
-    try:
-        await redis_client.setex(cache_key, 60, json.dumps(result)) # 1 minute cache
-    except Exception:
-        pass
-        
+    await CacheService.set_cached_data(cache_key, result, settings.REDIS_DASHBOARD_TTL)
     return result
 
 
@@ -313,10 +299,7 @@ async def get_dashboard_notifications(current_user: dict = Depends(get_current_u
 async def mark_notifications_read(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["_id"])
     
-    try:
-        await redis_client.delete(f"dashboard_notifs:{user_id}")
-    except Exception:
-        pass
+    await CacheService.invalidate_cache([f"dashboard_notifs:{user_id}"])
         
     await users_collection.update_one(
         {"_id": user_id},
