@@ -39,12 +39,12 @@ const helpCategories = [
   { id: "workspaces", title: "Workspaces", desc: "Upload documents, organize analyses and manage workspace data.", icon: Database, color: "text-primary", bg: "bg-primary/10" },
   { id: "agents", title: "AI Agents", desc: "Understand Document, Extraction, Red Flag, Comparison, Research and Report agents.", icon: Activity, color: "text-destructive", bg: "bg-destructive/10" },
   { id: "analysis", title: "Financial Analysis", desc: "Learn how financial analysis and metrics work.", icon: FileText, color: "text-success", bg: "bg-success/10" },
-  { id: "reports", title: "Reports", desc: "Generate, view and download AI-generated financial reports.", icon: FileText, color: "text-sky-600", bg: "bg-sky-50" },
-  { id: "orchestration", title: "Agent Orchestration", desc: "Understand the execution pipeline and agent activity.", icon: Activity, color: "text-violet-600", bg: "bg-violet-50" },
+  { id: "reports", title: "Reports", desc: "Generate, view and download AI-generated financial reports.", icon: FileText, color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-50 dark:bg-sky-500/10" },
+  { id: "orchestration", title: "Agent Orchestration", desc: "Understand the execution pipeline and agent activity.", icon: Activity, color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-500/10" },
   { id: "security", title: "Account & Security", desc: "Profile, sessions, authentication and security.", icon: Shield, color: "text-muted-foreground", bg: "bg-surface" },
-  { id: "ai-config", title: "AI Configuration", desc: "Configure Groq, Gemini fallback, reasoning and guardrails.", icon: Settings, color: "text-fuchsia-600", bg: "bg-fuchsia-50" },
-  { id: "notifications", title: "Notifications", desc: "Configure notification preferences and alerts.", icon: Bell, color: "text-amber-600", bg: "bg-amber-50" },
-  { id: "troubleshooting", title: "Troubleshooting", desc: "Fix common frontend, backend and AI issues.", icon: Wrench, color: "text-orange-600", bg: "bg-orange-50" },
+  { id: "ai-config", title: "AI Configuration", desc: "Configure Groq, Gemini fallback, reasoning and guardrails.", icon: Settings, color: "text-fuchsia-600 dark:text-fuchsia-400", bg: "bg-fuchsia-50 dark:bg-fuchsia-500/10" },
+  { id: "notifications", title: "Notifications", desc: "Configure notification preferences and alerts.", icon: Bell, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-500/10" },
+  { id: "troubleshooting", title: "Troubleshooting", desc: "Fix common frontend, backend and AI issues.", icon: Wrench, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-500/10" },
 ];
 
 const faqs = [
@@ -105,7 +105,7 @@ const pipelineAgents = [
     icon: ScanText,
     color: "cyan",
     borderColor: "border-cyan-500",
-    bgColor: "bg-cyan-50",
+    bgColor: "bg-cyan-50 dark:bg-cyan-500/10",
     glowColor: "rgba(6,182,212,0.15)",
     textColor: "text-cyan-500",
     purpose: "Extracts key financial metrics, tables, and numerical data from the parsed document.",
@@ -135,7 +135,7 @@ const pipelineAgents = [
     icon: GitCompare,
     color: "violet",
     borderColor: "border-violet-500",
-    bgColor: "bg-violet-50",
+    bgColor: "bg-violet-50 dark:bg-violet-500/10",
     glowColor: "rgba(139,92,246,0.15)",
     textColor: "text-violet-500",
     purpose: "Benchmarks the extracted data against historical periods or competitors.",
@@ -150,7 +150,7 @@ const pipelineAgents = [
     icon: Search,
     color: "amber",
     borderColor: "border-amber-500",
-    bgColor: "bg-amber-50",
+    bgColor: "bg-amber-50 dark:bg-amber-500/10",
     glowColor: "rgba(245,158,11,0.15)",
     textColor: "text-amber-500",
     purpose: "Conducts deep-dive research into specific user queries based on the document.",
@@ -165,7 +165,7 @@ const pipelineAgents = [
     icon: FileBarChart,
     color: "fuchsia",
     borderColor: "border-fuchsia-500",
-    bgColor: "bg-fuchsia-50",
+    bgColor: "bg-fuchsia-50 dark:bg-fuchsia-500/10",
     glowColor: "rgba(217,70,239,0.15)",
     textColor: "text-fuchsia-500",
     purpose: "Synthesizes all findings from previous agents into a cohesive, professional markdown/PDF report.",
@@ -232,7 +232,7 @@ export default function HelpSupportPage() {
           </div>
           <div className="flex items-center gap-4">
 
-            <div className="flex items-center gap-2 px-3 py-1 bg-success/10 text-success border border-emerald-100 rounded-full text-xs font-semibold shadow-sm">
+            <div className="flex items-center gap-2 px-3 py-1 bg-success/10 text-success border border-emerald-100 dark:border-emerald-500/20 rounded-full text-xs font-semibold shadow-sm">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
@@ -505,9 +505,9 @@ export default function HelpSupportPage() {
                           animate={{ height: "auto", opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="overflow-hidden bg-amber-50/30"
+                          className="overflow-hidden bg-amber-50/30 dark:bg-amber-500/10"
                         >
-                          <div className="p-4 pt-0 text-[13px] border-t border-amber-100/50 mt-2 space-y-3">
+                          <div className="p-4 pt-0 text-[13px] border-t border-amber-100/50 dark:border-amber-500/20 mt-2 space-y-3">
                             <div>
                               <span className="font-semibold text-foreground block mb-1">Possible Causes:</span>
                               <span className="text-muted-foreground">{t.causes}</span>
@@ -596,7 +596,7 @@ export default function HelpSupportPage() {
             <section id="status" className="bg-card border border-border rounded-2xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[15px] font-bold text-foreground">AstraFinance Systems</h3>
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-success/10 text-success border border-emerald-100 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-success/10 text-success border border-emerald-100 dark:border-emerald-500/20 rounded-md text-[10px] font-bold uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> Operational
                 </div>
               </div>
