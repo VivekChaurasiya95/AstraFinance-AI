@@ -96,7 +96,7 @@ function SecurityScoreRing({ score }: { score: number }) {
         className="absolute inset-0 flex items-center justify-center"
         style={{ transform: "rotate(0deg)" }}
       >
-        <span style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+        <span className="text-slate-900 dark:text-slate-100" style={{ fontSize: 18, fontWeight: 800 }}>
           {animatedScore}
           <span style={{ fontSize: 11 }}>%</span>
         </span>
@@ -303,10 +303,10 @@ export default function SecurityPage() {
           {/* Right: Content */}
           <div style={{ minWidth: 0 }}>
             <h4
+              className="text-slate-900 dark:text-slate-100"
               style={{
                 fontSize: 15,
                 fontWeight: 800,
-                color: "#0f172a",
                 marginBottom: 4,
               }}
             >
@@ -319,16 +319,16 @@ export default function SecurityPage() {
                 : "Action Required"}
             </h4>
             <p
+              className="text-slate-500 dark:text-slate-400"
               style={{
                 fontSize: 13,
-                color: "#64748b",
                 lineHeight: 1.5,
                 marginBottom: 12,
                 maxWidth: 500,
               }}
             >
               Your account security score is{" "}
-              <strong style={{ color: "#0f172a" }}>{data?.score || 0}%</strong>. You&apos;re
+              <strong className="text-slate-900 dark:text-slate-100">{data?.score || 0}%</strong>. You&apos;re
               using {data?.provider === "google" ? "Google SSO" : data?.provider || "email"},{" "}
               which provides strong authentication protection.
             </p>
@@ -338,12 +338,12 @@ export default function SecurityPage() {
               {(data?.checks || []).map((check, i) => (
                 <div
                   key={i}
+                  className={check.passed ? "text-emerald-600 dark:text-emerald-500" : "text-slate-400 dark:text-slate-500"}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
                     fontSize: 12,
-                    color: check.passed ? "#059669" : "#94a3b8",
                     fontWeight: 600,
                   }}
                 >
@@ -379,12 +379,11 @@ export default function SecurityPage() {
             >
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div
+                  className="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                   style={{
                     width: 34,
                     height: 34,
                     borderRadius: "50%",
-                    background: "#ecfdf5",
-                    color: "#059669",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -393,25 +392,25 @@ export default function SecurityPage() {
                   <DeviceIcon device={currentSession.device} />
                 </div>
                 <div>
-                  <h4 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>
+                  <h4 className="text-slate-800 dark:text-slate-200" style={{ fontSize: 13, fontWeight: 700 }}>
                     {currentSession.os} • {currentSession.browser}
                   </h4>
-                  <p style={{ fontSize: 11, color: "#94a3b8" }}>
+                  <p className="text-slate-400 dark:text-slate-500" style={{ fontSize: 11 }}>
                     {currentSession.device} • Current session
                   </p>
                 </div>
               </div>
               <span
+                className="text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-500/10 dark:border-emerald-500/20"
                 style={{
                   fontSize: 10,
                   fontWeight: 700,
-                  color: "#059669",
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
-                  background: "#ecfdf5",
                   padding: "4px 10px",
                   borderRadius: 6,
-                  border: "1px solid #d1fae5",
+                  borderWidth: "1px",
+                  borderStyle: "solid",
                 }}
               >
                 Active
@@ -438,12 +437,11 @@ export default function SecurityPage() {
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div
+                    className="bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                     style={{
                       width: 34,
                       height: 34,
                       borderRadius: "50%",
-                      background: "#f8fafc",
-                      color: "#64748b",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -452,10 +450,10 @@ export default function SecurityPage() {
                     <DeviceIcon device={session.device} />
                   </div>
                   <div>
-                    <h4 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>
+                    <h4 className="text-slate-800 dark:text-slate-200" style={{ fontSize: 13, fontWeight: 700 }}>
                       {session.os} • {session.browser}
                     </h4>
-                    <p style={{ fontSize: 11, color: "#94a3b8" }}>
+                    <p className="text-slate-400 dark:text-slate-500" style={{ fontSize: 11 }}>
                       {session.device} • Last active {timeAgo(session.last_active_at)}
                     </p>
                   </div>
@@ -463,29 +461,19 @@ export default function SecurityPage() {
                 <button
                   onClick={() => handleRevoke(session.id)}
                   disabled={revokingId === session.id}
+                  className="text-slate-500 bg-white border-slate-200 dark:text-slate-400 dark:bg-slate-900 dark:border-slate-800 hover:text-red-600 hover:border-red-200 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-900/20 dark:hover:border-red-900/50"
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "#64748b",
-                    background: "white",
-                    border: "1px solid #e2e8f0",
                     padding: "5px 12px",
                     borderRadius: 8,
+                    borderWidth: "1px",
+                    borderStyle: "solid",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
                     gap: 5,
                     transition: "all 0.15s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "#dc2626";
-                    e.currentTarget.style.borderColor = "#fecaca";
-                    e.currentTarget.style.background = "#fef2f2";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "#64748b";
-                    e.currentTarget.style.borderColor = "#e2e8f0";
-                    e.currentTarget.style.background = "white";
                   }}
                 >
                   {revokingId === session.id ? (
@@ -502,9 +490,9 @@ export default function SecurityPage() {
           {/* Empty state */}
           {otherSessions.length === 0 && currentSession && (
             <p
+              className="text-slate-400 dark:text-slate-500"
               style={{
                 fontSize: 12,
-                color: "#94a3b8",
                 paddingTop: 12,
                 textAlign: "center",
               }}
@@ -519,14 +507,14 @@ export default function SecurityPage() {
               <button
                 onClick={handleRevokeAll}
                 disabled={revokingAll}
+                className="text-red-600 bg-white border-red-200 dark:text-red-400 dark:bg-slate-900 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/20"
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "#dc2626",
-                  background: "white",
-                  border: "1px solid #fecaca",
                   padding: "6px 14px",
                   borderRadius: 8,
+                  borderWidth: "1px",
+                  borderStyle: "solid",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
@@ -561,11 +549,11 @@ export default function SecurityPage() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
+              className="bg-slate-50 dark:bg-slate-800"
               style={{
                 width: 34,
                 height: 34,
                 borderRadius: "50%",
-                background: "#f8fafc",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -574,25 +562,25 @@ export default function SecurityPage() {
               <Globe style={{ width: 16, height: 16, color: "#3b82f6" }} />
             </div>
             <div>
-              <h4 style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>
+              <h4 className="text-slate-800 dark:text-slate-200" style={{ fontSize: 13, fontWeight: 700 }}>
                 Google
               </h4>
-              <p style={{ fontSize: 11, color: "#94a3b8" }}>
+              <p className="text-slate-400 dark:text-slate-500" style={{ fontSize: 11 }}>
                 {user?.email || "Connected via Google SSO"}
               </p>
             </div>
           </div>
           <span
+            className="text-blue-500 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-500/10 dark:border-blue-500/20"
             style={{
               fontSize: 10,
               fontWeight: 700,
-              color: "#3b82f6",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
-              background: "#eff6ff",
               padding: "4px 10px",
               borderRadius: 6,
-              border: "1px solid #dbeafe",
+              borderWidth: "1px",
+              borderStyle: "solid",
             }}
           >
             Connected
