@@ -17,18 +17,18 @@ export default function DangerPage() {
         </div>
       </div>
 
-      <div className="bg-destructive/10 border border-red-100 rounded-2xl p-6 shadow-sm">
+      <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-full bg-destructive/20 text-destructive flex items-center justify-center">
             <AlertTriangle className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-red-950">Delete Account</h3>
-            <p className="text-sm text-red-800/70">Permanently remove your account, settings, and all workspace data.</p>
+            <h3 className="text-lg font-bold text-destructive">Delete Account</h3>
+            <p className="text-sm text-destructive/80">Permanently remove your account, settings, and all workspace data.</p>
           </div>
         </div>
         
-        <div className="bg-card rounded-xl p-5 border border-red-100">
+        <div className="bg-card rounded-xl p-5 border border-destructive/20">
           <p className="text-sm font-bold text-foreground mb-4">
             If you are sure, type <span className="text-destructive select-all bg-destructive/10 px-1.5 py-0.5 rounded">DELETE</span> to confirm.
           </p>
