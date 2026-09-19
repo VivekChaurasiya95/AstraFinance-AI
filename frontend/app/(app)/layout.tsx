@@ -20,12 +20,15 @@ import {
 } from "@/components/dashboard/icons";
 
 import { UserProfilePanel } from "@/components/dashboard/UserProfilePanel";
+import { InvitationsModal } from "@/components/dashboard/InvitationsModal";
 import { NotificationsPanel } from "@/components/layout/NotificationsPanel";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { fetcher } from "@/lib/api";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useNotificationStore } from "@/hooks/useNotificationStore";
 import { NotificationProvider } from "@/components/providers/NotificationProvider";
+import { SettingsProvider } from "@/components/providers/SettingsProvider";
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -34,6 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [invitationsOpen, setInvitationsOpen] = useState(false);
   
   const unreadCount = useNotificationStore(state => state.unreadCount);
   
@@ -62,6 +66,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
+    <SettingsProvider>
     <NotificationProvider>
     <div className="bg-background text-foreground font-sans min-h-screen flex">
       {/* Mobile Sidebar Overlay */}
@@ -147,12 +152,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content Area */}
       <main className={cn(
-        "flex-1 flex flex-col min-h-screen pb-16 md:pb-0 relative transition-all duration-300 min-w-0 w-full",
-        isSidebarCollapsed ? "md:ml-[72px] md:w-[calc(100%-72px)]" : "md:ml-64 md:w-[calc(100%-256px)]"
+        "flex-1 flex flex-col h-screen pb-16 md:pb-0 relative transition-all duration-300 min-w-0 w-full overflow-y-auto",
+        isSidebarCollapsed ? "md:ml-[72px] md:w-[calc(100%-72px)]" : "md:ml-64 md:w-[calc(100%-256px)]",
+        pathname.startsWith("/settings") && "no-scrollbar"
       )}>
         
         {/* Global Desktop Header */}
-        <header className="hidden md:flex justify-between items-center px-8 py-4 z-30 sticky top-0 bg-background/80 backdrop-blur-sm">
+        <header className="hidden md:flex justify-between items-center px-8 py-2 z-30 sticky top-0 bg-background/80 backdrop-blur-sm">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -193,6 +199,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <UserProfilePanel 
               onClose={() => setProfileOpen(false)} 
               onSignOut={() => signOut(auth).then(() => window.location.href = "/login")} 
+              onOpenInvitations={() => setInvitationsOpen(true)}
             />
           )}
           {notificationsOpen && (
@@ -242,11 +249,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
              <UserProfilePanel 
                onClose={() => setProfileOpen(false)} 
                onSignOut={() => signOut(auth).then(() => window.location.href = "/login")} 
+               onOpenInvitations={() => setInvitationsOpen(true)}
              />
            </div>
         )}
 
-        {/* Content */}
         {children}
 
       </main>
@@ -271,6 +278,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         })}
       </nav>
     </div>
+    <InvitationsModal isOpen={invitationsOpen} onClose={() => setInvitationsOpen(false)} />
     </NotificationProvider>
+    </SettingsProvider>
   );
 }
