@@ -237,13 +237,13 @@ export default function DashboardPage() {
       {/* Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
         {/* Card 1 */}
-        <div className="bg-primary/10 border border-primary/30 rounded-lg p-5 shadow-sm flex flex-col gap-1 hover:shadow-[0_8px_30px_rgba(37,99,235,0.15)] hover:-translate-y-1 hover:scale-[1.02] transition-all duration-300 cursor-pointer group">
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-5 shadow-sm flex flex-col gap-1 hover:shadow-[0_8px_30px_rgba(249,115,22,0.15)] hover:-translate-y-1 hover:scale-[1.02] transition-all duration-300 cursor-pointer group">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold tracking-wider uppercase text-primary">Active Workspaces</span>
-            <FolderIcon className="text-primary w-[18px] h-[18px] group-hover:scale-110 transition-transform duration-300" />
+            <span className="text-[11px] font-bold tracking-wider uppercase text-orange-500">Active Workspaces</span>
+            <FolderIcon className="text-orange-500 w-[18px] h-[18px] group-hover:scale-110 transition-transform duration-300" />
           </div>
-          <div className="font-mono text-primary text-2xl font-medium mt-2">{workspaces.length}</div>
-          <div className="text-sm text-primary flex items-center gap-1 mt-1 font-medium opacity-80">
+          <div className="font-mono text-orange-500 text-2xl font-medium mt-2">{workspaces.length}</div>
+          <div className="text-sm text-orange-500 flex items-center gap-1 mt-1 font-medium opacity-80">
             <ActivityIcon className="w-3.5 h-3.5" /> <span>{stats?.active_workspaces_trend}</span>
           </div>
         </div>
