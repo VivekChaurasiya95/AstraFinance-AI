@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, IBM_Plex_Mono, Lora } from "next/font/google";
+import { Inter, IBM_Plex_Mono, Lora, Caveat } from "next/font/google";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Toaster } from "sonner";
@@ -20,6 +20,12 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 const lora = Lora({
   variable: "--font-lora",
+  subsets: ["latin"],
+  preload: false,
+});
+
+const caveat = Caveat({
+  variable: "--font-caveat",
   subsets: ["latin"],
   preload: false,
 });
@@ -46,7 +52,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${ibmPlexMono.variable} ${lora.variable} h-full antialiased`}
+      className={`${inter.variable} ${ibmPlexMono.variable} ${lora.variable} ${caveat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider
